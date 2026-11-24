@@ -1,7 +1,7 @@
-# Builds re-la for Linux (Fedora .rpm) and Windows (.zip) when the app changes and runs the tests: all of them and
-# clippy on Linux, the crates with Windows code on Windows (relay: relay.yml).
+# Builds re-la for Linux (Fedora .rpm), Windows (.zip) and Android (.apk, android.yml) when the app changes and runs the
+# tests: all of them and clippy on Linux, the crates with Windows code on Windows (relay: relay.yml).
 # The binaries are attached to the run as artifacts (Actions → the run → Artifacts).
-# Every push to main that changes the app also publishes a GitHub Release with the rpm:
+# Every push to main that changes the app also publishes a GitHub Release with the three:
 # the last v* tag's patch number goes up by one (v0.0.1-alpha -> v0.0.2-alpha). A pushed tag v*
 # releases under that tag instead (to start v0.1.0 or drop -alpha). A dash (-alpha, -rc1) marks a pre-release.
 name: build
@@ -10,8 +10,8 @@ on:
   push:
     branches: [main]
     tags: ['v*'] # path filters are not applied to tags: a release always builds
-    paths: ['crates/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/build.yml']
-  pull_request:
+    paths: ['crates/**', 'android/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/build.yml', '.github/workflows/android.yml']
+  pull_request: # Android: android.yml
     paths: ['crates/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/build.yml']
   workflow_dispatch:
 
@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  version: # the release tag; the rpm carries it too
+  version: # the release tag; the rpm and the apk carry it too
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
@@ -170,9 +170,19 @@ jobs:
           name: re-la-windows-x64
           path: dist/re-la-windows-x64.zip
 
+  android:
+    needs: version
+    if: github.event_name != 'pull_request' # android.yml runs by itself there
+    uses: $/.github/workflows/android.yml
+    with:
+      version: ${{ needs.version.outputs.tag }}
+    secrets:
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+
   release:
     if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    needs: [version, linux, windows] # only after both built and passed
+    needs: [version, linux, windows, android] # only after all built and passed
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -188,7 +198,12 @@ jobs:
           rpm=$(ls dl/re-la-linux-x86_64/*.rpm); fc=${rpm##*.fc}; fc=${fc%%.*} # ...-1.fc45.x86_64.rpm -> 45
           cp "$rpm" "re-la-$TAG-fedora$fc-x86_64.rpm"
           cp dl/re-la-windows-x64/re-la-windows-x64.zip "re-la-$TAG-windows-x64.zip"
+          apk=
+          if [ -d dl/rela-android ]; then # signed with the release key; a throwaway key's APK could never be updated
+            apk="re-la-$TAG-android-arm64.apk"
+            cp dl/rela-android/app-release.apk "$apk"
+          else echo "::warning::no release key: the Release has no APK"; fi
           v=${TAG#v}; name="${v%%-*}"; stage="${v#*-}"
           [ "$stage" != "$v" ] && title="${stage^} $name" pre=--prerelease || title="$name" pre=
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "re-la $title" --generate-notes $pre \
-            "re-la-$TAG-fedora$fc-x86_64.rpm" "re-la-$TAG-windows-x64.zip"
+            "re-la-$TAG-fedora$fc-x86_64.rpm" "re-la-$TAG-windows-x64.zip" ${apk:+"$apk"}

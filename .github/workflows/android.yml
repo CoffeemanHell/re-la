@@ -1,15 +1,23 @@
-# Builds the Android app (debug and release APK) and runs its unit tests and lint when the app or the Rust core changes.
+# Builds the Android app (debug and release APK) and runs its unit tests and lint: for pull requests that change the app or
+# the Rust core, and as a part of build.yml, which puts the release APK on the GitHub Release.
 # The APKs are attached to the run: Actions → the run → Artifacts. rela-android is the one to use; rela-android-debug
 # sits next to it as "app.rela.debug". Install with `adb install -r <apk>`.
 # The release APK needs the secrets ANDROID_KEYSTORE (the key file, base64) and ANDROID_KEYSTORE_PASSWORD, see
 # docs/development.md. Without them, and for pull requests, it is rela-android-temporary-key: signed with the runner's
-# throwaway key, so it runs the same but no later APK can update it (uninstall first).
+# throwaway key, so it runs the same but no later APK can update it (uninstall first); it is not put on a Release.
 name: android
 
 on:
-  push:
-    branches: [main]
-    paths: ['android/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/android.yml']
+  workflow_call: # build.yml
+    inputs:
+      version: # the release tag
+        type: string
+        required: true
+    secrets:
+      ANDROID_KEYSTORE:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
   pull_request:
     paths: ['android/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/android.yml']
   workflow_dispatch:
@@ -18,12 +26,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: android-${{ github.event_name }}-${{ github.ref }} # called from build.yml, github.workflow is that one's
   cancel-in-progress: true
 
 jobs:
   android:
     runs-on: ubuntu-latest # has the Android SDK, an NDK (ANDROID_NDK_HOME) and JDK 21
+    env:
+      RELA_VERSION: ${{ inputs.version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

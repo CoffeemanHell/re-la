@@ -12,7 +12,7 @@ android {
         minSdk = 35
         targetSdk = 37
         versionCode = 1
-        versionName = "0.1.0"
+        versionName = System.getenv("RELA_VERSION").orEmpty().removePrefix("v").ifEmpty { "0.1.0" } // the release's, from CI
         // the ABIs build-rust.sh makes librela.so for (a 32-bit phone can't install rather than crash)
         ndk { abiFilters += listOf("arm64-v8a") } // 64-bit ARM only; x86_64 emulator images run it through their ARM translation
     }

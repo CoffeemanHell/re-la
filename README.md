@@ -8,6 +8,7 @@ Get the latest build from [Releases](../../releases). re-la was called Nsync: on
 
 - **Windows:** `re-la-*-windows-x64.zip`. Unpack it anywhere and run `re-la.exe` from the folder; nothing to install. Your login and settings from the older single-exe versions come over on the first start.
 - **Linux (Fedora):** `re-la-*-fedoraNN-x86_64.rpm`, built for that Fedora release. Install with `sudo dnf install ./re-la-*.rpm`; it uses the system Qt and libmpv, so it follows your desktop theme. Other distros: build from source (below).
+- **Android:** `re-la-*-android-arm64.apk`, for Android 15 or newer on 64-bit ARM.
 
 ## Build on Linux
 
@@ -32,8 +33,7 @@ The folder is `dist/re-la/`, the zip next to it.
 ## Android
 
 The Android app shares the player and listening together with the desktop (the Rust core) and has its own Material 3
-screens. There is no release yet: the APK of each change is an artifact of the `android` workflow run:
-`rela-android`, or `rela-android-temporary-key` (uninstall it before you install another). To build it yourself, see [Development](docs/development.md#android).
+screens. To build it yourself, see [Development](docs/development.md#android).
 
 ## Listening together
 

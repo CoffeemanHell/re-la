@@ -71,7 +71,7 @@ with another key can't update the installed app (Android asks to uninstall first
 keytool -genkeypair -keystore ~/rela.keystore -storetype PKCS12 -alias rela -keyalg RSA -keysize 4096 -validity 10000 -dname CN=re-la
 ```
 
-The `android` workflow signs with it when the repository has it as secrets:
+CI signs with it when the repository has it as secrets. Without them a release has no APK:
 
 ```bash
 base64 -w0 ~/rela.keystore | gh secret set ANDROID_KEYSTORE
@@ -95,11 +95,11 @@ settings in `%APPDATA%\re-la\re-la.ini`, brought over once from the C++ app's re
 
 ## CI and releases
 
-- A change in `crates/` builds Linux and Windows and runs the tests on both; the Windows zip is the run's
-  `re-la-windows-x64` artifact. A change in `relay/` or `crates/proto` runs the relay tests.
-- A change in `android/` or `crates/` builds the Android APKs and runs the unit tests and lint, where a warning fails
-  (`android.yml`). The APKs are the run's `rela-android` (release; `rela-android-temporary-key` without the key
-  above) and `rela-android-debug` artifacts. No Android release yet.
+- A change in `crates/` or `android/` builds Linux, Windows and Android and runs the tests on all three; the Windows zip
+  is the run's `re-la-windows-x64` artifact. A change in `relay/` or `crates/proto` runs the relay tests.
+- Android is built by `android.yml`, which `build.yml` calls (a pull request runs it by itself): both APKs, the unit tests
+  and lint, where a warning fails. The APKs are the run's `rela-android` (release; `rela-android-temporary-key` without
+  the key above) and `rela-android-debug` artifacts.
 - `security.yml` runs `cargo deny check` (dependencies: known holes, licenses, sources; rules in `deny.toml`) and zizmor
   (the workflows), when they change and every Monday. Actions are pinned to commits; Dependabot moves the pins.
 - Every push to `main` that changes the app publishes a release: the last `v*` tag's last number goes up by one.
