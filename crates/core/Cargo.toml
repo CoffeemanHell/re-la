@@ -19,9 +19,11 @@ time = { version = "0.3", features = ["parsing"] }
 futures-util.workspace = true
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json"] }
 tokio = { workspace = true, features = ["rt", "net", "sync", "time", "macros", "fs", "io-util"] }
-# rustls: no OpenSSL on Android. Roots: the system store (a homelab CA works, as it did with Qt) plus the bundled
-# Mozilla set, for systems whose store can't be read (Android).
-tokio-tungstenite = { workspace = true, features = ["rustls-tls-native-roots", "rustls-tls-webpki-roots"] }
+# rustls: no OpenSSL on Android. Certificates are the system's to judge (a homelab CA works, as it did with Qt): reqwest
+# does so by itself, the websocket is given the same verifier.
+tokio-tungstenite = { workspace = true, features = ["rustls-tls-native-roots"] }
+rustls = { version = "0.23", default-features = false }
+rustls-platform-verifier = "0.7"
 
 [dev-dependencies]
 re-with = { path = "../../relay" }
@@ -33,9 +35,6 @@ rcgen = "0.14"
 futures-util.workspace = true
 tokio-tungstenite.workspace = true
 tokio-rustls = { version = "0.26", default-features = false, features = ["aws-lc-rs"] }
-
-[target.'cfg(target_os = "android")'.dependencies]
-webpki-root-certs = "1"
 
 [lints]
 workspace = true

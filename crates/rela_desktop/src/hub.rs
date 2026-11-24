@@ -4,11 +4,12 @@ use core::pin::Pin;
 use cxx_qt::{CxxQtThread, Threading};
 use cxx_qt_lib::QString;
 use rela_core::player::{Changes, Player, PlayerListener, PlayerSnapshot};
-use rela_core::settings::{IniSettings, Settings, desktop_settings_path, move_once};
+use rela_core::settings::{Settings, desktop_settings_path, move_once};
 use rela_core::subwave::{SubwaveEvent, SubwaveSnapshot};
 use rela_core::sync::{SyncEvent, SyncSnapshot};
 use serde_json::Value;
 use crate::mpris::Event;
+use crate::settings::QtSettings;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -87,14 +88,14 @@ pub fn move_from_nsync() {
     move_once(&data.join("nsync").join("nsync"), &data.join("re-la").join("re-la"), None); // the themes
 }
 
-/// The player, with the settings file QSettings used (logins survive the switch) and two mpv decks. libmpv needs
+/// The player, with the settings file and two mpv decks. libmpv needs
 /// LC_NUMERIC "C" before this runs (main.rs sets it first).
 pub fn player() -> &'static Player {
     PLAYER.get_or_init(|| {
         let path = desktop_settings_path();
         #[cfg(windows)]
         let fresh = !path.exists();
-        let settings: Arc<dyn Settings> = Arc::new(IniSettings::open(path));
+        let settings: Arc<dyn Settings> = Arc::new(QtSettings::open(path));
         #[cfg(windows)]
         if fresh {
             import_registry(settings.as_ref());

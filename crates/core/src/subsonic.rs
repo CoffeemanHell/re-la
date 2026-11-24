@@ -59,16 +59,6 @@ pub fn subsonic_url(l: &Login, method: &str, params: &[(String, String)]) -> Opt
     url::Url::parse(&format!("{}/rest/{method}?{}", l.server, encode_query(&q))).ok()
 }
 
-/// Every HTTP client of the core starts here. Android: the bundled Mozilla roots (as the relay's websocket uses
-/// there); reqwest's platform verifier would need Java-side setup the app doesn't do.
-// shortcut: a private CA installed on the phone is not trusted; init rustls-platform-verifier over JNI if one must be
-pub fn http_client() -> reqwest::ClientBuilder {
-    let b = reqwest::Client::builder();
-    #[cfg(target_os = "android")]
-    let b = b.tls_certs_only(webpki_root_certs::TLS_SERVER_ROOT_CERTS.iter().filter_map(|c| reqwest::Certificate::from_der(c).ok()));
-    b
-}
-
 pub struct Subsonic {
     login: Login,
     http: reqwest::Client,
@@ -76,7 +66,7 @@ pub struct Subsonic {
 
 impl Subsonic {
     pub fn new(login: Login) -> Subsonic {
-        let http = http_client().timeout(Duration::from_secs(30)).build().expect("http client");
+        let http = reqwest::Client::builder().timeout(Duration::from_secs(30)).build().expect("http client");
         Subsonic { login, http }
     }
 

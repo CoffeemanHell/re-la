@@ -750,7 +750,7 @@ Item {
         }
         function test_track_cell_text() {
             const cell = (k, s) => Columns.cell(Columns.byKey(k), s)
-            compare(cell("size", { size: 1572864 }), "1.5 MB")
+            compare(cell("size", { size: 1572864 }), Qt.locale().formattedDataSize(1572864, 1, Locale.DataSizeTraditionalFormat))
             compare(cell("genre", { genres: [{ name: "Folk" }, { name: "Rock" }] }), "Folk, Rock")
             compare(cell("year", { year: 0 }), "")
             compare(cell("created", { created: "2026-11-12T10:00:00Z" }), new Date("2026-11-12T10:00:00Z").toLocaleDateString(Qt.locale(), Locale.ShortFormat))
@@ -760,7 +760,7 @@ Item {
             const d = make(infoDialog, {})
             d.show("s1")
             tryVerify(() => F.text(d.contentItem, "a/b.flac") !== null)
-            verify(F.text(d.contentItem, "45.0 MB") && F.text(d.contentItem, "44.1 kHz"))
+            verify(F.text(d.contentItem, Qt.locale().formattedDataSize(47185920, 1, Locale.DataSizeTraditionalFormat)) && F.text(d.contentItem, "44.1 kHz"))
             verify(!F.text(d.contentItem, "Besteciler")) // empty field dropped
         }
         function test_settings_categories() {
@@ -902,7 +902,7 @@ Item {
             verify(cols().indexOf("col_fav") < 0)
             Player.options = { columns: "size" }
             compare(cols(), "col_num col_size col_title")
-            verify(F.text(r, "1.0 MB"))
+            verify(F.text(r, Qt.locale().formattedDataSize(1048576, 1, Locale.DataSizeTraditionalFormat)))
             Player.options = { columns: "bogus,,path" } // unknown keys are skipped
             compare(cols(), "col_num col_path col_title")
         }

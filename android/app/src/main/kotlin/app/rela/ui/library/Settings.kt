@@ -1,5 +1,6 @@
 package app.rela.ui.library
 
+import android.text.format.Formatter
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -146,7 +147,7 @@ private fun CoverCacheRow() {
     val scope = rememberCoroutineScope()
     ListItem(
         headlineContent = { Text("Kapak önbelleği") },
-        supportingContent = { Text("%.1f MB".format(bytes / 1_048_576.0)) },
+        supportingContent = { Text(Formatter.formatFileSize(ctx, bytes)) },
         trailingContent = {
             OutlinedButton({
                 scope.launch {

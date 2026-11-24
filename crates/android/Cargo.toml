@@ -16,5 +16,10 @@ serde_json.workspace = true
 tokio = { workspace = true, features = ["sync"] }
 uniffi = "0.32"
 
+# Android's own certificate verifier; its Kotlin half comes in android/app/build.gradle.kts
+[target.'cfg(target_os = "android")'.dependencies]
+jni = { version = "0.22", default-features = false }
+rustls-platform-verifier = "0.7"
+
 [lints]
 workspace = true

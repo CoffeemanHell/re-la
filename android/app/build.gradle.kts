@@ -47,6 +47,10 @@ android {
     }
 }
 
+// the Kotlin half of the crate rustls-platform-verifier: the version its Rust half asks for
+val tlsVersion = providers.fileContents(rootProject.layout.projectDirectory.file("../Cargo.lock")).asText.get()
+    .substringAfter("name = \"rustls-platform-verifier-android\"\nversion = \"").substringBefore('"')
+
 dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
     implementation("androidx.profileinstaller:profileinstaller:1.4.1") // installs the libraries' baseline profiles: compiled hot paths from the first run
@@ -66,6 +70,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-guava:1.11.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.13.0")
+    implementation("org.rustls:rustls-platform-verifier:$tlsVersion")
     // UniFFI's Kotlin bindings call into librela.so through JNA
     implementation("net.java.dev.jna:jna:5.19.1@aar")
 

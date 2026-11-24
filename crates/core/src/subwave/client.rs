@@ -210,8 +210,8 @@ fn far() -> Instant {
 
 impl Worker {
     fn new(l: Arc<dyn SubwaveListener>, t: Timings, cover: Arc<Mutex<Option<String>>>) -> Worker {
-        let net = crate::subsonic::http_client().timeout(t.timeout).build().expect("http client");
-        let station_net = crate::subsonic::http_client()
+        let net = reqwest::Client::builder().timeout(t.timeout).build().expect("http client");
+        let station_net = reqwest::Client::builder()
             .timeout(t.timeout)
             .redirect(reqwest::redirect::Policy::custom(|a| {
                 let same = a.previous().first().is_some_and(|p| p.origin() == a.url().origin());

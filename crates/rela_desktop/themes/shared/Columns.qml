@@ -20,7 +20,7 @@ QtObject {
         { key: "comment", title: "Yorum", w: 160, fill: true, text: s => s.comment },
         { key: "bpm", title: "BPM", w: 44, align: "right", text: s => s.bpm },
         { key: "bitrate", title: "Bit hızı", w: 64, align: "right", minRow: 1100, text: s => s.bitRate },
-        { key: "size", title: "Boyut", w: 72, align: "right", text: s => s.size ? (s.size / 1048576).toFixed(1) + " MB" : "" },
+        { key: "size", title: "Boyut", w: 72, align: "right", text: s => s.size ? Qt.locale().formattedDataSize(s.size, 1, Locale.DataSizeTraditionalFormat) : "" },
         { key: "suffix", title: "Dosya tipi", w: 72, text: s => s.suffix },
         { key: "created", title: "Eklenme tarihi", w: 96, kind: "date", text: s => s.created },
         { key: "path", title: "Dosya yolu", w: 220, fill: true, text: s => s.path },

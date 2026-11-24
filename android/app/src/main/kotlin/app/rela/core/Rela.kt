@@ -45,10 +45,15 @@ object Rela {
     /** Null while the service isn't running. */
     val core: Core? get() = running
 
+    /** Certificates are Android's to judge: the core needs the app's context for it, before it first connects. */
+    private external fun initTls(context: Context)
+
     @Synchronized
-    fun start(context: Context, decks: DeckFactory): Core = running ?: Core(
-        context.filesDir.path, context.cacheDir.path, decks, Listener,
-    ).also { running = it; it.refresh() }
+    fun start(context: Context, decks: DeckFactory): Core = running ?: run {
+        System.loadLibrary("rela") // for initTls: JNA, which makes the other calls, loads it for itself only
+        initTls(context.applicationContext)
+        Core(context.filesDir.path, context.cacheDir.path, decks, Listener).also { running = it; it.refresh() }
+    }
 
     /** Saves the queue, says bye to followers, frees the core. */
     @Synchronized

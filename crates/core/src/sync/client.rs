@@ -2,6 +2,7 @@
 //! every relay message and user action through `SyncMachine`. Front ends never block on it.
 use super::machine::{Effect, SyncEvent, SyncMachine};
 use futures_util::{SinkExt, StreamExt};
+use rustls_platform_verifier::ConfigVerifierExt;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicI64, Ordering};
@@ -9,6 +10,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::mpsc;
 use tokio::time::{Instant, sleep_until, timeout};
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::{Connector, connect_async_tls_with_config};
 
 const CLOCK_EVERY: Duration = Duration::from_millis(30_000);
 const REFOLLOW_EVERY: Duration = Duration::from_millis(2000);
@@ -120,6 +122,11 @@ impl SyncClient {
 
 type Ws = tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
+/// Certificates as the system judges them (on Linux: by its store).
+fn tls() -> Option<Connector> {
+    rustls::ClientConfig::with_platform_verifier().ok().map(|c| Connector::Rustls(Arc::new(c)))
+}
+
 /// How a connection ended.
 enum End {
     Lost,
@@ -196,7 +203,7 @@ impl Worker {
                 }
                 continue;
             };
-            let end = match timeout(CONNECT_TIMEOUT, tokio_tungstenite::connect_async(cur.url.as_str())).await {
+            let end = match timeout(CONNECT_TIMEOUT, connect_async_tls_with_config(cur.url.as_str(), None, false, tls())).await {
                 Ok(Ok((ws, _))) => self.session(ws, &cur, &mut rx, &mut backoff).await,
                 _ => End::Lost,
             };

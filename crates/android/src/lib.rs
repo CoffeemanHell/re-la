@@ -13,6 +13,13 @@ use std::sync::{Arc, Mutex};
 
 uniffi::setup_scaffolding!();
 
+/// Rela.initTls: certificates are Android's to judge, which needs the app's context. Before the first connection.
+#[cfg(target_os = "android")]
+#[jni::jni_mangle("app.rela.core.Rela")]
+pub fn init_tls<'a>(mut env: jni::EnvUnowned<'a>, _this: jni::objects::JObject<'a>, context: jni::objects::JObject<'a>) {
+    env.with_env(|env| rustls_platform_verifier::android::init_with_env(env, context)).resolve::<jni::errors::ThrowRuntimeExAndDefault>();
+}
+
 /// One ExoPlayer: Kotlin runs each call on the player's looper. Calls come from the core's thread.
 #[uniffi::export(with_foreign)]
 pub trait DeckOut: Send + Sync {

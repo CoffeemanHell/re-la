@@ -6,6 +6,7 @@ pub mod mpris;
 pub mod player;
 pub mod qt;
 pub mod qtgui;
+pub mod settings;
 #[cfg(windows)]
 mod smtc;
 pub mod subwave;

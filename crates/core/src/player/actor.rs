@@ -246,7 +246,7 @@ async fn run(
     subwave: Arc<SubwaveClient>,
 ) {
     // covers and downloads: no 30 s cap on the whole transfer, only on silence (as Qt's transfer timeout did)
-    let http = crate::subsonic::http_client().connect_timeout(Duration::from_secs(15)).read_timeout(Duration::from_secs(15)).build().expect("http");
+    let http = reqwest::Client::builder().connect_timeout(Duration::from_secs(15)).read_timeout(Duration::from_secs(15)).build().expect("http");
     let mut download: Option<Download> = None;
     core.clock_ms = wall_ms();
     core.start();

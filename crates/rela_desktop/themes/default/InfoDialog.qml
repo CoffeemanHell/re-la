@@ -46,7 +46,7 @@ Dialog {
             ["Örnekleme", s.samplingRate ? s.samplingRate / 1000 + " kHz" : ""],
             ["Bit derinliği", s.bitDepth ? s.bitDepth + " bit" : ""],
             ["Kanallar", s.channelCount],
-            ["Boyut", s.size ? (s.size / 1048576).toFixed(1) + " MB" : ""],
+            ["Boyut", s.size ? Qt.locale().formattedDataSize(s.size, 1, Locale.DataSizeTraditionalFormat) : ""],
             ["Çalma sayısı", s.playCount],
             ["Eklenme", s.created ? new Date(s.created).toLocaleDateString(Qt.locale(), Locale.ShortFormat) : ""],
             ["ReplayGain", gain.trackGain !== undefined ? "parça " + gain.trackGain + " dB" + (gain.albumGain !== undefined ? ", albüm " + gain.albumGain + " dB" : "") : ""],
