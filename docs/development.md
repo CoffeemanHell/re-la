@@ -99,8 +99,8 @@ settings in `%APPDATA%\re-la\re-la.ini`, brought over once from the C++ app's re
 - A change in `crates/` builds Linux and Windows and runs the tests on both; the Windows zip is the run's
   `re-la-windows-x64` artifact. A change in `relay/` or `crates/proto` runs the relay tests.
 - A change in `android/` or `crates/` builds the Android APKs and runs the unit tests and lint, where a warning fails
-  (`android.yml`). The APKs are the run's `rela-android` (release, needs the key above) and `rela-android-debug` artifacts.
-  No Android release yet.
+  (`android.yml`). The APKs are the run's `rela-android` (release; `rela-android-temporary-key` without the key
+  above) and `rela-android-debug` artifacts. No Android release yet.
 - `security.yml` runs `cargo deny check` (dependencies: known holes, licenses, sources; rules in `deny.toml`) and zizmor
   (the workflows), when they change and every Monday. Actions are pinned to commits; Dependabot moves the pins.
 - Every push to `main` that changes the app publishes a release: the last `v*` tag's last number goes up by one.

@@ -2,8 +2,8 @@
 # The APKs are attached to the run: Actions → the run → Artifacts. rela-android is the one to use; rela-android-debug
 # sits next to it as "app.rela.debug". Install with `adb install -r <apk>`.
 # The release APK needs the secrets ANDROID_KEYSTORE (the key file, base64) and ANDROID_KEYSTORE_PASSWORD, see
-# docs/development.md. Without them, and for pull requests, it is built but not attached: a runner's throwaway debug key
-# would make an APK that no later one can update.
+# docs/development.md. Without them, and for pull requests, it is rela-android-temporary-key: signed with the runner's
+# throwaway key, so it runs the same but no later APK can update it (uninstall first).
 name: android
 
 on:
@@ -58,15 +58,14 @@ jobs:
           RELA_KEYSTORE: ${{ runner.temp }}/rela.keystore
           RELA_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          [[ -n $ANDROID_KEYSTORE ]] || { echo "::notice::no ANDROID_KEYSTORE secret: the release APK is not attached"; exit 0; }
+          [[ -n $ANDROID_KEYSTORE ]] || { echo "::notice::no ANDROID_KEYSTORE secret: the release APK has a temporary key"; exit 0; }
           base64 -d <<< "$ANDROID_KEYSTORE" > "$RELA_KEYSTORE"
           ./gradlew --no-daemon assembleRelease
           rm "$RELA_KEYSTORE"
           echo "signed=true" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: steps.sign.outputs.signed
         with:
-          name: rela-android
+          name: ${{ steps.sign.outputs.signed && 'rela-android' || 'rela-android-temporary-key' }}
           path: android/app/build/outputs/apk/release/app-release.apk
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

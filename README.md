@@ -32,8 +32,8 @@ The folder is `dist/re-la/`, the zip next to it.
 ## Android
 
 The Android app shares the player and listening together with the desktop (the Rust core) and has its own Material 3
-screens. There is no release yet: the APK of each change is an artifact (`rela-android`) of the `android` workflow
-run. To build it yourself, see [Development](docs/development.md#android).
+screens. There is no release yet: the APK of each change is an artifact of the `android` workflow run:
+`rela-android`, or `rela-android-temporary-key` (uninstall it before you install another). To build it yourself, see [Development](docs/development.md#android).
 
 ## Listening together
 
