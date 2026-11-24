@@ -17,7 +17,7 @@ md-5 = "0.11"
 sha2 = "0.11"
 time = { version = "0.3", features = ["parsing"] }
 futures-util.workspace = true
-reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json", "http2"] }
 tokio = { workspace = true, features = ["rt", "net", "sync", "time", "macros", "fs", "io-util"] }
 # rustls: no OpenSSL on Android. Certificates are the system's to judge (a homelab CA works, as it did with Qt): reqwest
 # does so by itself, the websocket is given the same verifier.
@@ -27,7 +27,7 @@ rustls-platform-verifier = "0.7"
 
 [dev-dependencies]
 re-with = { path = "../../relay" }
-axum = "0.8.9"
+axum = { version = "0.8.9", features = ["http2"] }
 md-5 = "0.11"
 sha2 = "0.11"
 tokio = { workspace = true, features = ["rt-multi-thread"] }

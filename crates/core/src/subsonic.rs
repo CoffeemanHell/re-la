@@ -66,7 +66,7 @@ pub struct Subsonic {
 
 impl Subsonic {
     pub fn new(login: Login) -> Subsonic {
-        let http = reqwest::Client::builder().timeout(Duration::from_secs(30)).build().expect("http client");
+        let http = crate::http_client().timeout(Duration::from_secs(30)).build().expect("http client");
         Subsonic { login, http }
     }
 
