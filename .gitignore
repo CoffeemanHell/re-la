@@ -1,0 +1,40 @@
+# Build output
+build/
+dist/
+target/
+build-*/
+.ccache/
+rpmbuild/
+CMakeUserPresets.json
+compile_commands.json
+
+# AI tool notes, plans and specs: local only
+.superpowers/
+docs/superpowers/
+.claude/
+.mcp.json
+CLAUDE.local.md
+
+# Editors and IDEs
+.idea
+.vscode
+*.swp
+*~
+.DS_Store
+
+# Secrets
+.env
+.env.*
+
+# Shell/tool dotfiles that land in the repo root
+/.bash_profile
+/.bashrc
+/.profile
+/.zprofile
+/.zshrc
+/.gitconfig
+/.gitmodules
+/.ripgreprc
+
+# cxx-qt-build writes it for qmlls next to the crate
+.qmlls.ini

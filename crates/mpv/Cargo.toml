@@ -1,0 +1,15 @@
+[package]
+name = "rela-mpv"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+# The desktop deck: one libmpv per deck (crates/core's Deck trait). Needs libmpv from mpv 0.41 or newer.
+[dependencies]
+rela-core = { path = "../core" }
+libmpv2 = { version = "7.0.1", default-features = false }
+libmpv2-sys = "4.0.1"
+
+[lints]
+workspace = true

@@ -1,0 +1,17 @@
+{
+  "name": "Default",
+  "bg": "#0f1012",
+  "surface": "#17181b",
+  "surface2": "#222327",
+  "fg": "#f2f2f2",
+  "muted": "#8b8d93",
+  "line": "#2a2b30",
+  "grid": "#1a1a1a",
+  "accent": "#1ed760",
+  "accentFg": "#0b0b0b",
+  "radius": 10,
+  "font": "",
+  "displayFont": "",
+  "fontSize": 13,
+  "fonts": []
+}

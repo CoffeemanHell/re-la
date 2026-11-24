@@ -1,0 +1,17 @@
+{
+  "name": "Nothing",
+  "bg": "#000000",
+  "surface": "#0e0e0e",
+  "surface2": "#1a1a1a",
+  "fg": "#ffffff",
+  "muted": "#6f6f6f",
+  "line": "#2a2a2a",
+  "grid": "#151515",
+  "accent": "#d71921",
+  "accentFg": "#ffffff",
+  "radius": 0,
+  "font": "Space Mono",
+  "displayFont": "Doto",
+  "fontSize": 12,
+  "fonts": ["fonts/Doto.ttf", "fonts/SpaceMono-Regular.ttf", "fonts/SpaceMono-Bold.ttf"]
+}

@@ -1,0 +1,74 @@
+# Builds the Android app (debug and release APK) and runs its unit tests and lint when the app or the Rust core changes.
+# The APKs are attached to the run: Actions → the run → Artifacts. rela-android is the one to use; rela-android-debug
+# sits next to it as "app.rela.debug". Install with `adb install -r <apk>`.
+# The release APK needs the secrets ANDROID_KEYSTORE (the key file, base64) and ANDROID_KEYSTORE_PASSWORD, see
+# docs/development.md. Without them, and for pull requests, it is built but not attached: a runner's throwaway debug key
+# would make an APK that no later one can update.
+name: android
+
+on:
+  push:
+    branches: [main]
+    paths: ['android/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/android.yml']
+  pull_request:
+    paths: ['android/**', 'crates/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-latest # has the Android SDK, an NDK (ANDROID_NDK_HOME) and JDK 21
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # first: it brings back ~/.cargo/bin too, so cargo-ndk isn't built again
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: android
+      - name: Rust target, cargo-ndk and JDK 21
+        run: |
+          rustup target add aarch64-linux-android
+          cargo install cargo-ndk --locked
+          echo "JAVA_HOME=$JAVA_HOME_21_X64" >> "$GITHUB_ENV"
+      # Gradle itself and the Maven dependencies
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ hashFiles('android/**/*.gradle.kts', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+      - name: librela.so and the Kotlin bindings
+        run: android/build-rust.sh
+      - name: Build and test
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug testDebugUnitTest lintDebug assembleRelease
+      - name: Sign the release APK with the release key
+        id: sign
+        if: github.event_name != 'pull_request'
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          RELA_KEYSTORE: ${{ runner.temp }}/rela.keystore
+          RELA_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          [[ -n $ANDROID_KEYSTORE ]] || { echo "::notice::no ANDROID_KEYSTORE secret: the release APK is not attached"; exit 0; }
+          base64 -d <<< "$ANDROID_KEYSTORE" > "$RELA_KEYSTORE"
+          ./gradlew --no-daemon assembleRelease
+          rm "$RELA_KEYSTORE"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: steps.sign.outputs.signed
+        with:
+          name: rela-android
+          path: android/app/build/outputs/apk/release/app-release.apk
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: rela-android-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk

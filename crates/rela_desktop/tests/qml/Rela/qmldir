@@ -1,0 +1,5 @@
+module Rela
+singleton Player 1.0 Player.qml
+singleton Sync 1.0 Sync.qml
+singleton Subwave 1.0 Subwave.qml
+singleton App 1.0 App.qml

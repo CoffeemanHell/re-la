@@ -1,0 +1,194 @@
+# Builds re-la for Linux (Fedora .rpm) and Windows (.zip) when the app changes and runs the tests: all of them and
+# clippy on Linux, the crates with Windows code on Windows (relay: relay.yml).
+# The binaries are attached to the run as artifacts (Actions → the run → Artifacts).
+# Every push to main that changes the app also publishes a GitHub Release with the rpm:
+# the last v* tag's patch number goes up by one (v0.0.1-alpha -> v0.0.2-alpha). A pushed tag v*
+# releases under that tag instead (to start v0.1.0 or drop -alpha). A dash (-alpha, -rc1) marks a pre-release.
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*'] # path filters are not applied to tags: a release always builds
+    paths: ['crates/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/build.yml']
+  pull_request:
+    paths: ['crates/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/build.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch cancels the older run; a release run is never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  version: # the release tag; the rpm carries it too
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then TAG=$GITHUB_REF_NAME; else
+            last=$(gh api --paginate "repos/$GITHUB_REPOSITORY/git/matching-refs/tags/v" --jq '.[].ref' | sed 's#refs/tags/##' | sort -V | tail -1)
+            [[ -z $last ]] && last=v0.0.0-alpha # no tags yet: the first release is v0.0.1-alpha
+            [[ $last =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)(-.*)?$ ]] || { echo "no v*.*.* tag to count from: $last"; exit 1; }
+            TAG="v${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))${BASH_REMATCH[4]}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+  linux:
+    needs: version
+    runs-on: ubuntu-latest
+    container: fedora:45 # the rpm uses the system Qt, so the desktop style and colors work; it is for this Fedora
+    env:
+      # lld, as rustc picks on a desktop with it: GNU ld reads archives once, and cxx-qt's initializer archives come
+      # after the code they call, so the test binaries do not link with it
+      RUSTFLAGS: -C link-arg=-fuse-ld=lld
+    steps:
+      - name: Install Rust, Qt 6 and libmpv
+        run: >
+          dnf install -y --setopt=install_weak_deps=False git gcc-c++ lld rpm-build cargo rust clippy
+          qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtbase-gui mpv-devel dejavu-sans-fonts
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # the crates only (not our own build output, which changes every push): a small cache, quick to restore; saved
+      # once per Cargo.lock and compiler
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: fedora
+      - name: Build
+        run: cargo build --release --locked -p rela_desktop
+      - name: Rust tests # the relay has its own workflow; the core's relay tests build it as a dev-dependency
+        run: cargo test --workspace --locked --exclude re-with # dev profile: our crates build about twice as fast
+      - name: Every unsafe says why # clippy's undocumented_unsafe_blocks as an error; the relay's workflow runs the rest
+        run: cargo clippy --workspace --locked --exclude re-with --all-targets -- -D clippy::undocumented_unsafe_blocks
+      - name: QML tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QML_XHR_ALLOW_FILE_READ: 1 # the fake App reads the theme tokens
+        run: |
+          export XDG_CONFIG_HOME=$(mktemp -d)
+          run() { /usr/lib64/qt6/bin/qmltestrunner -input crates/rela_desktop/tests/qml -import crates/rela_desktop/tests/qml -import crates/rela_desktop/themes; }
+          run
+          QT_QUICK_CONTROLS_STYLE=FluentWinUI3 run # the Windows style: its palette differs from the system's
+      - name: Package the rpm
+        env:
+          TAG: ${{ needs.version.outputs.tag }}
+        shell: bash
+        run: | # v0.0.16-alpha -> 0.0.16~alpha: rpm sorts ~ before the final 0.0.16
+          v=${TAG#v}
+          rpmbuild -bb crates/rela_desktop/extras/linux/re-la.spec --define "ver ${v//-/\~}" --define "bin $PWD/target/release/re-la" \
+            --define "src $PWD/crates/rela_desktop" --define "_rpmdir $PWD/dist" --define "_topdir $PWD/rpmbuild"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: re-la-linux-x86_64
+          path: dist/x86_64/*.rpm
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    env:
+      CARGO_HOME: C:\cargo # outside MSYS2's home, so the cache below finds it
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Pinned so a rebuild bundles the same libmpv. To update: the newest tag of shinchiro/mpv-winbuild-cmake releases.
+      - name: Download libmpv (shinchiro/mpv-winbuild-cmake, pinned)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MPV_TAG: '20261111'
+        run: |
+          gh release download $env:MPV_TAG --repo shinchiro/mpv-winbuild-cmake --pattern 'mpv-dev-x86_64-2*.7z' --dir mpvdl
+          7z x (Get-ChildItem mpvdl/*.7z | Select-Object -First 1).FullName -oC:/libmpv
+      - uses: msys2/setup-msys2@3c51bf698df1e37b2261f53cb67797b97761185c # v2.34.0
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            zip
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-lld
+            mingw-w64-ucrt-x86_64-rust
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-nasm
+            mingw-w64-ucrt-x86_64-qt6-base
+            mingw-w64-ucrt-x86_64-qt6-declarative
+            mingw-w64-ucrt-x86_64-qt6-svg
+            mingw-w64-ucrt-x86_64-qt6-imageformats
+            mingw-w64-ucrt-x86_64-qt6-tools
+      - name: Put MSYS2's cargo on PATH # for rust-cache, which runs outside the MSYS2 shell
+        run: cygpath -w /ucrt64/bin >> "$GITHUB_PATH"
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: windows
+      - name: Build and package
+        env:
+          LIBMPV: /c/libmpv
+        run: bash crates/rela_desktop/extras/windows/package.sh
+      # Only the crates with Windows code (settings import, the Qt style, media keys, libmpv). The rest, and clippy, run
+      # on Linux. RUSTFLAGS exactly as package.sh sets them: any other spelling (C:/ for C:\) rebuilds every crate.
+      - name: Rust tests
+        run: |
+          export PATH="/c/libmpv:$PATH" RUSTFLAGS="-L native=$(cygpath -w /c/libmpv) -C link-arg=-fuse-ld=lld" QMAKE="$(cygpath -w /ucrt64/bin/qmake6.exe)"
+          cargo test --release --locked -p rela-core -p rela_desktop -p rela-mpv
+      - name: QML tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+          QML_XHR_ALLOW_FILE_READ: 1
+        run: |
+          export APPDATA=$(mktemp -d) QT_FORCE_STDERR_LOGGING=1 # Qt writes to the debugger otherwise
+          # the style the app sets on Windows (left alone, Qt picks the native "Windows" style on a server)
+          export QT_QUICK_CONTROLS_STYLE=FluentWinUI3
+          "$(qmake6 -query QT_INSTALL_BINS)/qmltestrunner" -input crates/rela_desktop/tests/qml \
+            -import crates/rela_desktop/tests/qml -import crates/rela_desktop/themes
+      # The zip on its own, with no MSYS2 on PATH: a missing DLL or a QML error ends the app; running 8 s passes.
+      - name: Smoke test the zip
+        shell: pwsh
+        run: |
+          Expand-Archive dist/re-la-windows-x64.zip -DestinationPath C:/smoke
+          $env:PATH = "C:\Windows\system32;C:\Windows"
+          $env:RELA_AO = "null"; $env:APPDATA = "C:\smoke\appdata"; $env:LOCALAPPDATA = "C:\smoke\local"
+          $env:QT_FORCE_STDERR_LOGGING = "1"
+          $p = Start-Process C:/smoke/re-la/re-la.exe -ArgumentList '--demo' -PassThru -RedirectStandardError C:/smoke/err.txt
+          Start-Sleep 8
+          if ($p.HasExited) { Get-Content C:/smoke/err.txt; throw "re-la.exe ended by itself (exit $($p.ExitCode))" }
+          Stop-Process $p
+          Get-Content C:/smoke/err.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: re-la-windows-x64
+          path: dist/re-la-windows-x64.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: [version, linux, windows] # only after both built and passed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: dl
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          rpm=$(ls dl/re-la-linux-x86_64/*.rpm); fc=${rpm##*.fc}; fc=${fc%%.*} # ...-1.fc45.x86_64.rpm -> 45
+          cp "$rpm" "re-la-$TAG-fedora$fc-x86_64.rpm"
+          cp dl/re-la-windows-x64/re-la-windows-x64.zip "re-la-$TAG-windows-x64.zip"
+          v=${TAG#v}; name="${v%%-*}"; stage="${v#*-}"
+          [ "$stage" != "$v" ] && title="${stage^} $name" pre=--prerelease || title="$name" pre=
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "re-la $title" --generate-notes $pre \
+            "re-la-$TAG-fedora$fc-x86_64.rpm" "re-la-$TAG-windows-x64.zip"

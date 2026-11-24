@@ -1,0 +1,25 @@
+[Unit]
+Description=re-with, the relay re-la listens together through
+After=network-online.target navidrome.service
+Wants=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/re-with
+Environment=NAVIDROME_URL=http://127.0.0.1:4533
+Environment=LISTEN=127.0.0.1:4534
+# waveforms: re-with's own Navidrome user; its password is the root-only file below
+Environment=NAVIDROME_USER=re-with
+Environment=WAVEFORM_DIR=/var/lib/re-with/waveforms
+LoadCredential=navidrome-password:/etc/re-with/navidrome-password
+StateDirectory=re-with
+# /run/re-with/status.sock, read by `re-with status`
+RuntimeDirectory=re-with
+DynamicUser=yes
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

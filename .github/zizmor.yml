@@ -1,0 +1,4 @@
+rules:
+  cache-poisoning:
+    ignore:
+      - build.yml # a pull request's cache stays with that pull request; main and tags only read what main wrote

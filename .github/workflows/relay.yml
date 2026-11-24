@@ -1,0 +1,60 @@
+# Lints and tests the sync relay when it changes, then builds the server binary (linux aarch64) as an artifact:
+# Actions → the run → Artifacts → re-with-aarch64. Install it as in relay/README.md.
+name: relay
+
+on:
+  push:
+    branches: [main]
+    paths: ['relay/**', 'crates/proto/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/relay.yml']
+  pull_request:
+    paths: ['relay/**', 'crates/proto/**', 'Cargo.toml', 'Cargo.lock', '.github/workflows/relay.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    steps: # the relay is a member of the workspace at the repo root
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # crates built once, reused until Cargo.lock changes
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - name: Install ffmpeg # the waveform tests decode real files
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+      - name: Clippy
+        run: cargo clippy -p re-with -p rela-proto --all-targets --locked -- -D warnings
+      - name: Test
+        run: cargo test -p re-with -p rela-proto --locked
+
+  aarch64: # the server is ARM64 (Debian 13); cross-built on x86, which every plan has
+    needs: relay # only a binary that passed clippy and the tests
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04 # pinned: glibc 2.39 runs on the server's 2.41; a newer runner could link a newer glibc
+    env:
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+      CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc # aws-lc-sys (rustls) compiles C
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install the aarch64 toolchain
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q gcc-aarch64-linux-gnu
+          rustup target add aarch64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          key: aarch64
+      - name: Build
+        run: cargo build -p re-with --release --locked --target aarch64-unknown-linux-gnu
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: re-with-aarch64
+          path: target/aarch64-unknown-linux-gnu/release/re-with

@@ -1,0 +1,23 @@
+module shared
+AlbumData 1.0 AlbumData.qml
+AlbumsData 1.0 AlbumsData.qml
+ArtistData 1.0 ArtistData.qml
+ArtistsData 1.0 ArtistsData.qml
+Favorite 1.0 Favorite.qml
+FavoritesData 1.0 FavoritesData.qml
+GenreData 1.0 GenreData.qml
+GenresData 1.0 GenresData.qml
+HomeData 1.0 HomeData.qml
+ItemActions 1.0 ItemActions.qml
+LyricsData 1.0 LyricsData.qml
+Navigation 1.0 Navigation.qml
+NowPlayingData 1.0 NowPlayingData.qml
+PlaylistData 1.0 PlaylistData.qml
+PlaylistsData 1.0 PlaylistsData.qml
+RadioData 1.0 RadioData.qml
+Rating 1.0 Rating.qml
+SearchData 1.0 SearchData.qml
+SimilarSongs 1.0 SimilarSongs.qml
+TracksData 1.0 TracksData.qml
+singleton Columns 1.0 Columns.qml
+singleton Util 1.0 Util.qml

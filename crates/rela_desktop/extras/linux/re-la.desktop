@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=re-la
+Comment=Navidrome player with synced listening
+Exec=re-la
+Icon=re-la
+Categories=AudioVideo;Audio;Player;
+Terminal=false

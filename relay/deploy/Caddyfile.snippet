@@ -1,0 +1,5 @@
+# Add inside your Navidrome site block (e.g. music.example.com { ... }).
+# re-la connects to <navidrome-url>/re-with by default.
+handle_path /re-with* {
+	reverse_proxy 127.0.0.1:4534
+}

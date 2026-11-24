@@ -1,0 +1,10 @@
+[Icon Theme]
+Name=rela
+Comment=Breeze icons (KDE, LGPL-3.0) the default theme uses, for systems without a freedesktop icon theme (Windows)
+Directories=scalable
+
+[scalable]
+Size=22
+MinSize=8
+MaxSize=512
+Type=Scalable

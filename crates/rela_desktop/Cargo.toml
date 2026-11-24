@@ -1,0 +1,36 @@
+[package]
+name = "rela_desktop"
+version = "0.1.0"
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "re-la"
+path = "src/main.rs"
+
+[dependencies]
+rela-core = { path = "../core" }
+rela-mpv = { path = "../mpv" }
+url = "2"
+cxx = "1"
+cxx-qt = "0.10"
+cxx-qt-lib = { version = "0.10", features = ["qt_gui", "qt_qml"] }
+cxx-qt-lib-extras = "0.10" # QApplication
+serde_json.workspace = true
+tokio = { workspace = true, features = ["rt", "signal"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# MPRIS, on tokio (already here)
+zbus = { version = "6", default-features = false, features = ["tokio", "service"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-registry = "0.100" # the C++ app's settings, read once
+# media keys and the media flyout (SMTC)
+windows = { version = "0.62", features = ["Foundation", "Media", "Media_Playback", "Storage", "Storage_Streams", "Win32_System_WinRT"] }
+
+[build-dependencies]
+cxx-qt-build = "0.10"
+
+[lints]
+workspace = true
