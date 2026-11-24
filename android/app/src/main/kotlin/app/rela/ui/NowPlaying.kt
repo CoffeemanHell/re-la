@@ -31,10 +31,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.Surface
 import androidx.compose.ui.draw.blur
-import app.rela.icons.filled.Star
-import app.rela.icons.outlined.Check
-import app.rela.icons.outlined.MoreHoriz
-import app.rela.icons.outlined.Star
+import app.rela.R
 import app.rela.ui.library.Fav
 import app.rela.ui.library.rememberFav
 import androidx.activity.compose.BackHandler
@@ -90,6 +87,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -106,21 +104,6 @@ import app.rela.core.Song
 import app.rela.core.json
 import app.rela.core.listOf
 import app.rela.core.text
-import app.rela.icons.Icons
-import app.rela.icons.filled.RepeatOn
-import app.rela.icons.filled.RepeatOneOn
-import app.rela.icons.filled.ShuffleOn
-import app.rela.icons.filled.SkipNext
-import app.rela.icons.filled.SkipPrevious
-import app.rela.icons.outlined.Close
-import app.rela.icons.outlined.DragHandle
-import app.rela.icons.outlined.InstantMix
-import app.rela.icons.outlined.KeyboardArrowDown
-import app.rela.icons.outlined.Lyrics as LyricsIcon
-import app.rela.icons.outlined.Queue
-import app.rela.icons.outlined.Repeat
-import app.rela.icons.outlined.Send
-import app.rela.icons.outlined.Shuffle
 import app.rela.ui.library.ItemMenu
 import app.rela.ui.library.Listing
 import app.rela.ui.library.SongRow
@@ -190,7 +173,7 @@ private fun Player() {
             Box(Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
                 if (live) LiveLyrics(sw!!) else LyricsView(song!!.id, s.position)
             }
-            FilledTonalIconButton({ lyrics = false }, Modifier.padding(12.dp)) { Icon(Icons.Outlined.KeyboardArrowDown, "Sözleri kapat") }
+            FilledTonalIconButton({ lyrics = false }, Modifier.padding(12.dp)) { Icon(painterResource(R.drawable.ic_keyboard_arrow_down), "Sözleri kapat") }
         }
         return
     }
@@ -275,7 +258,7 @@ private fun Player() {
             } else if (songFav != null) {
                 val fav = songFav
                 FilledTonalIconToggleButton(fav.on, { fav.toggle(quiet = true) }) {
-                    Icon(if (fav.on) Icons.Filled.Star else Icons.Outlined.Star, if (fav.on) "Favorilerden çıkar" else "Favorilere ekle")
+                    Icon(painterResource(if (fav.on) R.drawable.ic_star_fill else R.drawable.ic_star), if (fav.on) "Favorilerden çıkar" else "Favorilere ekle")
                 }
             }
             More(song.takeIf { station.isEmpty() }, songFav, live, s.dj, onFade = { fade = true }, onRequest = { request = true })
@@ -345,12 +328,12 @@ private fun Player() {
             }, {})
             item { src, m ->
                 IconToggleButton(s.shuffle, { core?.setShuffle(it) }, modifier = m, enabled = ctl, shapes = IconButtonDefaults.toggleableShapes(), interactionSource = src) {
-                    Icon(if (s.shuffle) Icons.Filled.ShuffleOn else Icons.Outlined.Shuffle, "Karıştır")
+                    Icon(painterResource(if (s.shuffle) R.drawable.ic_shuffle_on_fill else R.drawable.ic_shuffle), "Karıştır")
                 }
             }
             item { src, m ->
                 FilledTonalIconButton({ core?.prev() }, modifier = m.size(64.dp, 56.dp), enabled = ctl && station.isEmpty(), shapes = IconButtonDefaults.shapes(), interactionSource = src) {
-                    Icon(Icons.Filled.SkipPrevious, "Önceki", Modifier.size(32.dp))
+                    Icon(painterResource(R.drawable.ic_skip_previous_fill), "Önceki", Modifier.size(32.dp))
                 }
             }
             item { src, m ->
@@ -359,32 +342,32 @@ private fun Player() {
                     { core?.toggle() }, modifier = m.size(96.dp), enabled = ctl, interactionSource = src,
                     shapes = IconButtonShapes(RoundedCornerShape(animateDpAsState(round).value), RoundedCornerShape(20.dp)),
                 ) {
-                    Icon(playPauseIconPainter(!s.playing), if (s.playing) "Duraklat" else "Oynat", Modifier.size(44.dp))
+                    Icon(playPausePainter(!s.playing), if (s.playing) "Duraklat" else "Oynat", Modifier.size(44.dp))
                 }
             }
             item { src, m ->
                 FilledTonalIconButton({ core?.next() }, modifier = m.size(64.dp, 56.dp), enabled = ctl && station.isEmpty(), shapes = IconButtonDefaults.shapes(), interactionSource = src) {
-                    Icon(Icons.Filled.SkipNext, "Sonraki", Modifier.size(32.dp))
+                    Icon(painterResource(R.drawable.ic_skip_next_fill), "Sonraki", Modifier.size(32.dp))
                 }
             }
             item { src, m ->
                 IconToggleButton(s.repeat != 0L, { core?.setRepeat((s.repeat + 1) % 3) }, modifier = m, enabled = ctl, shapes = IconButtonDefaults.toggleableShapes(), interactionSource = src) {
                     Icon(
-                        when (s.repeat) {
-                            1L -> Icons.Filled.RepeatOn
-                            2L -> Icons.Filled.RepeatOneOn
-                            else -> Icons.Outlined.Repeat
-                        },
+                        painterResource(when (s.repeat) {
+                            1L -> R.drawable.ic_repeat_on_fill
+                            2L -> R.drawable.ic_repeat_one_on_fill
+                            else -> R.drawable.ic_repeat
+                        }),
                         "Tekrar",
                     )
                 }
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalIconButton(rememberBack(), shapes = IconButtonDefaults.shapes()) { Icon(Icons.Outlined.KeyboardArrowDown, "Kapat") }
+            FilledTonalIconButton(rememberBack(), shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_keyboard_arrow_down), "Kapat") }
             Text("Çalıyor", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            FilledTonalIconButton({ lyrics = true }, enabled = hasLyrics, shapes = IconButtonDefaults.shapes()) { Icon(Icons.Outlined.LyricsIcon, "Sözler") }
-            FilledTonalIconButton({ sheet = true }, enabled = station.isEmpty(), shapes = IconButtonDefaults.shapes()) { Icon(Icons.Outlined.Queue, "Kuyruk") }
+            FilledTonalIconButton({ lyrics = true }, enabled = hasLyrics, shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_lyrics), "Sözler") }
+            FilledTonalIconButton({ sheet = true }, enabled = station.isEmpty(), shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_queue_music), "Kuyruk") }
         }
     }
     if (sheet) QueueSheet(s, queue) { sheet = false }
@@ -395,14 +378,14 @@ private fun Player() {
 /** Now Playing's ⋯: crossfade and DJ (İstek on SUB/WAVE) first, then the song's own menu when a song plays. */
 @Composable
 private fun More(song: Song?, fav: Fav?, live: Boolean, dj: Boolean, onFade: () -> Unit, onRequest: () -> Unit) {
-    val trigger: @Composable (() -> Unit) -> Unit = { open -> FilledTonalIconButton(open) { Icon(Icons.Outlined.MoreHoriz, "Diğer") } }
+    val trigger: @Composable (() -> Unit) -> Unit = { open -> FilledTonalIconButton(open) { Icon(painterResource(R.drawable.ic_more_horiz), "Diğer") } }
     val extra: @Composable ColumnScope.(() -> Unit) -> Unit = { close ->
-        if (live) DropdownMenuItem({ Text("İstek gönder…") }, { close(); onRequest() }, leadingIcon = { Icon(Icons.Outlined.Send, null) })
+        if (live) DropdownMenuItem({ Text("İstek gönder…") }, { close(); onRequest() }, leadingIcon = { Icon(painterResource(R.drawable.ic_send), null) })
         else {
-            DropdownMenuItem({ Text("Şarkı geçişi…") }, { close(); onFade() }, leadingIcon = { Icon(Icons.Outlined.InstantMix, null) })
+            DropdownMenuItem({ Text("Şarkı geçişi…") }, { close(); onFade() }, leadingIcon = { Icon(painterResource(R.drawable.ic_graphic_eq), null) })
             DropdownMenuItem(
                 { Text("DJ modu") }, { close(); Rela.core?.setDj(!dj) },
-                leadingIcon = { Text("DJ", fontWeight = FontWeight.Bold) }, trailingIcon = { if (dj) Icon(Icons.Outlined.Check, null) },
+                leadingIcon = { Text("DJ", fontWeight = FontWeight.Bold) }, trailingIcon = { if (dj) Icon(painterResource(R.drawable.ic_check), null) },
             )
         }
         if (song != null) HorizontalDivider()
@@ -574,9 +557,9 @@ private fun QueueList(s: PlayerState, queue: List<Song>) {
                 leadingContent = { Cover(song.coverArt, 40.dp, Modifier.size(40.dp)) },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton({ core?.remove(i.toLong()) }, enabled = ctl) { Icon(Icons.Outlined.Close, "Kuyruktan çıkar") }
+                        IconButton({ core?.remove(i.toLong()) }, enabled = ctl) { Icon(painterResource(R.drawable.ic_close), "Kuyruktan çıkar") }
                         Icon(
-                            Icons.Outlined.DragHandle, "Taşı",
+                            painterResource(R.drawable.ic_drag_handle), "Taşı",
                             Modifier.padding(8.dp).pointerInput(i, ctl, queue.size) {
                                 if (!ctl) return@pointerInput
                                 detectDragGestures(

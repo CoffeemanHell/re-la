@@ -22,14 +22,14 @@ import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.rela.R
 import app.rela.core.Rela
 import app.rela.core.Song
 import app.rela.core.json
 import app.rela.core.text
-import app.rela.icons.Icons
-import app.rela.icons.filled.SkipNext
 import app.rela.ui.library.canControl
 import uniffi.rela.PlayerState
 
@@ -62,11 +62,11 @@ fun MiniPlayer(s: PlayerState, song: Song?, onOpen: () -> Unit) {
                 }
                 Box {
                     IconButton({ Rela.core?.toggle() }, enabled = ctl, colors = IconButtonDefaults.iconButtonVibrantColors()) {
-                        Icon(playPauseIconPainter(!s.playing), if (s.playing) "Duraklat" else "Oynat", Modifier.size(32.dp))
+                        Icon(playPausePainter(!s.playing), if (s.playing) "Duraklat" else "Oynat", Modifier.size(32.dp))
                     }
                 }
                 if (station.isEmpty()) {
-                    IconButton({ Rela.core?.next() }, enabled = ctl) { Icon(Icons.Filled.SkipNext, "Sonraki", Modifier.size(32.dp)) }
+                    IconButton({ Rela.core?.next() }, enabled = ctl) { Icon(painterResource(R.drawable.ic_skip_next_fill), "Sonraki", Modifier.size(32.dp)) }
                 }
             }
             LinearProgressIndicator(

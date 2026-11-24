@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols' pause (filled) turning into its play_arrow (filled): each bar becomes half of the triangle.
+     The halves overlap by 10 so that no seam shows between them. -->
+<animated-vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt">
+    <aapt:attr name="android:drawable">
+        <vector android:width="24dp" android:height="24dp" android:viewportWidth="960" android:viewportHeight="960">
+            <path android:name="left" android:fillColor="@android:color/white" android:pathData="M240,680 L240,280 Q240,247 263.5,223.5 Q287,200 320,200 Q320,200 320,200 Q320,200 320,200 L320,200 Q353,200 376.5,223.5 Q400,247 400,280 L400,680 Q400,713 376.5,736.5 Q353,760 320,760 L320,760 Q320,760 320,760 Q320,760 320,760 Q287,760 263.5,736.5 Q240,713 240,680 Z" />
+            <path android:name="right" android:fillColor="@android:color/white" android:pathData="M560,680 L560,280 Q560,247 583.5,223.5 Q607,200 640,200 L640,200 Q673,200 696.5,223.5 Q720,247 720,280 L720,680 Q720,713 696.5,736.5 Q673,760 640,760 L640,760 Q607,760 583.5,736.5 Q560,713 560,680 Z" />
+        </vector>
+    </aapt:attr>
+    <target android:name="left">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="200"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="pathData"
+                android:valueFrom="M240,680 L240,280 Q240,247 263.5,223.5 Q287,200 320,200 Q320,200 320,200 Q320,200 320,200 L320,200 Q353,200 376.5,223.5 Q400,247 400,280 L400,680 Q400,713 376.5,736.5 Q353,760 320,760 L320,760 Q320,760 320,760 Q320,760 320,760 Q287,760 263.5,736.5 Q240,713 240,680 Z"
+                android:valueTo="M320,687 L320,273 Q320,256 332,244.5 Q344,233 360,233 Q365,233 370.5,234.5 Q376,236 381,239 L530,333.6 Q530,333.6 530,333.6 Q530,333.6 530,333.6 L530,626.4 Q530,626.4 530,626.4 Q530,626.4 530,626.4 L381,721 Q376,724 370.5,725.5 Q365,727 360,727 Q344,727 332,715.5 Q320,704 320,687 Z"
+                android:valueType="pathType" />
+        </aapt:attr>
+    </target>
+    <target android:name="right">
+        <aapt:attr name="android:animation">
+            <objectAnimator
+                android:duration="200"
+                android:interpolator="@android:interpolator/fast_out_slow_in"
+                android:propertyName="pathData"
+                android:valueFrom="M560,680 L560,280 Q560,247 583.5,223.5 Q607,200 640,200 L640,200 Q673,200 696.5,223.5 Q720,247 720,280 L720,680 Q720,713 696.5,736.5 Q673,760 640,760 L640,760 Q607,760 583.5,736.5 Q560,713 560,680 Z"
+                android:valueTo="M520,632.7 L520,327.3 Q520,327.3 520,327.3 Q520,327.3 520,327.3 L707,446 Q716,452 720.5,461 Q725,470 725,480 L725,480 Q725,490 720.5,499 Q716,508 707,514 L520,632.7 Q520,632.7 520,632.7 Q520,632.7 520,632.7 Z"
+                android:valueType="pathType" />
+        </aapt:attr>
+    </target>
+</animated-vector>

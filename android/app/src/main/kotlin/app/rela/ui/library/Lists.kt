@@ -44,6 +44,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.ui.draw.clip
+import app.rela.R
 import app.rela.ui.setOption
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -62,18 +63,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import app.rela.core.Song
 import app.rela.core.length
 import app.rela.core.listOf
 import app.rela.core.songs
 import app.rela.core.text
-import app.rela.icons.Icons
-import app.rela.icons.filled.Genre
-import app.rela.icons.filled.Note
-import app.rela.icons.filled.Star
-import app.rela.icons.outlined.Sort
 import app.rela.ui.Cover
 import app.rela.ui.LocalNav
 import app.rela.ui.LocalLook
@@ -89,10 +85,10 @@ private val strips = listOf(
     "recent" to "Son dinlenenler", "newest" to "Yeni eklenenler", "frequent" to "Çok dinlenenler", "random" to "Rastgele",
 )
 
-private val sections: List<Triple<String, ImageVector, Screen>> = listOf(
-    Triple("Türler", Icons.Filled.Genre, Screen.Genres),
-    Triple("Favoriler", Icons.Filled.Star, Screen.Favorites),
-    Triple("Şarkılar", Icons.Filled.Note, Screen.Tracks),
+private val sections: List<Triple<String, Int, Screen>> = listOf(
+    Triple("Türler", R.drawable.ic_genres_fill, Screen.Genres),
+    Triple("Favoriler", R.drawable.ic_star_fill, Screen.Favorites),
+    Triple("Şarkılar", R.drawable.ic_music_note_2_fill, Screen.Tracks),
 )
 
 /** Kitaplık: Türler, Favoriler, Şarkılar, then four strips of albums from getAlbumList2; "Tümü" opens Albums in that order. */
@@ -113,7 +109,7 @@ fun Library() {
                         sections.forEach { (t, icon, s) ->
                             Surface({ nav.open(s) }, Modifier.weight(1f), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainer) {
                                 Column(Modifier.padding(vertical = 14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(icon, null, tint = MaterialTheme.colorScheme.primary)
+                                    Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.primary)
                                     Text(t, Modifier.padding(top = 6.dp), style = MaterialTheme.typography.labelLarge, maxLines = 1)
                                 }
                             }
@@ -149,7 +145,7 @@ fun Albums(picked: String?) {
     var sheet by remember { mutableStateOf(false) }
     val title = if (starred) "Yıldızlılar" else albumOrders.toMap()[type] ?: ""
     Page("Albümler", title, onRefresh = p::reset, root = picked == null, actions = {
-        IconButton({ sheet = true }) { Icon(Icons.Outlined.Sort, "Sırala") }
+        IconButton({ sheet = true }) { Icon(painterResource(R.drawable.ic_sort), "Sırala") }
     }) { pad -> AlbumGrid(p, pad, "Albüm yok") }
     if (sheet) ModalBottomSheet({ sheet = false }) {
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp).verticalScroll(rememberScrollState())) {
@@ -167,7 +163,7 @@ fun Albums(picked: String?) {
                 }
             }
             FilterChip(starred, { starred = !starred }, { Text("Yıldızlılar") }, Modifier.padding(vertical = 8.dp),
-                leadingIcon = { Icon(Icons.Filled.Star, null, Modifier.size(18.dp)) })
+                leadingIcon = { Icon(painterResource(R.drawable.ic_star_fill), null, Modifier.size(18.dp)) })
             Text("Görünüm", Modifier.padding(top = 8.dp, bottom = 4.dp), style = MaterialTheme.typography.titleMedium)
             Segments(listOf("grid" to "Izgara", "list" to "Liste"), look.albumView) { setOption("albumView", it) }
             if (!starred && type == "byYear") {

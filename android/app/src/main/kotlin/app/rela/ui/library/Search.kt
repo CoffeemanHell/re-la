@@ -19,18 +19,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.rela.R
 import app.rela.core.Rela
 import app.rela.core.json
 import app.rela.core.listOf
 import app.rela.core.songs
 import app.rela.core.text
-import app.rela.icons.Icons
-import app.rela.icons.outlined.Close
-import app.rela.icons.outlined.Radio
-import app.rela.icons.outlined.Search
 import kotlinx.coroutines.delay
 
 /** search3 as you type (a short pause first): artists, albums, songs. A tapped song plays now. */
@@ -54,8 +52,8 @@ fun Search() {
                     q, { q = it },
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     placeholder = { Text("Şarkı, albüm, sanatçı") },
-                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
-                    trailingIcon = { if (q.isNotEmpty()) IconButton({ q = "" }) { Icon(Icons.Outlined.Close, "Temizle") } },
+                    leadingIcon = { Icon(painterResource(R.drawable.ic_search), null) },
+                    trailingIcon = { if (q.isNotEmpty()) IconButton({ q = "" }) { Icon(painterResource(R.drawable.ic_close), "Temizle") } },
                     singleLine = true,
                 )
             }
@@ -102,7 +100,7 @@ fun Radio() {
                                 color = if (playing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
                         },
                         supportingContent = s["homePageUrl"].text().takeIf { it.isNotEmpty() }?.let { { Text(it, maxLines = 1) } },
-                        leadingContent = { Icon(Icons.Outlined.Radio, null) },
+                        leadingContent = { Icon(painterResource(R.drawable.ic_radio), null) },
                         modifier = Modifier.clickable(enabled = ctl) { Rela.core?.playStation(id) },
                     )
                 }

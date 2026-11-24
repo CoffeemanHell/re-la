@@ -12,10 +12,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import app.rela.R
 import app.rela.core.Rela
-import app.rela.icons.Icons
-import app.rela.icons.outlined.Note
 import coil3.ImageLoader
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -80,7 +80,7 @@ fun Cover(id: String, size: Dp, modifier: Modifier = Modifier, shape: Shape = Ro
     val px = with(LocalDensity.current) { size.roundToPx() }
     // AsyncImage over the note, not SubcomposeAsyncImage: subcomposition per cover makes long grids stutter
     Box(modifier.clip(shape).background(MaterialTheme.colorScheme.surfaceContainerHighest), contentAlignment = Alignment.Center) {
-        Icon(Icons.Outlined.Note, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(painterResource(R.drawable.ic_music_note), null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         val ctx = LocalPlatformContext.current
         val art = CoverArt(id, coverPx(px, LocalLook.current.coverQuality))
         if (id.isNotEmpty()) AsyncImage(

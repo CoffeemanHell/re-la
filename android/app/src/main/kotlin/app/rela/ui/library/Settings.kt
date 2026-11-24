@@ -19,15 +19,7 @@ import androidx.compose.material3.ListItemDefaults
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.vector.ImageVector
-import app.rela.icons.Icons
-import app.rela.icons.filled.BottomNavigation
-import app.rela.icons.filled.Info
-import app.rela.icons.filled.Note
-import app.rela.icons.filled.Palette
-import app.rela.icons.filled.Play
-import app.rela.icons.outlined.AccountCircle
-import app.rela.icons.outlined.DataTable
+import app.rela.R
 import app.rela.ui.LocalNav
 import app.rela.ui.Screen
 import app.rela.ui.open
@@ -59,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.rela.core.Rela
@@ -107,15 +100,15 @@ private fun AudioSwitch(label: String, hint: String, key: String, enabled: Boole
     SwitchRow(label, hint, on, enabled) { on = it; AudioPrefs.set(ctx, key, it) }
 }
 
-private data class Category(val page: String, val title: String, val sub: String, val icon: ImageVector)
+private data class Category(val page: String, val title: String, val sub: String, val icon: Int)
 
 private val categories = listOf(
-    Category("look", "Görünüm", "Tema, renkler, ızgara, kapak şekilleri", Icons.Filled.Palette),
-    Category("player", "Çalan ekran", "Kapağa dokununca ne olacağı", Icons.Filled.Play),
-    Category("bar", "Alt çubuk", "Görünen sekmeler", Icons.Filled.BottomNavigation),
-    Category("playback", "Çalma", "Geçiş, DJ, ses, dinleme bildirimi", Icons.Filled.Note),
-    Category("data", "Veri ve depolama", "Kapak kalitesi ve önbellek", Icons.Outlined.DataTable),
-    Category("account", "Hesap", "Sunucu ve çıkış", Icons.Outlined.AccountCircle),
+    Category("look", "Görünüm", "Tema, renkler, ızgara, kapak şekilleri", R.drawable.ic_palette_fill),
+    Category("player", "Çalan ekran", "Kapağa dokununca ne olacağı", R.drawable.ic_play_arrow_fill),
+    Category("bar", "Alt çubuk", "Görünen sekmeler", R.drawable.ic_bottom_navigation_fill),
+    Category("playback", "Çalma", "Geçiş, DJ, ses, dinleme bildirimi", R.drawable.ic_music_note_2_fill),
+    Category("data", "Veri ve depolama", "Kapak kalitesi ve önbellek", R.drawable.ic_data_table),
+    Category("account", "Hesap", "Sunucu ve çıkış", R.drawable.ic_account_circle_fill),
 )
 
 /** A card in a group: the group's ends are round, the cards between them nearly square. */
@@ -130,12 +123,12 @@ private fun groupShape(i: Int, n: Int): Shape {
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun CategoryCard(title: String, sub: String, icon: ImageVector, shape: Shape, onClick: (() -> Unit)?) = ListItem(
+private fun CategoryCard(title: String, sub: String, icon: Int, shape: Shape, onClick: (() -> Unit)?) = ListItem(
     headlineContent = { Text(title) },
     supportingContent = { Text(sub) },
     leadingContent = {
         Box(Modifier.size(48.dp).clip(MaterialShapes.Cookie9Sided.toShape()).background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) {
-            Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
+            Icon(painterResource(icon), null, tint = MaterialTheme.colorScheme.onPrimaryContainer)
         }
     },
     colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
@@ -178,7 +171,7 @@ fun Settings() {
                 CategoryCard(c.title, c.sub, c.icon, groupShape(i, categories.size)) { nav.open(Screen.SettingsPage(c.page)) }
             }
             item { Spacer(Modifier.height(24.dp)) }
-            item { CategoryCard("Hakkında", "re-la, sürüm $version", Icons.Filled.Info, groupShape(0, 1), null) }
+            item { CategoryCard("Hakkında", "re-la, sürüm $version", R.drawable.ic_info_fill, groupShape(0, 1), null) }
         }
     }
 }

@@ -40,23 +40,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.rela.R
 import app.rela.core.Rela
 import app.rela.core.Song
 import app.rela.core.length
 import app.rela.core.listOf
 import app.rela.core.songs
 import app.rela.core.text
-import app.rela.icons.Icons
-import app.rela.icons.filled.Play
-import app.rela.icons.filled.Star
-import app.rela.icons.outlined.Delete
-import app.rela.icons.outlined.Radio
-import app.rela.icons.outlined.Shuffle
-import app.rela.icons.outlined.Star
 import app.rela.ui.Cover
 import app.rela.ui.CoverTheme
 import app.rela.ui.LocalLook
@@ -94,7 +89,7 @@ private fun Round(onClick: () -> Unit, enabled: Boolean = true, content: @Compos
 @Composable
 private fun RowScope.Wide(onClick: () -> Unit, enabled: Boolean) =
     Button(onClick, Modifier.weight(1f).height(56.dp), enabled = enabled) {
-        Icon(Icons.Filled.Play, null, Modifier.size(20.dp))
+        Icon(painterResource(R.drawable.ic_play_arrow_fill), null, Modifier.size(20.dp))
         Text("Oynat", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleMedium)
     }
 
@@ -102,14 +97,14 @@ private fun RowScope.Wide(onClick: () -> Unit, enabled: Boolean) =
 @Composable
 private fun RowScope.PlayButtons(songs: List<Song>, fav: Fav? = null) {
     val ctl = canControl() && songs.isNotEmpty()
-    Round({ play(songs, shuffle = true) }, ctl) { Icon(Icons.Outlined.Shuffle, "Karıştır") }
+    Round({ play(songs, shuffle = true) }, ctl) { Icon(painterResource(R.drawable.ic_shuffle), "Karıştır") }
     Wide({ play(songs) }, ctl)
     if (fav != null) FavButton(fav)
 }
 
 @Composable
 private fun FavButton(fav: Fav) = OutlinedIconToggleButton(fav.on, { fav.toggle(quiet = true) }, Modifier.size(56.dp)) {
-    Icon(if (fav.on) Icons.Filled.Star else Icons.Outlined.Star, if (fav.on) "Favorilerden çıkar" else "Favorilere ekle")
+    Icon(painterResource(if (fav.on) R.drawable.ic_star_fill else R.drawable.ic_star), if (fav.on) "Favorilerden çıkar" else "Favorilere ekle")
 }
 
 /** getAlbum: cover, play / shuffle / favorite, songs with disc headers on multi-disc albums. */
@@ -165,7 +160,7 @@ fun Artist(id: String, from: String = "") {
             ) {
                 full {
                     Hero(a["coverArt"].text(), coverShape(look.artistShape), a["name"].text(), "${a["albumCount"].text().ifEmpty { "${albums.size}" }} albüm", share = artistCover(id, from)) {
-                        Round({ scope.launch { artistRadio(ctx, id) } }, canControl()) { Icon(Icons.Outlined.Radio, "Sanatçı radyosu") }
+                        Round({ scope.launch { artistRadio(ctx, id) } }, canControl()) { Icon(painterResource(R.drawable.ic_radio), "Sanatçı radyosu") }
                         Wide({ play(top) }, canControl() && top.isNotEmpty())
                         FavButton(fav!!)
                     }
@@ -193,7 +188,7 @@ fun Genre(name: String) {
     val scope = rememberCoroutineScope()
     Page(name, onRefresh = p::reset, actions = {
         IconButton({ scope.launch { getList("getRandomSongs", mapOf("genre" to name, "size" to 50), "randomSongs", "song")?.let { play(it.map(::Song)) } } }, enabled = ctl) {
-            Icon(Icons.Outlined.Shuffle, "Karışık çal")
+            Icon(painterResource(R.drawable.ic_shuffle), "Karışık çal")
         }
     }) { pad -> AlbumGrid(p, pad, "Bu türde albüm yok") }
 }
@@ -227,7 +222,7 @@ fun Playlist(id: String) {
     }
 
     Page("", refreshing = l.loading && pl != null, onRefresh = l.refresh, compact = true, actions = {
-        if (mine) IconButton({ confirm = true }) { Icon(Icons.Outlined.Delete, "Sil") }
+        if (mine) IconButton({ confirm = true }) { Icon(painterResource(R.drawable.ic_delete), "Sil") }
     }) { pad ->
         Listing(if (pl == null) 0 else 1, l.loading, l.failed, "", l.refresh) {
             if (pl != null) LazyColumn(contentPadding = pad) {

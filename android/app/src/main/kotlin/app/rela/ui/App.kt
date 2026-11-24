@@ -36,7 +36,7 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
@@ -49,6 +49,7 @@ import androidx.compose.runtime.withFrameNanos
 import kotlinx.coroutines.launch
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import app.rela.R
 import app.rela.core.Rela
 import app.rela.playback.queueSong
 import app.rela.ui.library.Album
@@ -67,13 +68,6 @@ import app.rela.ui.library.Search
 import app.rela.ui.library.Settings
 import app.rela.ui.library.SettingsPage
 import app.rela.ui.library.Together
-import app.rela.icons.Icons
-import app.rela.icons.filled.Headphones
-import app.rela.icons.filled.LibraryMusic
-import app.rela.icons.filled.Artist
-import app.rela.icons.filled.Radio
-import app.rela.icons.outlined.PlaylistPlay
-import app.rela.icons.filled.Album
 
 /** Where the app is; the back stack is a list of these. */
 sealed interface Screen {
@@ -99,16 +93,16 @@ sealed interface Screen {
     data object Radio : Screen
 }
 
-data class Tab(val id: String, val screen: Screen, val label: String, val icon: ImageVector)
+data class Tab(val id: String, val screen: Screen, val label: String, val icon: Int)
 
 /** All bottom bar tabs, in [tabIds] order; Settings → Alt çubuk picks which show. */
 val tabs = listOf(
-    Tab("library", Screen.Library, "Kitaplık", Icons.Filled.LibraryMusic),
-    Tab("albums", Screen.Albums(), "Albümler", Icons.Filled.Album),
-    Tab("playlists", Screen.Playlists, "Playlistler", Icons.Outlined.PlaylistPlay),
-    Tab("artists", Screen.Artists, "Sanatçılar", Icons.Filled.Artist),
-    Tab("radio", Screen.Radio, "Radyo", Icons.Filled.Radio),
-    Tab("together", Screen.Together, "Birlikte", Icons.Filled.Headphones),
+    Tab("library", Screen.Library, "Kitaplık", R.drawable.ic_library_music_fill),
+    Tab("albums", Screen.Albums(), "Albümler", R.drawable.ic_album_fill),
+    Tab("playlists", Screen.Playlists, "Playlistler", R.drawable.ic_playlist_play),
+    Tab("artists", Screen.Artists, "Sanatçılar", R.drawable.ic_artist_fill),
+    Tab("radio", Screen.Radio, "Radyo", R.drawable.ic_radio_fill),
+    Tab("together", Screen.Together, "Birlikte", R.drawable.ic_headphones_fill),
 )
 
 val LocalNav = staticCompositionLocalOf<SnapshotStateList<Screen>> { error("no nav") }
@@ -205,7 +199,7 @@ private fun Shell() {
                                     nav.clear()
                                     nav.add(t.screen)
                                 },
-                                icon = { Icon(t.icon, null) },
+                                icon = { Icon(painterResource(t.icon), null) },
                                 label = { Text(t.label) },
                             )
                         }

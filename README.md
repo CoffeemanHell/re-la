@@ -49,7 +49,7 @@ Listening together needs the relay running next to Navidrome. See [relay/README.
 
 re-la and re-with are free software under the [GNU AGPL 3.0](LICENSE) (`AGPL-3.0-only`). Parts by others keep their own license:
 
-- The Android icons (`android/app/src/main/kotlin/app/rela/icons/`, `ui/AnimatedIcons.kt` and `res/drawable/anim_pause.xml`) come from Navic, © 2026 paige: [GPL-3.0](LICENSES/GPL-3.0.txt).
+- The Android icons (`android/app/src/main/res/drawable/`, all but `ic_launcher_*`) are Google's [Material Symbols](https://github.com/google/material-design-icons), without their tint; `pause_to_play.xml` animates two of them: [Apache-2.0](LICENSES/Apache-2.0.txt).
 - The fonts Doto and Space Mono (`crates/rela_desktop/themes/nothing/fonts/`): SIL Open Font License, its text next to them.
 
-libmpv and FFmpeg are GPL/LGPL, and Qt is [LGPL-3.0](LICENSES/LGPL-3.0.txt); the Windows zip includes them. Their sources: [mpv](https://github.com/mpv-player/mpv), [FFmpeg](https://ffmpeg.org/), [the libmpv build](https://github.com/shinchiro/mpv-winbuild-cmake), [Qt and the other DLLs, as MSYS2 builds them](https://github.com/msys2/MINGW-packages).
+libmpv and FFmpeg are [GPL](LICENSES/GPL-3.0.txt)/LGPL, and Qt is [LGPL-3.0](LICENSES/LGPL-3.0.txt); the Windows zip includes them. Their sources: [mpv](https://github.com/mpv-player/mpv), [FFmpeg](https://ffmpeg.org/), [the libmpv build](https://github.com/shinchiro/mpv-winbuild-cmake), [Qt and the other DLLs, as MSYS2 builds them](https://github.com/msys2/MINGW-packages).

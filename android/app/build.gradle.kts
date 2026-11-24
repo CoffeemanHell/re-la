@@ -42,7 +42,8 @@ android {
     lint {
         warningsAsErrors = true
         // not ours: ARM only and no core-ktx by choice; the rest fail whenever a newer version of something comes out
-        disable += setOf("ChromeOsAbiSupport", "UseKtx", "GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
+        // VectorPath: Material Symbols' paths, as Google ships them
+        disable += setOf("VectorPath", "ChromeOsAbiSupport", "UseKtx", "GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
     }
 }
 

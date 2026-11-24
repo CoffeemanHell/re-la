@@ -39,19 +39,17 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.rela.R
 import app.rela.core.Rela
 import app.rela.core.Song
 import app.rela.core.text
-import app.rela.icons.Icons
-import app.rela.icons.filled.Settings
-import app.rela.icons.outlined.ArrowBack
-import app.rela.icons.outlined.Search
 import app.rela.ui.Cover
 import app.rela.ui.LocalLook
 import app.rela.ui.LocalNav
@@ -88,12 +86,12 @@ fun Page(
             // fixed when the page first shows (saved, as it leaves composition while covered): a tab's first page
             // shows no ← while another page opens over it or closes back to it
             val hasBack = rememberSaveable { nav.size > 1 }
-            val back = @Composable { if (hasBack) IconButton(goBack) { Icon(Icons.Outlined.ArrowBack, "Geri") } }
+            val back = @Composable { if (hasBack) IconButton(goBack) { Icon(painterResource(R.drawable.ic_arrow_back), "Geri") } }
             val icons: @Composable RowScope.() -> Unit = {
                 actions()
                 if (root) { // a tab: search and settings live here
-                    IconButton({ nav.open(Screen.Search) }) { Icon(Icons.Outlined.Search, "Ara") }
-                    IconButton({ nav.open(Screen.Settings) }) { Icon(Icons.Filled.Settings, "Ayarlar") }
+                    IconButton({ nav.open(Screen.Search) }) { Icon(painterResource(R.drawable.ic_search), "Ara") }
+                    IconButton({ nav.open(Screen.Settings) }) { Icon(painterResource(R.drawable.ic_settings_fill), "Ayarlar") }
                 }
             }
             // compact: a page with its own hero (album, artist, playlist) only needs back and the menu up here
