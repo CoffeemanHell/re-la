@@ -28,7 +28,7 @@ PlaylistData {
                     Layout.topMargin: 8; spacing: 8
                     Button { text: "Çal"; icon.name: "media-playback-start"; highlighted: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
                     Button { text: "Karıştır"; icon.name: "media-playlist-shuffle"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
-                    Button { text: "Yeniden adlandır"; icon.name: "edit-rename"; visible: root.editable; onClicked: root.rename() }
+                    Button { text: "Yeniden adlandır"; icon.name: Util.icon("edit-rename"); visible: root.editable; onClicked: root.rename() }
                     Button { text: "Sil"; icon.name: "edit-delete"; visible: root.editable; onClicked: root.remove() }
                 }
             }

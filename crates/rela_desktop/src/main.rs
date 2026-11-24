@@ -143,12 +143,6 @@ fn main() {
     }
     // Qt Widgets' application, not QGuiApplication: KDE's org.kde.desktop style and the tray's fallback need it
     let mut app = QApplication::new();
-    #[cfg(windows)]
-    {
-        // Windows has no freedesktop icon theme: the themes' icon names come from the bundled Breeze set
-        qt::QIcon::set_theme_search_paths(&cxx_qt_lib::QStringList::from(&QString::from(":/icons")));
-        qt::QIcon::set_theme_name(&QString::from("rela"));
-    }
     qt::QCoreApplication::set_organization_name(&QString::from("re-la"));
     qt::QCoreApplication::set_application_name(&QString::from("re-la"));
     cxx_qt_lib::QGuiApplication::set_desktop_file_name(&QString::from("re-la"));

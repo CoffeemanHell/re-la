@@ -143,14 +143,14 @@ ApplicationWindow {
             objectName: "nav"
             anchors.centerIn: parent
             spacing: 2
-            Nav { target: "nowplaying"; icon.name: "audio-headphones"; text: "Şimdi çalan" }
+            Nav { target: "nowplaying"; icon.name: Util.icon("audio-headphones"); text: "Şimdi çalan" }
             Nav { target: "favorites"; icon.name: "emblem-favorite"; text: "Favoriler" }
-            Nav { target: "albums"; icon.name: "media-optical-audio"; text: "Albümler" }
-            Nav { target: "artists"; icon.name: "view-media-artist"; text: "Sanatçılar" }
-            Nav { target: "genres"; icon.name: "view-media-genre"; text: "Türler" }
-            Nav { target: "playlists"; icon.name: "view-media-playlist"; text: "Playlist'ler" }
-            Nav { target: "tracks"; icon.name: "view-media-track"; text: "Tüm parçalar" }
-            Nav { target: "radio"; icon.name: "radio"; text: "Radyo" }
+            Nav { target: "albums"; icon.name: Util.icon("media-optical-audio"); text: "Albümler" }
+            Nav { target: "artists"; icon.name: Util.icon("view-media-artist"); text: "Sanatçılar" }
+            Nav { target: "genres"; icon.name: Util.icon("view-media-genre"); text: "Türler" }
+            Nav { target: "playlists"; icon.name: Util.icon("view-media-playlist"); text: "Playlist'ler" }
+            Nav { target: "tracks"; icon.name: Util.icon("view-media-track"); text: "Tüm parçalar" }
+            Nav { target: "radio"; icon.name: Util.icon("radio"); text: "Radyo" }
         }
         RowLayout {
             anchors.right: parent.right; anchors.rightMargin: 6
@@ -176,7 +176,7 @@ ApplicationWindow {
                 font.weight: Sync.listeners.length ? Font.DemiBold : Font.Normal
                 onClicked: win.openTogether()
             }
-            Tool { icon.name: "configure"; tip: "Ayarlar"; onClicked: win.openSettings("Genel") }
+            Tool { icon.name: Util.icon("configure"); tip: "Ayarlar"; onClicked: win.openSettings("Genel") }
         }
     }
 
@@ -264,7 +264,7 @@ ApplicationWindow {
                     ToolButton { icon.name: "media-skip-forward"; enabled: Sync.canControl && !Player.station.id; onClicked: Player.next() }
                     ToolButton {
                         objectName: "repeat"
-                        icon.name: Player.repeat === 2 ? "media-playlist-repeat-song" : "media-playlist-repeat"
+                        icon.name: Util.icon(Player.repeat === 2 ? "media-playlist-repeat-song" : "media-playlist-repeat")
                         checkable: true; checked: Player.repeat > 0
                         enabled: Sync.canControl && !Player.station.id
                         onClicked: Player.repeat = (Player.repeat + 1) % 3

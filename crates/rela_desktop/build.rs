@@ -38,19 +38,6 @@ fn resources(src: &Path) -> std::path::PathBuf {
     }
     let icon = src.join("extras/linux/re-la.svg");
     qrc += &format!("</qresource>\n<qresource prefix=\"/\">\n<file alias=\"re-la.svg\">{}</file>\n</qresource>\n", esc(&icon));
-    // Windows has no icon theme: the Breeze icons the themes name, at :/icons/rela/ (main.rs sets the theme)
-    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
-        let icons = src.join("icons");
-        let mut files = vec![];
-        walk(&icons, &mut files);
-        files.sort();
-        qrc += "<qresource prefix=\"/icons\">\n";
-        for f in &files {
-            qrc += &format!("<file alias=\"{}\">{}</file>\n", esc(f.strip_prefix(&icons).unwrap()), esc(f));
-            println!("cargo::rerun-if-changed={}", f.display());
-        }
-        qrc += "</qresource>\n";
-    }
     qrc += "</RCC>\n";
     let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("rela.qrc"); // a C++ name: Q_INIT_RESOURCE(rela_qrc)
     std::fs::write(&out, qrc).unwrap();

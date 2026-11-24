@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import shared
 import Rela
 
 Dialog {
@@ -57,7 +58,8 @@ Dialog {
                 objectName: "cat_" + modelData
                 width: ListView.view.width
                 text: modelData
-                icon.name: catList.icons[modelData]
+                icon.name: Util.icon(catList.icons[modelData])
+                spacing: 6 // Breeze's own; Fluent has none here
                 highlighted: d.cat === modelData
                 onClicked: d.cat = modelData
             }

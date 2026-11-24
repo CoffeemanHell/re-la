@@ -70,7 +70,7 @@ AlbumData {
                         Button { text: "Sıraya ekle"; icon.name: "list-add"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.add(root.songs, 2) }
                         Button {
                             id: addAll
-                            text: "Tümünü playlist'e ekle"; icon.name: "view-media-playlist"; enabled: root.songs.length > 0
+                            text: "Tümünü playlist'e ekle"; icon.name: Util.icon("view-media-playlist"); enabled: root.songs.length > 0
                             onClicked: albumMenu.popup(addAll, 0, addAll.height)
                             PlaylistMenu { id: albumMenu; songs: root.songs; w: root.w }
                         }

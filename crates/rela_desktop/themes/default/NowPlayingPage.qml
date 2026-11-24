@@ -140,7 +140,7 @@ NowPlayingData {
                         visible: !root.live && tabs.currentIndex === 0 && Player.index < Player.queueLength - 1
                         enabled: Sync.canControl
                         flat: true
-                        icon.name: "edit-clear-all"
+                        icon.name: Util.icon("edit-clear-all")
                         text: "Sıradakileri temizle"
                         display: AbstractButton.IconOnly
                         ToolTip.visible: hovered; ToolTip.text: text; ToolTip.delay: 500

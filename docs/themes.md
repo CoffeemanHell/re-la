@@ -1,6 +1,6 @@
 # Themes
 
-Two themes are built in: **Default** (uses the system look: Breeze on KDE; on Windows the Fluent style, light or dark like the system, with bundled Breeze icons) and **Nothing** (black and white, dot-matrix font, red accent).
+Two themes are built in: **Default** (uses the system look: Breeze on KDE; on Windows the Fluent style, light or dark like the system, with its icon font) and **Nothing** (black and white, dot-matrix font, red accent).
 
 ## Your own theme
 
@@ -43,7 +43,8 @@ ArtistData {          // artist, topSongs, similar, load(), radio() ... come fro
 - `…Data` (`AlbumData`, `PlaylistData`, `SearchData`, ...): one per page. `LyricsData` and `SimilarSongs` are the same for parts of Now Playing.
 - `Navigation`: the page history behind the window's `go`, `back`, `forward`.
 - `ItemActions`, `Favorite`, `Rating`: what a menu, a heart and the stars do.
-- `Columns` (the track table's columns) and `Util` (`shuffled`, `fileName`).
+- `Columns` (the track table's columns) and `Util` (`shuffled`, `fileName`, `icon`).
+- Write icons as `icon.name: Util.icon("radio")`. On Linux the name comes from the system's icon theme. Windows has an icon font instead: a name that neither Qt nor `Util.icon` knows shows nothing there.
 
 A new feature goes into `shared/` first; each theme then adds only how it looks.
 

@@ -1,6 +1,7 @@
 // Share link for a song or album (createShare), copied to the clipboard.
 import QtQuick
 import QtQuick.Controls
+import shared
 import Rela
 
 Button {
@@ -10,7 +11,7 @@ Button {
     readonly property var w: ApplicationWindow.window
     text: label
     flat: true
-    icon.name: "emblem-shared"
+    icon.name: Util.icon("emblem-shared")
     enabled: itemId !== ""
     onClicked: Player.set(b, "createShare", { id: itemId }, r => {
         const s = r && r.shares && r.shares.share

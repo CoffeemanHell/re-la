@@ -13,7 +13,6 @@ re-la (Qt/QML + Rust core) ──wss──▶ Caddy /re-with ──▶ re-with (
 | `crates/rela_desktop/themes/` | QML themes, built into the binary as a Qt resource at `:/themes/<folder>/` (`shared` is the `import shared` module) |
 | `crates/rela_desktop/tests/qml/` | QML tests against fake singletons (`Rela/`) |
 | `crates/rela_desktop/extras/` | The Linux desktop file, icon and rpm spec; `windows/package.sh` builds the Windows zip |
-| `crates/rela_desktop/icons/` | Breeze icons the themes name, built in on Windows only (no icon theme there) |
 | `crates/proto` | Relay protocol v1 message types, shared by the relay and the core |
 | `crates/core` | The Rust core (no Qt): `sync` is the relay connection (online list, following, clock, commands), as a socket-free `SyncMachine` and the `SyncClient` that drives it; `subwave` is the SUB/WAVE listener API (parsing, and the client that detects, polls, fetches lyrics and hearts, follows requests); `player` is playback: `PlayerCore` decides everything (queue, two decks, crossfade, gapless, drift while listening together, reports and scrobbles, the DJ, stations, the saved queue) and is tested against a fake deck, `Player` runs it on its own thread with the relay and SUB/WAVE clients; plus the Subsonic client, settings (Qt's INI file on the desktop), the cover cache and the queue/DJ helpers |
 | `crates/mpv` | The desktop deck: one libmpv (libmpv2) per deck |
@@ -87,7 +86,7 @@ or at the `relayUrl` option when it is set.
 
 The same app, built in MSYS2 UCRT64 (Qt 6, MinGW, Rust's `x86_64-pc-windows-gnu`) and shipped as a folder in a zip
 (`crates/rela_desktop/extras/windows/package.sh`). What differs from Linux: one instance through a named pipe; media
-keys and the media flyout through SMTC (`smtc.rs`) instead of MPRIS; the Fluent style and the bundled Breeze icons;
+keys and the media flyout through SMTC (`smtc.rs`) instead of MPRIS; the Fluent style and the system's icon font (`Util.icon`);
 settings in `%APPDATA%\re-la\re-la.ini`, brought over once from the C++ app's registry key
 (`HKCU\Software\nsync\nsync`); the cache in `%LOCALAPPDATA%\re-la\re-la\cache`. The Windows tests run in CI only.
 

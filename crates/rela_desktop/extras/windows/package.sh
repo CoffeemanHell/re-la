@@ -24,8 +24,8 @@ rm -rf dist/re-la dist/re-la-windows-x64.zip
 mkdir -p "$out"
 cp target/release/re-la.exe "$LIBMPV/libmpv-2.dll" "$out/"
 cp -r LICENSE LICENSES README.md crates/rela_desktop/themes/nothing/fonts/OFL-*.txt "$out/"
-# the QML the themes import, and the style main.rs picks at run time (no QML file imports it); SVG icons (the bundled
-# Breeze set) and WebP/JPEG covers are plugins nothing links
+# the QML the themes import, and the style main.rs picks at run time (no QML file imports it); the SVG tray icon and
+# WebP/JPEG covers are plugins nothing links
 style=$(mktemp -d)
 echo 'import QtQuick.Controls.FluentWinUI3' > "$style/style.qml"
 "$QTBIN/windeployqt" --release --no-translations --no-system-d3d-compiler --no-opengl-sw \

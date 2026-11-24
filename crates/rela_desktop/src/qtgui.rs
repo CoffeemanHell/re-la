@@ -45,16 +45,6 @@ pub mod ffi {
         #[Self = "QGuiApplication"]
         #[cxx_name = "setQuitOnLastWindowClosed"]
         fn set_quit_on_last_window_closed(quit: bool);
-        include!(<QtGui/QIcon>);
-        include!("cxx-qt-lib/qstringlist.h");
-        type QStringList = cxx_qt_lib::QStringList;
-        type QIcon;
-        #[Self = "QIcon"]
-        #[cxx_name = "setThemeSearchPaths"]
-        fn set_theme_search_paths(paths: &QStringList);
-        #[Self = "QIcon"]
-        #[cxx_name = "setThemeName"]
-        fn set_theme_name(name: &QString);
         #[cxx_name = "installEventFilter"]
         unsafe fn install_event_filter(self: Pin<&mut QCoreApplication>, filter: *mut QObject);
         include!(<QtQuick/QQuickWindow>);

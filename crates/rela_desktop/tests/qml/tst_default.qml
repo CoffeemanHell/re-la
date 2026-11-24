@@ -735,6 +735,15 @@ Item {
             compare(make(albumPage, { args: { id: "al1" } }).shuffled([1, 2, 3]), [3, 2, 1])
             compare(make(playlistPage, { args: { id: "p1" } }).shuffled([1, 2, 3]), [3, 2, 1])
         }
+        // what Windows' icon engine has no name for goes in as one character of its icon font
+        function test_icon_names() {
+            const windows = Qt.platform.os === "windows"
+            for (const n in Util.glyphs) {
+                compare(Util.glyphs[n].length, 1, n)
+                compare(Util.icon(n), windows ? Util.glyphs[n] : n)
+            }
+            compare(Util.icon("go-home"), "go-home")
+        }
         function test_download_name_comes_from_the_core() {
             compare(Util.fileName({ name: "Mix" }, "playlist"), "file")
             compare(Player.called("downloadNameJson")[0], ["downloadNameJson", { name: "Mix" }, "playlist"])
