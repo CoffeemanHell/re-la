@@ -45,6 +45,10 @@ Listening together needs the relay running next to Navidrome. See [relay/README.
 - [Themes](docs/themes.md)
 - [Development](docs/development.md)
 
+## Thanks
+
+re-la is inspired by [Navic](https://codeberg.org/paige/Navic) and [Supersonic](https://github.com/supersonic-app/supersonic).
+
 ## License
 
 re-la and re-with are free software under the [GNU AGPL 3.0](LICENSE) (`AGPL-3.0-only`). Parts by others keep their own license:
