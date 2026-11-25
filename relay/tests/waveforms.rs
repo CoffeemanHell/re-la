@@ -1,8 +1,9 @@
-//! Waveforms end to end: a stub Navidrome (scan status, search3, download), real ffmpeg, the real scanner.
+//! Waveforms end to end: a stub Navidrome (scan status, search3, download), real ffmpeg, the real scanner. And the
+//! transcoding profiles, which need the same account.
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::{Json, Router, routing::get};
+use axum::{Json, Router, routing::{get, post}};
 use md5::{Digest, Md5};
 use re_with::waveform::{Account, BINS, Navidrome, Store, WaveformConfig, start};
 use re_with::{Config, app};
@@ -26,6 +27,7 @@ struct Lib {
     downloads: usize,
     hidden: Vec<String>, // getSong says "not found" (another user's library)
     crash: Option<String>, // download of this id drops the connection (Navidrome going away)
+    listings: usize,       // of the transcoding profiles
     scan_on_list: bool,    // a scan starts while search3 is being read
 }
 
@@ -111,6 +113,21 @@ async fn get_song(State(l): State<Shared>, Query(q): Q) -> Response {
     ok(json!({"song": {"id": q["id"]}}))
 }
 
+async fn login(Json(b): Json<serde_json::Value>) -> Response {
+    if b != json!({"username": "re-with", "password": PASSWORD}) {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    Json(json!({"token": "jwt"})).into_response()
+}
+
+async fn transcoding(State(l): State<Shared>, h: axum::http::HeaderMap) -> Response {
+    if h.get("x-nd-authorization").is_none_or(|v| v != "Bearer jwt") {
+        return StatusCode::UNAUTHORIZED.into_response();
+    }
+    l.lock().unwrap().listings += 1;
+    Json(json!([{"id": "1", "name": "Opus", "targetFormat": "opus", "defaultBitRate": 320, "command": ""}])).into_response()
+}
+
 async fn serve(router: Router) -> String {
     let l = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = l.local_addr().unwrap();
@@ -124,6 +141,9 @@ async fn navidrome(lib: Shared) -> String {
         .route("/rest/search3", get(search3))
         .route("/rest/download", get(download))
         .route("/rest/getSong", get(get_song))
+        .route("/rest/ping", get(|Query(q): Q| async move { if authed(&q) { ok(json!({})) } else { failed(40) } }))
+        .route("/auth/login", post(login))
+        .route("/api/transcoding", get(transcoding))
         .with_state(lib);
     serve(r).await
 }
@@ -375,13 +395,15 @@ async fn endpoint_without_navidrome_is_503() {
     let waveforms = WaveformConfig { dir, account: account(), ffmpeg: "ffmpeg".into(), poll: Duration::from_secs(60) };
     let base = serve(app(Config { navidrome: "http://127.0.0.1:1".into(), waveforms: Some(waveforms), status_socket: None })).await;
     assert_eq!(fetch(&format!("{base}/waveform/a"), true, true).await.status(), 503);
+    assert_eq!(fetch(&format!("{base}/transcodings"), true, true).await.status(), 503);
 }
 
 #[tokio::test]
 async fn endpoint_without_module_is_404() {
     let src = temp("off-ep-src");
     let base = serve(app(Config { navidrome: navidrome(new_lib(&src, &[])).await, waveforms: None, status_socket: None })).await;
-    assert_eq!(fetch(&format!("{base}/waveform/a"), true, true).await.status(), 404);
+    assert_eq!(fetch(&format!("{base}/waveform/a"), true, true).await.status(), 404);    assert_eq!(fetch(&format!("{base}/transcodings"), true, true).await.status(), 404);
+
 }
 
 #[tokio::test]
@@ -524,4 +546,21 @@ async fn a_new_pass_does_not_show_the_last_ones_numbers() {
     let w = &v["waveforms"];
     assert_eq!((w["total"].as_u64(), w["done"].as_u64(), w["failed"].as_u64()), (Some(0), Some(0), Some(0)), "{v}");
     assert!(w["last_error"].is_null(), "{v}");
+}
+
+#[tokio::test]
+async fn transcodings_are_the_servers_profiles() {
+    let lib = new_lib(&temp("tc-src"), &[]);
+    let (base, _) = relay("tc", lib.clone()).await;
+    let url = format!("{base}/transcodings");
+    assert_eq!(fetch(&url, false, true).await.status(), 401);
+    assert_eq!(fetch(&url, true, false).await.status(), 401);
+    assert_eq!(lib.lock().unwrap().listings, 0, "nobody is told before the login is checked");
+    for _ in 0..2 {
+        let r = fetch(&url, true, true).await;
+        assert_eq!(r.status(), 200);
+        let list: serde_json::Value = serde_json::from_slice(&r.bytes().await.unwrap()).unwrap();
+        assert_eq!(list, json!([{"format": "opus", "kbps": 320}]));
+    }
+    assert_eq!(lib.lock().unwrap().listings, 1, "kept for a moment: Navidrome limits logins");
 }

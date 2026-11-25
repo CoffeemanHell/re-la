@@ -5,6 +5,7 @@ mod disk;
 pub mod player;
 pub mod queue;
 pub mod radio;
+pub mod relay;
 pub mod settings;
 pub mod songs;
 pub mod subsonic;

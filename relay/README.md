@@ -31,6 +31,12 @@ To turn it on:
 
 The first pass over a big library takes hours; listening together works meanwhile.
 
+## Transcoding profiles
+
+With the same account, re-with also tells the apps which transcoding profiles Navidrome has
+(`<navidrome-url>/re-with/transcodings`, format and bitrate only, for logged-in users). Only Navidrome's web API lists
+them, so re-with signs in there with its own user and password, at `NAVIDROME_URL`.
+
 ## Build
 
 Requires Rust 1.88+ and a C compiler; the tests need ffmpeg. The relay is part of the Cargo workspace at the repo root, so build it from

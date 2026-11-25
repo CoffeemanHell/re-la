@@ -2,7 +2,6 @@
 //! came.
 use crate::disk;
 use crate::subsonic::Login;
-use crate::sync::relay_url;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
@@ -13,16 +12,6 @@ const CACHE_BYTES: u64 = 64 << 20;
 pub struct Waveform {
     pub peaks: Vec<f32>,
     pub rms: Vec<f32>, // each <= its peak
-}
-
-/// `<relay>/waveform/<id>` over HTTP(S): the relay's WebSocket address (own or the user's override) with its scheme
-/// swapped.
-pub fn url(server: &str, override_url: &str, id: &str) -> Option<url::Url> {
-    let mut u = url::Url::parse(&relay_url(server, override_url)).ok()?;
-    let scheme = if u.scheme() == "ws" { "http" } else { "https" };
-    u.set_scheme(scheme).ok()?;
-    u.path_segments_mut().ok()?.pop_if_empty().push("waveform").push(id);
-    Some(u)
 }
 
 /// The relay's body: `bins` u16 LE, `bins` peak bytes, `bins` RMS bytes.
@@ -48,20 +37,9 @@ pub fn cached(dir: &Path, server: &str, id: &str) -> Option<Waveform> {
     Some(w)
 }
 
-/// From the relay, into the disk cache. The login goes in headers, so it is in no URL (nor in a proxy's access log).
+/// From the relay, into the disk cache.
 pub async fn fetch(http: &reqwest::Client, url: url::Url, login: &Login, dir: &Path, id: &str) -> Option<Waveform> {
-    let r = http
-        .get(url)
-        .header("X-Subsonic-User", &login.user)
-        .header("X-Subsonic-Token", &login.token)
-        .header("X-Subsonic-Salt", &login.salt)
-        .send()
-        .await
-        .ok()?;
-    if !r.status().is_success() {
-        return None;
-    }
-    let body = r.bytes().await.ok()?;
+    let body = crate::relay::get(http, url, login).await?;
     let w = parse(&body)?;
     let _ = std::fs::create_dir_all(dir);
     if disk::write_atomic(&file(dir, &login.server, id), &body).is_ok() {
@@ -73,17 +51,6 @@ pub async fn fetch(http: &reqwest::Client, url: url::Url, login: &Login, dir: &P
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn url_cases() {
-        let u = |s: &str, o: &str| url(s, o, "abc").map(|u| u.to_string());
-        assert_eq!(u("https://m.example.com", "").as_deref(), Some("https://m.example.com/re-with/waveform/abc"));
-        assert_eq!(u("http://10.0.0.2:4533/", "").as_deref(), Some("http://10.0.0.2:4533/re-with/waveform/abc"));
-        assert_eq!(u("https://x", "wss://relay.example/").as_deref(), Some("https://relay.example/waveform/abc"));
-        assert_eq!(u("https://x/music", "").as_deref(), Some("https://x/music/re-with/waveform/abc"));
-        assert_eq!(url("https://x", "", "a/b").map(|u| u.path().to_string()).as_deref(), Some("/re-with/waveform/a%2Fb"));
-        assert_eq!(u("not a url", ""), None);
-    }
 
     #[test]
     fn parse_cases() {

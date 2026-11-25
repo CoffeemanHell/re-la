@@ -203,7 +203,8 @@ impl Player {
         let _ = self.tx.send(Msg::Waveform(id, Box::new(done)));
     }
 
-    /// The formats the server can transcode to, then done(them) on the player's runtime.
+    /// What the server can transcode to, then done(it) on the player's runtime: its profiles ("opus-320") when the relay
+    /// tells them, else formats alone ("opus").
     pub fn transcode_formats(&self, done: impl FnOnce(Vec<String>) + Send + 'static) {
         let _ = self.tx.send(Msg::TranscodeFormats(Box::new(done)));
     }
@@ -304,7 +305,7 @@ async fn run(
                     Msg::Waveform(id, done) => {
                         let relay = crate::queue::text(core.options.get("relayUrl").unwrap_or(&Value::Null));
                         let url = (core.is_online() && !id.is_empty() && !id.starts_with("sw:"))
-                            .then(|| crate::waveform::url(&core.login.server, &relay, &id))
+                            .then(|| crate::relay::url(&core.login.server, &relay, &["waveform", &id]))
                             .flatten();
                         let (login, http, waves) = (core.login.clone(), http.clone(), waves.clone());
                         tokio::spawn(async move {
@@ -316,11 +317,18 @@ async fn run(
                         });
                     }
                     Msg::TranscodeFormats(done) => {
-                        let client = core.client.clone().filter(|_| core.is_online());
+                        let relay = crate::queue::text(core.options.get("relayUrl").unwrap_or(&Value::Null));
+                        let url = crate::relay::url(&core.login.server, &relay, &["transcodings"]);
+                        let (client, http) = (core.client.clone().filter(|_| core.is_online()), http.clone());
                         tokio::spawn(async move {
-                            done(match client {
-                                Some(c) => c.transcode_formats().await,
-                                None => vec![],
+                            let Some(c) = client else { return done(vec![]) };
+                            let body = match url {
+                                Some(u) => crate::relay::get(&http, u, c.login()).await,
+                                None => None,
+                            };
+                            done(match body.and_then(|b| crate::relay::transcodings(&b)) {
+                                Some(profiles) => profiles,
+                                None => c.transcode_formats().await,
                             });
                         });
                     }

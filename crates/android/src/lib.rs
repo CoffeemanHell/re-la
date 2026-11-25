@@ -478,7 +478,8 @@ impl Core {
         rx.await.ok().flatten()
     }
 
-    /// The formats the server transcodes to ("opus", "mp3"); empty offline or when it can't tell.
+    /// What the server transcodes to: its profiles ("opus-320"), or formats alone ("opus") when nothing tells the
+    /// profiles; empty offline or when it can't tell.
     pub async fn transcode_formats(&self) -> Vec<String> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.player.transcode_formats(move |f| {

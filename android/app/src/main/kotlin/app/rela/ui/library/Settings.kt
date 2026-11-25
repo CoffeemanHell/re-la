@@ -101,17 +101,20 @@ private fun AudioSwitch(label: String, hint: String, key: String, enabled: Boole
     SwitchRow(label, hint, on, enabled) { on = it; AudioPrefs.set(ctx, key, it) }
 }
 
-/** The transcode of one network, as "opus-128" ("" = the original). Only what the server says it can make. */
+/**
+ * The transcode of one network, as "opus-128" ("" = the original). Only what the server makes: a profile ("opus-320") is
+ * picked as it is, a format alone ("opus": the server's bitrates are not known) has a slider for the bitrate.
+ */
 @Composable
-private fun TranscodeRows(label: String, value: String, formats: List<String>, onPick: (String) -> Unit) {
+private fun TranscodeRows(label: String, value: String, offered: List<String>, onPick: (String) -> Unit) {
     val format = value.substringBefore('-', "")
     val kbps = value.substringAfter('-', "").toIntOrNull() ?: 128
-    // the saved one stays shown when the server can't be asked now
-    val shown = (formats + format).filter { it.isNotEmpty() }.distinct()
-    ChoiceRow(label, listOf("" to "Orijinal") + shown.map { it to it.uppercase() }, format) {
-        onPick(if (it.isEmpty()) "" else "$it-$kbps")
+    val picked = if (format in offered) format else value // the saved one stays shown when the server doesn't offer it now
+    val shown = (offered + picked).filter { it.isNotEmpty() }.distinct()
+    ChoiceRow(label, listOf("" to "Orijinal") + shown.map { it to it.uppercase().replace('-', ' ') }, picked) {
+        onPick(if (it.isEmpty() || '-' in it) it else "$it-$kbps")
     }
-    if (format.isNotEmpty()) SliderRow("Bit hızı", bitrates.indexOf(kbps).coerceAtLeast(0), bitrates.indices, 1, text = { "${bitrates[it]} kbps" }) {
+    if (format in offered) SliderRow("Bit hızı", bitrates.indexOf(kbps).coerceAtLeast(0), bitrates.indices, 1, text = { "${bitrates[it]} kbps" }) {
         onPick("$format-${bitrates[it]}")
     }
 }

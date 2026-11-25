@@ -59,6 +59,9 @@ pub fn subsonic_url(l: &Login, method: &str, params: &[(String, String)]) -> Opt
     url::Url::parse(&format!("{}/rest/{method}?{}", l.server, encode_query(&q))).ok()
 }
 
+/// The transcodes a phone plays and a bitrate makes smaller.
+pub const TRANSCODES: [&str; 4] = ["opus", "mp3", "aac", "ogg"];
+
 pub struct Subsonic {
     login: Login,
     http: reqwest::Client,
@@ -89,14 +92,15 @@ impl Subsonic {
         self.answer(self.http.get(self.url(method, params))).await
     }
 
-    /// The formats this server transcodes to, of those a phone plays and a bitrate makes smaller. The Subsonic API has no
-    /// list, so each is asked for (OpenSubsonic getTranscodeDecision, for any one song); none on a server without it.
+    /// The formats this server transcodes to. The Subsonic API has no list, so each is asked for (OpenSubsonic
+    /// getTranscodeDecision, for any one song); none on a server without it. Navidrome also says yes to its built-in
+    /// formats that have no profile: the relay knows better (relay::transcodings).
     pub async fn transcode_formats(&self) -> Vec<String> {
         let one = self.call("getRandomSongs", &[("size".into(), "1".into())]).await.unwrap_or_default();
         let Some(id) = one["randomSongs"]["song"][0]["id"].as_str() else { return vec![] };
         let url = self.url("getTranscodeDecision", &[("mediaId".into(), id.into()), ("mediaType".into(), "song".into())]);
         let mut out = vec![];
-        for f in ["opus", "mp3", "aac", "ogg"] {
+        for f in TRANSCODES {
             let body = json!({"name": "re-la", "transcodingProfiles": [{"container": f, "audioCodec": f, "protocol": "http"}]});
             match self.answer(self.http.post(url.clone()).json(&body)).await {
                 Ok(r) if r["transcodeDecision"]["canTranscode"] == true => out.push(f.into()),

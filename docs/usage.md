@@ -39,7 +39,7 @@ With a size limit set (settings, **Önbellek**; on Android **Veri ve depolama**)
 
 ## Transcoding (Android)
 
-**Veri ve depolama** has a format and a bitrate for Wi-Fi and for mobile data. Only the formats the server says it can make are listed (OpenSubsonic `transcoding`, recent Navidrome versions); without it only **Orijinal** is there. A change applies from the next song on, and a song that is already at or under the bitrate comes as it is.
+**Veri ve depolama** has a choice for Wi-Fi and for mobile data. With re-with (and its Navidrome account, see `relay/README.md`) it lists Navidrome's own transcoding profiles with their bitrates. Without it, it lists the formats the server says it can make (OpenSubsonic `transcoding`, recent Navidrome versions), with a slider for the bitrate; Navidrome also counts its built-in formats there, even when their profile was deleted. A server that can't tell leaves only **Orijinal**. A change applies from the next song on, and a song that is already at or under the bitrate comes as it is.
 
 ## Shortcuts
 

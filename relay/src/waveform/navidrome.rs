@@ -1,7 +1,7 @@
-//! re-with's own Navidrome account: scan status, the song list, a song's original file.
+//! re-with's own Navidrome account: scan status, the song list, a song's original file, the transcoding profiles.
 use super::Key;
 use md5::{Digest, Md5};
-use serde_json::Value;
+use serde_json::{Value, json};
 use std::hash::BuildHasher;
 use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -13,6 +13,7 @@ const PAGE: usize = 500;
 /// The longest a song's file may take to arrive (127.0.0.1: only a huge file gets near it).
 const DOWNLOAD_LIMIT: Duration = Duration::from_secs(600);
 
+#[derive(Clone)]
 pub struct Account {
     pub user: String,
     pub password: String,
@@ -94,6 +95,18 @@ impl Navidrome {
                 return Some(all);
             }
         }
+    }
+
+    /// The transcoding profiles as [{"format": "opus", "kbps": 320}], from Navidrome's web API (a login per call); None
+    /// when it doesn't answer.
+    pub async fn transcodings(&self) -> Option<Value> {
+        let body = json!({"username": self.acct.user, "password": self.acct.password}).to_string();
+        let login = self.http.post(format!("{}/auth/login", self.base)).header("content-type", "application/json").body(body);
+        let v: Value = serde_json::from_slice(&login.send().await.ok()?.bytes().await.ok()?).ok()?;
+        let token = format!("Bearer {}", v["token"].as_str()?);
+        let resp = self.http.get(format!("{}/api/transcoding", self.base)).header("x-nd-authorization", token).send().await.ok()?;
+        let list: Vec<Value> = serde_json::from_slice(&resp.error_for_status().ok()?.bytes().await.ok()?).ok()?;
+        Some(list.iter().map(|t| json!({"format": t["targetFormat"], "kbps": t["defaultBitRate"]})).collect())
     }
 
     /// The song's original file into `to`.

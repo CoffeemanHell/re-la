@@ -3,6 +3,7 @@
 pub mod auth;
 pub mod hub;
 pub mod status;
+pub mod transcodings;
 pub mod waveform;
 
 use axum::Router;
@@ -75,11 +76,13 @@ impl Shared {
     }
 }
 
-/// Router with the WebSocket endpoint at `/` and waveforms at `/waveform/{id}` (Caddy strips the `/re-with`
-/// prefix). Must be called inside a tokio runtime: it starts the grace-period ticker and the waveform scanner.
+/// Router with the WebSocket endpoint at `/`, waveforms at `/waveform/{id}` and `/transcodings` (Caddy strips the
+/// `/re-with` prefix). Must be called inside a tokio runtime: it starts the grace-period ticker and the waveform scanner.
 pub fn app(cfg: Config) -> Router {
     let http = reqwest::Client::builder().timeout(Duration::from_secs(10)).build().expect("http client");
     let progress = Arc::new(Mutex::new(status::Progress::default()));
+    let nd = cfg.waveforms.as_ref().map(|w| waveform::Navidrome::new(http.clone(), cfg.navidrome.clone(), w.account.clone()));
+    let transcodings = transcodings::router(nd, http.clone(), cfg.navidrome.clone());
     let store = cfg.waveforms.and_then(|w| match waveform::start(w, http.clone(), cfg.navidrome.clone(), progress.clone()) {
         Ok(s) => Some(s),
         Err(e) => {
@@ -121,7 +124,7 @@ pub fn app(cfg: Config) -> Router {
             ticker.dispatch(out);
         }
     });
-    Router::new().route("/", get(upgrade)).with_state(shared).merge(waveforms)
+    Router::new().route("/", get(upgrade)).with_state(shared).merge(waveforms).merge(transcodings)
 }
 
 async fn upgrade(State(s): State<Arc<Shared>>, ws: WebSocketUpgrade) -> Response {
