@@ -69,8 +69,10 @@ pub fn radio_pick(pool: &[Value], history: &[Value], similar_ids: &HashSet<Strin
     let mut artist_lang: HashMap<String, String> = HashMap::new();
     for m in history.iter().chain(pool) {
         let l = guess_language(m);
-        if !l.is_empty() {
-            artist_lang.insert(text(&m["artist"]).into(), l);
+        let artist = text(&m["artist"]);
+        // Navidrome's names for no artist in particular say nothing about the other songs
+        if !l.is_empty() && !matches!(artist, "" | "Various Artists" | "[Unknown Artist]") {
+            artist_lang.insert(artist.into(), l);
         }
     }
     let lang = |m: &Value| {
@@ -204,6 +206,15 @@ mod tests {
         assert!(relaxed(all, 1).language == 100 && relaxed(all, 1).genre == 50);
         assert!(relaxed(all, 2).language == 75 && relaxed(all, 2).genre == 25);
         assert!(relaxed(all, 9).language == 25 && relaxed(all, 9).genre == 0 && relaxed(all, 9).batch == 10);
+
+        // one Turkish song of nobody in particular does not make the others Turkish
+        for nobody in ["", "Various Artists", "[Unknown Artist]"] {
+            let pool = [song("x", "Şarkı", nobody, "Pop"), song("y", "Song", nobody, "Pop"), song("z", "Gel", "TR Artist 0", "Pop")];
+            let known = [song("tr0x", "Şarkı", "TR Artist 0", "Pop")];
+            let two = RadioWeights { language: 100, genre: 0, batch: 2 };
+            let picked = radio_pick(&pool, &known, &HashSet::from(["y".into()]), &two, &mut rng);
+            assert!(picked.iter().all(|v| v["id"] != "y"), "{nobody}: {picked:?}");
+        }
 
         // already queued songs are never picked again
         assert!(radio_pick(&history, &history, &HashSet::new(), &all, &mut rng).is_empty());

@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.Assert.assertNull
 import uniffi.rela.PlayerState
+import uniffi.rela.SubwaveState
 import uniffi.rela.SyncState
 
 class FacadeViewTest {
@@ -48,6 +49,22 @@ class FacadeViewTest {
     fun twoSongsStillHaveUniqueIds() {
         val ids = facadeView(state(index = 0), queue.take(2)).items.map { it.uid }
         assertEquals(ids.size, ids.toSet().size)
+    }
+
+    @Test
+    fun theCoverIsOfWhatPlays() {
+        fun sw(active: Boolean, now: String) = SubwaveState(
+            active = active, nowJson = now, coverUrl = "", online = true, lyricsJson = "{}", lyricsState = "", likeEnabled = false, liked = false,
+            likeBlockedMs = 0, requestJson = "{}", elapsedMs = 0,
+        )
+        val song = state().copy(currentJson = """{"id":"a","coverArt":"al-1"}""")
+        val onAir = song.copy(stationJson = """{"id":"7","name":"SUB/WAVE"}""")
+        assertEquals("", coverId(null, null))
+        assertEquals("al-1", coverId(song, null))
+        assertEquals("al-1", coverId(song, sw(true, """{"id":"x"}""")))
+        assertEquals("sw:x", coverId(onAir, sw(true, """{"id":"x"}""")))
+        assertEquals("", coverId(onAir, sw(true, """{"title":"Jingle"}""")))
+        assertEquals("a plain radio", "", coverId(onAir, sw(false, "{}")))
     }
 
     @Test

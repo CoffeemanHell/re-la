@@ -75,6 +75,9 @@ impl SyncPort for SyncPortImpl {
     fn start(&self, url: String, user: String, token: String, salt: String) {
         self.client.start(url, user, token, salt);
     }
+    fn unfollow(&self) {
+        self.client.unfollow();
+    }
     fn stop(&self, bye: bool) {
         self.client.stop(bye);
     }

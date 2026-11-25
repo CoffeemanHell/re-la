@@ -1,6 +1,7 @@
 package app.rela.playback
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import uniffi.rela.DeckEnd
 import uniffi.rela.DeckNote
@@ -52,6 +53,20 @@ class DeckLogicTest {
     }
 
     @Test
+    fun currentItemFailingGoesOnWithTheAppendedOne() {
+        // mpv: the current file ends with an error, the next starts; the core ignores that end while it has appended
+        logic.started()
+        logic.ready(230_000)
+        seen.clear()
+        logic.failedIntoNext("Source error")
+        logic.ready(251_000)
+        assertEquals(
+            listOf(DeckNote.EndFile(DeckEnd.ERROR, "Source error"), DeckNote.StartFile, DeckNote.Duration(251.0), DeckNote.FileLoaded),
+            seen,
+        )
+    }
+
+    @Test
     fun appendedItemFailingReadsAsMpvsOrder() {
         // mpv: the current file ends, the next starts, then the next fails; the core then skips past it
         logic.started()
@@ -68,6 +83,18 @@ class DeckLogicTest {
         logic.position(1020)
         logic.stopped()
         assertEquals(listOf(DeckNote.Position(1.0), DeckNote.Position(1.02), DeckNote.Position(null)), seen)
+    }
+
+    @Test
+    fun whatTheTrackDoesNotSayIsCleared() {
+        assertEquals(
+            listOf(
+                DeckNote.Prop("audio-params/format", "mp3"), DeckNote.Prop("audio-codec-name", "mp3"),
+                DeckNote.Prop("audio-params/samplerate", "44100"), DeckNote.Prop("audio-params/channel-count", null), DeckNote.Bitrate(128_000.0),
+            ),
+            trackNotes("audio/mpeg", 44_100, -1, 128_000),
+        )
+        assertTrue(trackNotes(null, 0, 0, 0).all { it is DeckNote.Prop && it.value == null || it == DeckNote.Bitrate(null) })
     }
 
     @Test

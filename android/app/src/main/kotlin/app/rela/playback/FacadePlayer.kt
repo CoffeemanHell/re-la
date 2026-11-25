@@ -14,6 +14,7 @@ import app.rela.core.text
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import uniffi.rela.PlayerState
+import uniffi.rela.SubwaveState
 import uniffi.rela.SyncState
 
 /** What the media session shows: the core's state, read through [facadeView] (tested on the JVM). */
@@ -29,6 +30,14 @@ data class FacadeView(
 /** The queue's song that plays, or null while a station plays (the core keeps the queue's index meanwhile). */
 fun queueSong(s: PlayerState?, queue: List<Song>): Song? =
     s?.takeIf { json(it.stationJson).isEmpty() }?.let { queue.getOrNull(it.index.toInt()) }
+
+/** The cover that goes with what plays: the song's, or SUB/WAVE's for a station ("sw:" ids). */
+fun coverId(s: PlayerState?, sw: SubwaveState?): String {
+    if (s == null) return ""
+    if (json(s.stationJson).isEmpty()) return json(s.currentJson)["coverArt"].text()
+    val id = sw?.takeIf { it.active }?.let { json(it.nowJson)["id"].text() } ?: ""
+    return if (id.isEmpty()) "" else "sw:$id"
+}
 
 /** Listening together outlives the UI: the service stays in the foreground while following or followed, paused too. */
 fun keepAlive(sync: SyncState?) = sync != null && (sync.following.isNotEmpty() || sync.listeners.isNotEmpty())
@@ -63,10 +72,10 @@ fun facadeView(s: PlayerState?, queue: List<Song>, subwaveTitle: String = ""): F
 @OptIn(UnstableApi::class)
 class FacadePlayer : SimpleBasePlayer(Looper.getMainLooper()) {
     private var view = FacadeView(false, emptyList(), 0, 0, false)
-    private var artwork: Pair<String, ByteArray>? = null // coverArt id → bytes
+    private var artwork: ByteArray? = null
 
     /** On the main thread, whenever the core said something. */
-    fun update(next: FacadeView, art: Pair<String, ByteArray>?) {
+    fun update(next: FacadeView, art: ByteArray?) {
         view = next
         artwork = art
         invalidateState()
@@ -86,7 +95,7 @@ class FacadePlayer : SimpleBasePlayer(Looper.getMainLooper()) {
         if (v.items.isNotEmpty()) {
             b.setPlaylist(v.items.mapIndexed { k, it ->
                 val md = MediaMetadata.Builder().setTitle(it.title).setArtist(it.artist).setAlbumTitle(it.album)
-                if (k == v.current) artwork?.let { (_, bytes) -> md.setArtworkData(bytes, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
+                if (k == v.current) artwork?.let { md.setArtworkData(it, MediaMetadata.PICTURE_TYPE_FRONT_COVER) }
                 MediaItemData.Builder(it.uid)
                     .setMediaItem(MediaItem.Builder().setMediaId(it.uid).build())
                     .setMediaMetadata(md.build())

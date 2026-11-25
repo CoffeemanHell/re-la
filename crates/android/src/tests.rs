@@ -62,7 +62,8 @@ impl CoreListener for Ui {
     }
     fn on_reply(&self, _: u64, _: String, _: bool) {}
     fn on_sync(&self, _: SyncNote, _: SyncState) {}
-    fn on_subwave(&self, _: SubwaveState, _: bool) {}
+    fn on_subwave(&self, _: SubwaveState) {}
+    fn on_subwave_tick(&self, _: i64) {}
 }
 
 fn scratch(name: &str) -> PathBuf {

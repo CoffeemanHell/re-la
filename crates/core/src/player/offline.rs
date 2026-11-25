@@ -65,7 +65,7 @@ impl PlayerCore {
     pub fn set_mobile(&mut self, on: bool) {
         if on != self.mobile {
             self.mobile = on;
-            self.drop_prefetch();
+            self.drop_preload();
         }
     }
 

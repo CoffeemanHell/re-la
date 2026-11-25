@@ -175,6 +175,18 @@ fn plain_radio_is_left_alone() {
 }
 
 #[test]
+fn busy_at_first_is_asked_again() {
+    for status in [503, 429] {
+        let st = Station::start();
+        st.sw("One", "abc");
+        st.set("GET /api/now-playing", vec![code(status, json!({})), ok(np("One", "abc"))]);
+        let (c, rx) = client();
+        c.open(st.home.clone(), "http://radio.example.com/stream".into());
+        wait_for(&rx, 3.0, "active", |s| s.active);
+    }
+}
+
+#[test]
 fn server_down_goes_offline_and_retries() {
     let st = Station::start();
     st.sw("One", "abc");

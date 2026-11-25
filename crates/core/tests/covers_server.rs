@@ -155,6 +155,31 @@ async fn cap_evicts_oldest() {
     assert!(total <= 3500, "{total} bytes over the cap");
 }
 
+#[tokio::test]
+async fn revalidating_keeps_the_image_file() {
+    let s = server("no-cache", Some("\"v1\""), 10).await;
+    let c = CoverCache::open(fresh("304"), 1 << 20);
+    c.get(&http(), &s.url("a", "t"), false).await.unwrap();
+    let img = std::fs::read_dir(dir("304")).unwrap().flatten().map(|e| e.path()).find(|p| p.extension().is_some_and(|x| x == "img")).unwrap();
+    std::fs::write(&img, b"kept").unwrap();
+    let link = img.with_extension("same");
+    std::fs::hard_link(&img, &link).unwrap(); // a rewrite through a rename would leave this one behind
+    c.get(&http(), &s.url("a", "t"), false).await.unwrap();
+    std::fs::write(&link, b"linked").unwrap();
+    assert_eq!(std::fs::read(&img).unwrap(), b"linked");
+}
+
+#[tokio::test]
+async fn what_an_earlier_run_left_counts() {
+    let s = server("max-age=3600", None, 1000).await;
+    for id in ["a", "b", "c", "d"] {
+        CoverCache::open(if id == "a" { fresh("run") } else { dir("run") }, 3500).get(&http(), &s.url(id, "t"), false).await.unwrap();
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let total: u64 = std::fs::read_dir(dir("run")).unwrap().flatten().map(|e| e.metadata().unwrap().len()).sum();
+    assert!(total <= 3500, "{total} bytes over the cap");
+}
+
 #[test]
 fn old_qt_cache_folder_is_removed() {
     let d = fresh("old");

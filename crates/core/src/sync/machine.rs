@@ -177,6 +177,7 @@ impl SyncMachine {
                 self.following = str_of("root");
                 fx.push(Effect::Event(SyncEvent::Changed));
             }
+            "state" if self.following.is_empty() => {} // on its way when we left
             "state" => {
                 self.last_state = m.clone();
                 fx.push(Effect::Event(SyncEvent::StateReceived(m.clone())));
@@ -304,6 +305,9 @@ impl SyncMachine {
         self.following.clear();
         self.last_state.clear();
         self.users.clear();
+        self.listeners.clear();
+        self.last_full.clear();
+        self.refollow = false;
         vec![Effect::StopRefollowTimer, Effect::Event(SyncEvent::UsersChanged), Effect::Event(SyncEvent::Changed)]
     }
 
@@ -513,5 +517,34 @@ mod tests {
         m.publish(state(json!({"qrev": 1, "queue": []})));
         let fx = m.set_allow_control(true); // republishes the last state with the new flag; same qrev: no queue
         assert!(matches!(sent(&fx)[..], [In::State(s)] if s["allowControl"] == true && !s.contains_key("queue")));
+    }
+
+    fn followed() -> SyncMachine {
+        let mut m = SyncMachine::new(false, false);
+        m.on_text(r#"{"type":"welcome","you":"me","now":1}"#, 1);
+        m.on_text(r#"{"type":"following","root":"r"}"#, 1);
+        m
+    }
+
+    #[test]
+    fn a_state_on_its_way_when_we_left_is_dropped() {
+        let mut m = followed();
+        m.unfollow();
+        assert_eq!(m.on_text(r#"{"type":"state","queue":[],"index":0}"#, 1), []);
+    }
+
+    #[test]
+    fn stop_forgets_the_session() {
+        let mut m = followed();
+        m.on_text(r#"{"type":"users","users":[{"user":"x","following":"me"}]}"#, 1);
+        m.publish(json!({"qrev": 1, "queue": []}).as_object().cloned().unwrap());
+        m.disconnected();
+        m.on_text(r#"{"type":"welcome","you":"me","now":1}"#, 1); // asks to follow again
+        m.stop();
+        assert!(m.listeners().is_empty());
+        m.on_text(r#"{"type":"welcome","you":"other","now":1}"#, 1);
+        assert_eq!(m.set_allow_control(true), [Effect::Event(SyncEvent::Changed)], "not the last user's state");
+        m.follow("offline");
+        assert_eq!(m.on_text(r#"{"type":"error","code":"not-found"}"#, 1), [Effect::Event(SyncEvent::Failed("not-found".into()))]);
     }
 }

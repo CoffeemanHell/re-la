@@ -257,6 +257,7 @@ pub(crate) fn new_shared() -> Arc<Mutex<Shared>> {
 
 /// Keeps `shared` and the cover file current until Quit, and tells `out` what changed.
 pub(crate) async fn serve(mut rx: mpsc::UnboundedReceiver<Msg>, dir: PathBuf, shared: Arc<Mutex<Shared>>, mut out: impl AsyncFnMut(Out)) {
+    let _ = std::fs::remove_dir_all(&dir); // what a crash left
     let mut sent = shared.lock().unwrap().status();
     let (mut seek, clock) = (SeekWatch::default(), Instant::now());
     let (mut cover, mut n) = (String::new(), 0u64);

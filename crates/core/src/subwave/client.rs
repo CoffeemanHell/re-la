@@ -451,7 +451,7 @@ impl Worker {
     fn reply(&mut self, reply: Reply) {
         match reply {
             Reply::Now { generation, first, r } => {
-                if generation != self.generation || (r.body == Err(Fail::Bad) && first) {
+                if generation != self.generation || (first && r.body == Err(Fail::Bad) && r.status < 500 && r.status != 429) {
                     return;
                 }
                 match r.body {
@@ -560,7 +560,7 @@ impl Worker {
                     403 => self.like_enabled = false,
                     429 => {
                         let secs = r.retry_after.and_then(|s| s.trim().parse::<i64>().ok()).unwrap_or(0);
-                        self.like_blocked_ms = secs.max(1) * 1000;
+                        self.like_blocked_ms = secs.clamp(1, 86_400) * 1000;
                     }
                     409 => return self.fetch_like(), // the track changed under us
                     200 => self.liked = r.body.ok().and_then(|o| o["liked"].as_bool()).unwrap_or(true),

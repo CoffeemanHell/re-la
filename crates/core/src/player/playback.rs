@@ -66,6 +66,7 @@ impl PlayerCore {
                     self.anchor += from_dur * 1000.0;
                     self.idx = i;
                     self.play += 1;
+                    self.skips = 0; // listened to the end
                     if self.valid(i) {
                         self.decks[k].id = self.song_id(i);
                     }
@@ -89,7 +90,11 @@ impl PlayerCore {
     }
 
     fn end_file(&mut self, k: usize, active: bool, reason: EndReason, error: &str) {
-        if !active || self.decks[k].appended {
+        if !active {
+            self.decks[k].failed |= reason == EndReason::Error; // the crossfade preload: cross_to tries it once more
+            return;
+        }
+        if self.decks[k].appended {
             return;
         }
         if !self.station.is_empty() {
@@ -133,6 +138,7 @@ impl PlayerCore {
                 if self.upcoming() >= 0 {
                     self.advance();
                 } else {
+                    self.decks[k].id.clear(); // the deck is empty: play opens the song again (toggle)
                     self.set_playing(false);
                 }
             }
@@ -152,13 +158,18 @@ impl PlayerCore {
         }
     }
 
+    /// The crossfade out of a song: never more than half of it.
+    pub(super) fn fade_of(&self, dur: f64) -> f64 {
+        (self.xfade as f64).min(dur / 2.0).max(0.0)
+    }
+
     pub(super) fn cross_to(&mut self, i: i64) {
         self.cur = 1 - self.cur;
         let k = self.cur;
         self.idx = i;
         self.play += 1;
         let id = self.song_id(i);
-        if self.decks[k].id != id {
+        if self.decks[k].id != id || self.decks[k].failed {
             self.load_deck(k, &id, 0.0, true); // normally preloaded by tick
         }
         self.decks[k].out.set_volume(0.0);
@@ -173,7 +184,8 @@ impl PlayerCore {
     /// how long each one took to buffer.
     pub(super) fn advance(&mut self) {
         self.skips = 0; // listened to the end
-        self.anchor += (self.duration() - self.xfade as f64) * 1000.0;
+        self.fade_s = self.fade_of(self.duration());
+        self.anchor += (self.duration() - self.fade_s) * 1000.0;
         let n = self.upcoming();
         self.cross_to(n);
         self.timer(((self.xfade + 3) * 1000) as u64, |c| c.publish());
@@ -206,7 +218,7 @@ impl PlayerCore {
 
         if self.fading {
             let (inn, out, v) = (self.cur, 1 - self.cur, self.volume);
-            let k = if self.xfade > 0 { ((self.clock_ms - self.fade_start) / (self.xfade as f64 * 1000.0)).min(1.0) } else { 1.0 };
+            let k = if self.fade_s > 0.0 { ((self.clock_ms - self.fade_start) / (self.fade_s * 1000.0)).min(1.0) } else { 1.0 };
             // equal-power curve; mpv volume is cubic (gain = (vol/100)^3), hence cbrt
             self.decks[out].out.set_volume(v * (k * PI / 2.0).cos().max(0.0).cbrt());
             self.decks[inn].out.set_volume(v * (k * PI / 2.0).sin().cbrt());
@@ -282,7 +294,7 @@ impl PlayerCore {
                 if self.decks[1 - k].id != next {
                     self.load_deck(1 - k, &next, 0.0, true);
                 }
-                if left <= self.xfade as f64 {
+                if left <= self.fade_of(dur) {
                     return self.advance();
                 }
             }

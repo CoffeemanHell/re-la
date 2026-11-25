@@ -25,6 +25,8 @@ pub trait SyncPort: Send {
     fn publish(&self, state: Map<String, Value>);
     fn send(&self, op: &str, args: Value);
     fn start(&self, url: String, user: String, token: String, salt: String);
+    /// Leaves whom we follow; SyncEvent::Ended tells when it is done.
+    fn unfollow(&self);
     fn stop(&self, bye: bool);
     fn demo(&self);
 }
@@ -116,6 +118,7 @@ pub(super) struct DeckState {
     pub(super) seek_at: f64,  // clock ms of that seek
     pub(super) base: f64,     // a live transcode: the second of the song its stream starts at
     pub(super) live_transcode: bool, // no seeking inside the stream (see Source)
+    pub(super) failed: bool, // could not be opened while the other deck played
     pub(super) appended: bool, // gapless: next song already queued in this deck
     pub(super) appended_from_dur: f64,
     pub(super) appended_live: bool, // the appended song is a live transcode
@@ -138,6 +141,7 @@ impl DeckState {
             seek_at: 0.0,
             base: 0.0,
             live_transcode: false,
+            failed: false,
             appended: false,
             appended_from_dur: 0.0,
             appended_live: false,
@@ -269,8 +273,10 @@ pub struct PlayerCore {
     pub(super) anchor: f64,
     pub(super) online: bool,
     pub(super) playing: bool,
+    pub(super) leaving: bool, // pause_here while following: until Ended, the root's state may still start it again
     pub(super) fading: bool,
     pub(super) fade_start: f64,
+    pub(super) fade_s: f64, // how long this fade takes
     pub(super) dj: bool,
     pub(super) exclusive: bool,
     pub(super) shuffle: bool,
@@ -369,8 +375,10 @@ impl PlayerCore {
             anchor: 0.0,
             online: false,
             playing: false,
+            leaving: false,
             fading: false,
             fade_start: 0.0,
+            fade_s: 0.0,
             dj: s.get_bool("dj", false),
             exclusive,
             shuffle: s.get_bool("shuffle", false),
@@ -487,7 +495,7 @@ impl PlayerCore {
     }
 
     pub(super) fn set_login(&mut self, login: Login) {
-        self.client = (!login.token.is_empty() && !login.server.is_empty()).then(|| Arc::new(Subsonic::new(login.clone())));
+        self.client = (!login.token.is_empty() && crate::subsonic::subsonic_url(&login, "ping", &[]).is_some()).then(|| Arc::new(Subsonic::new(login.clone())));
         self.login = login;
     }
 
@@ -667,12 +675,13 @@ impl PlayerCore {
         self.persist_seq += 1;
         let seq = self.persist_seq;
         self.timer(5000, move |c| {
-            // checked again here: we may have started following during the 5 s (the queue is the root's now)
-            if seq != c.persist_seq || !c.online || c.following() {
+            // checked again here: we may have started following during the 5 s (the queue is the root's now). An empty
+            // queue may be one that could not be fetched: never over the server's
+            if seq != c.persist_seq || !c.online || c.following() || c.queue.is_empty() {
                 return;
             }
             let q = c.play_queue_query();
-            c.api("savePlayQueue", q, false, |_, _| {});
+            c.api("savePlayQueue", q, true, |_, _| {}); // the next change saves again
             c.save_local_queue();
         });
     }
@@ -725,6 +734,7 @@ impl PlayerCore {
         d.loading = true;
         d.seeking = false;
         d.appended = false;
+        d.failed = false;
         d.out.load(&url, paused);
     }
 
@@ -780,6 +790,14 @@ impl PlayerCore {
         d.appended = false;
     }
 
+    /// The next song in another quality: what either way of preloading it holds is the old one.
+    pub(super) fn drop_preload(&mut self) {
+        self.drop_prefetch();
+        if !self.fading {
+            self.decks[1 - self.cur].id.clear(); // tick loads it again
+        }
+    }
+
     /// Every seek goes here: until the deck's position is near the target (at most 3 s), the old place or one in
     /// between is not shown.
     pub(super) fn seek_deck(&mut self, k: usize, pos: f64) {
@@ -789,6 +807,10 @@ impl PlayerCore {
         }
         let now = self.clock_ms;
         let d = &mut self.decks[k];
+        if d.loading {
+            d.pending_seek = pos; // FILE_LOADED seeks there
+            return;
+        }
         d.out.seek(pos);
         d.pos = pos;
         d.seeking = true;
@@ -824,6 +846,9 @@ impl PlayerCore {
             return;
         }
         let mut start = start.min(q.len() - 1);
+        if self.refused_offline(&text(&q[start]["id"])) {
+            return;
+        }
         if self.shuffle {
             // the picked song first, the rest shuffled; off restores the list order
             let s = q.remove(start);
@@ -834,6 +859,8 @@ impl PlayerCore {
         }
         self.queue = Arc::new(q);
         self.skips = 0;
+        self.extend_seq += 1; // picks for the old queue
+        self.extending = false;
         self.extend_retry = 0.0;
         self.jump(start as i64);
     }
@@ -841,6 +868,9 @@ impl PlayerCore {
     /// where: 0 play now, 1 next, 2 end.
     pub fn add(&mut self, songs: Vec<Value>, where_: i32) {
         if songs.is_empty() || self.remote("add", json!({"songs": songs_json(&songs), "where": where_})) {
+            return;
+        }
+        if (where_ == 0 || !self.valid(self.idx)) && self.refused_offline(&text(&songs[0]["id"])) {
             return;
         }
         let idx = self.idx;
@@ -854,12 +884,21 @@ impl PlayerCore {
         self.queue_edited();
     }
 
+    /// Before anything changes: offline only the songs on disk play.
+    fn refused_offline(&mut self, id: &str) -> bool {
+        let no = self.offline && !SongCache::holds(&self.held, &self.login.server, id);
+        if no {
+            self.set_status("Çevrimdışı: bu şarkı inmemiş");
+        }
+        no
+    }
+
     pub fn jump(&mut self, i: i64) {
         if !self.valid(i) || self.remote("jump", json!({"i": i})) {
             return;
         }
-        if self.offline && !self.holds(i) {
-            return self.set_status("Çevrimdışı: bu şarkı inmemiş");
+        if self.refused_offline(&self.song_id(i)) {
+            return;
         }
         self.end_station();
         self.drop_prefetch();
@@ -876,6 +915,12 @@ impl PlayerCore {
         Arc::make_mut(&mut self.queue).remove(i as usize);
         if i < self.idx {
             self.idx -= 1;
+        } else if i == self.idx && i == self.queue.len() as i64 {
+            self.playing &= !self.station.is_empty(); // the last one: the one before it waits, paused
+            self.idx = i - 1;
+            if self.station.is_empty() {
+                self.load(self.idx, 0.0);
+            }
         } else if i == self.idx && self.station.is_empty() {
             self.load(self.idx, 0.0);
         }
@@ -926,6 +971,24 @@ impl PlayerCore {
         self.publish();
     }
 
+    /// The system takes the sound away (headphones out, another app plays, the app is swiped away): it stops here and
+    /// nowhere else. A follower leaves; the root plays on.
+    pub fn pause_here(&mut self) {
+        if self.following() {
+            self.leaving = true;
+            self.sync.unfollow();
+        }
+        self.stop_here();
+    }
+
+    pub(super) fn stop_here(&mut self) {
+        self.stop_station();
+        if self.playing {
+            self.set_playing(false);
+            self.publish();
+        }
+    }
+
     pub fn next(&mut self) {
         let n = next_index(self.idx, self.queue.len() as i64, if self.repeat == 0 { 0 } else { 1 }); // the button always moves on
         let n = self.playable(n, 1);
@@ -967,7 +1030,7 @@ impl PlayerCore {
         if self.decks[self.cur].id.is_empty() || !self.station.is_empty() || self.remote("seek", json!({"s": s})) {
             return;
         }
-        self.seek_deck(self.cur, s);
+        self.seek_deck(self.cur, s.max(0.0)); // mpv takes a negative one from the end
         self.publish();
     }
 
@@ -1077,7 +1140,7 @@ impl PlayerCore {
         self.changes.options = true;
         match key {
             "audioDevice" => self.decks.iter_mut().for_each(|d| d.out.set_audio_device(&text(&value))),
-            "transcodeWifi" | "transcodeMobile" => self.drop_prefetch(),
+            "transcodeWifi" | "transcodeMobile" => self.drop_preload(),
             "offlineGb" => {
                 self.cache_next = 0.0;
                 if self.cache_cap() > 0 {
@@ -1132,8 +1195,8 @@ impl PlayerCore {
     }
 
     pub(super) fn start_station(&mut self, st: &Value) {
-        if self.station.is_empty() {
-            self.resume_pos = self.position();
+        if self.station.is_empty() && !self.following() {
+            self.resume_pos = self.position(); // following: the root's, from on_state
         }
         let (cur, other, v) = (self.cur, 1 - self.cur, self.volume);
         self.fading = false;

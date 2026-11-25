@@ -48,8 +48,9 @@ pub trait CoreListener: Send + Sync {
     /// A request's answer ("null" when it failed); call false: the login changed meanwhile, drop it.
     fn on_reply(&self, id: u64, json: String, call: bool);
     fn on_sync(&self, note: SyncNote, state: SyncState);
-    /// tick: only the elapsed time moved.
-    fn on_subwave(&self, state: SubwaveState, tick: bool);
+    fn on_subwave(&self, state: SubwaveState);
+    /// Four times a second while a station is active: only the elapsed time moved.
+    fn on_subwave_tick(&self, elapsed_ms: i64);
 }
 
 #[derive(uniffi::Record, Debug, Clone, Copy, PartialEq)]
@@ -228,6 +229,10 @@ fn sync_state(s: &SyncSnapshot) -> SyncState {
     }
 }
 
+fn elapsed_ms(s: &SubwaveSnapshot) -> i64 {
+    if s.active { s.elapsed_ms(local_now()) } else { 0 }
+}
+
 fn subwave_state(s: &SubwaveSnapshot) -> SubwaveState {
     SubwaveState {
         active: s.active,
@@ -240,7 +245,7 @@ fn subwave_state(s: &SubwaveSnapshot) -> SubwaveState {
         liked: s.liked,
         like_blocked_ms: s.like_blocked_ms,
         request_json: s.request.to_string(),
-        elapsed_ms: if s.active { s.elapsed_ms(local_now()) } else { 0 },
+        elapsed_ms: elapsed_ms(s),
     }
 }
 
@@ -278,7 +283,10 @@ impl PlayerListener for Front {
         self.0.on_sync(sync_note(event), sync_state(&snapshot));
     }
     fn on_subwave(&self, event: SubwaveEvent, snapshot: SubwaveSnapshot) {
-        self.0.on_subwave(subwave_state(&snapshot), event == SubwaveEvent::Tick);
+        match event {
+            SubwaveEvent::Changed => self.0.on_subwave(subwave_state(&snapshot)),
+            SubwaveEvent::Tick => self.0.on_subwave_tick(elapsed_ms(&snapshot)),
+        }
     }
 }
 
@@ -412,6 +420,10 @@ impl Core {
     }
     pub fn toggle(&self) {
         self.player.call(|c| c.toggle());
+    }
+    /// The system takes the sound away: it stops on this phone only (a follower leaves the root).
+    pub fn pause_here(&self) {
+        self.player.call(|c| c.pause_here());
     }
     pub fn next(&self) {
         self.player.call(|c| c.next());

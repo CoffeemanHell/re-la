@@ -101,8 +101,12 @@ object Rela {
             _syncNotes.tryEmit(note)
         }
 
-        override fun onSubwave(state: SubwaveState, tick: Boolean) {
+        override fun onSubwave(state: SubwaveState) {
             _subwave.value = state
+        }
+
+        override fun onSubwaveTick(elapsedMs: Long) {
+            _subwave.value = _subwave.value?.copy(elapsedMs = elapsedMs) // same thread as onSubwave
         }
     }
 }

@@ -27,6 +27,19 @@ fun pcmName(encoding: Int): String = when (encoding) {
     else -> "enc$encoding"
 }
 
+/** What the track is, as mpv's properties; null for what is not known (no track: all of it), so the last one's goes. */
+fun trackNotes(mime: String?, sampleRate: Int, channels: Int, bitrate: Int): List<DeckNote> {
+    val codec = codecName(mime).ifEmpty { null }
+    fun known(n: Int) = n.takeIf { it > 0 }
+    return listOf(
+        DeckNote.Prop("audio-params/format", codec),
+        DeckNote.Prop("audio-codec-name", codec),
+        DeckNote.Prop("audio-params/samplerate", known(sampleRate)?.toString()),
+        DeckNote.Prop("audio-params/channel-count", known(channels)?.toString()),
+        DeckNote.Bitrate(known(bitrate)?.toDouble()),
+    )
+}
+
 /**
  * What one ExoPlayer saw, told the way libmpv tells it (crates/mpv), since the core's gapless and crossfade logic
  * reads mpv's event order: StartFile on load, FileLoaded + Duration once it can play, a gapless move as
@@ -70,6 +83,12 @@ class DeckLogic(private val report: (DeckNote) -> Unit) {
     }
 
     fun ended() = report(DeckNote.EndFile(DeckEnd.EOF, ""))
+
+    /** The current item failed with another one appended: mpv goes on with that one, so ExoPlayer is told to. */
+    fun failedIntoNext(message: String) {
+        failed(message)
+        started()
+    }
 
     fun failed(message: String) = report(DeckNote.EndFile(DeckEnd.ERROR, message))
 

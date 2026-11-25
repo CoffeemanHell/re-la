@@ -39,7 +39,7 @@ QtObject {
 
     readonly property string nowPlaying: Player.station.name ? Player.station.name // a station plays: the queue song waits
                                        : Player.current.title === undefined ? "re-la"
-                                       : Player.current.title + " · " + Player.current.artist
+                                       : Player.current.artist ? Player.current.title + " · " + Player.current.artist : Player.current.title
 
     property Platform.SystemTrayIcon tray: Platform.SystemTrayIcon {
         visible: available && Player.options.closeToTray === true

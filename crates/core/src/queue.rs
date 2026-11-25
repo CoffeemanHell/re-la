@@ -364,6 +364,20 @@ pub fn apply_rating(queue: &mut [Value], id: &str, rating: i64) -> usize {
     n
 }
 
+/// Marks every queue entry of song id as a favorite or not; returns how many entries changed.
+pub fn apply_star(queue: &mut [Value], id: &str, on: bool) -> usize {
+    let mut n = 0;
+    for s in queue.iter_mut().filter(|s| id_of(s) == id).filter_map(Value::as_object_mut) {
+        if on {
+            s.insert("starred".into(), true.into()); // the server's is a date; only its being there matters
+        } else {
+            s.remove("starred");
+        }
+        n += 1;
+    }
+    n
+}
+
 /// DJ off: songs of similar whose id is not in queue (nor repeated), in the server's order.
 pub fn similar_append(queue: &[Value], similar: &[Value]) -> Vec<Value> {
     let mut have: HashSet<String> = queue.iter().map(|s| id_of(s).to_string()).collect();

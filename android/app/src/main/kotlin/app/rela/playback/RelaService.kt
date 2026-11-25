@@ -22,6 +22,8 @@ import app.rela.core.json
 import app.rela.core.text
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -39,32 +41,37 @@ class RelaService : MediaSessionService() {
     private lateinit var facade: FacadePlayer
     private lateinit var session: MediaSession
     private lateinit var audio: AudioManager
-    private var art: Pair<String, ByteArray>? = null
-    private var focusLostWhilePlaying = false
+    private val art = MutableStateFlow<Pair<String, ByteArray>?>(null) // cover id → bytes
+    private val sound = SoundLogic(pause = { Rela.core?.pauseHere() }, mute = { decks.mute(it) })
 
     private val focus = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
         .setAudioAttributes(
             AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build(),
         )
-        .setOnAudioFocusChangeListener { change ->
-            val playing = Rela.player.value?.playing == true
-            when (change) {
-                AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> if (playing) {
-                    focusLostWhilePlaying = change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT
-                    Rela.core?.toggle()
-                }
-                AudioManager.AUDIOFOCUS_GAIN -> if (focusLostWhilePlaying && !playing) {
-                    focusLostWhilePlaying = false
-                    Rela.core?.toggle()
-                }
-            }
-        }
+        .setOnAudioFocusChangeListener(::focusChanged)
         .build()
+
+    private val playing get() = Rela.player.value?.playing == true
+    private val following get() = !Rela.sync.value?.following.isNullOrEmpty()
+
+    private fun focusChanged(change: Int) {
+        when (change) {
+            AudioManager.AUDIOFOCUS_LOSS -> lost(passing = false)
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> lost(passing = true)
+            AudioManager.AUDIOFOCUS_GAIN -> if (!sound.gained(playing, following)) audio.abandonAudioFocusRequest(focus)
+        }
+    }
+
+    private fun lost(passing: Boolean) {
+        if (!playing) return
+        val station = json(Rela.player.value?.stationJson ?: "")["id"].text()
+        sound.lost(passing, following) { if (station.isEmpty()) Rela.core?.toggle() else Rela.core?.playStation(station) }
+    }
 
     /** Headphones out: pause, as every player does. */
     private val noisy = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (Rela.player.value?.playing == true) Rela.core?.toggle()
+            lost(passing = false)
         }
     }
     private var noisyOn = false
@@ -89,9 +96,10 @@ class RelaService : MediaSessionService() {
             )
             .build()
         scope.launch {
-            combine(Rela.player, Rela.queue, Rela.subwave) { s, q, sw ->
-                facadeView(s, q, sw?.takeIf { it.active }?.let { json(it.nowJson)["title"].text() } ?: "")
-            }.collect { facade.update(it, art) }
+            combine(Rela.player, Rela.queue, Rela.subwave, art) { s, q, sw, a ->
+                val view = facadeView(s, q, sw?.takeIf { it.active }?.let { json(it.nowJson)["title"].text() } ?: "")
+                view to a?.takeIf { it.first == coverId(s, sw) }?.second // never the last song's
+            }.collect { (view, bytes) -> facade.update(view, bytes) }
         }
         scope.launch {
             Rela.player.map { it?.playing == true }.distinctUntilChanged().collect(::playingChanged)
@@ -99,17 +107,15 @@ class RelaService : MediaSessionService() {
         scope.launch { Rela.sync.map(::keepAlive).distinctUntilChanged().collect { triggerNotificationUpdate() } }
         scope.launch {
             // the notification's cover: fetched through the core's cache when the song changes
-            Rela.player.map { it?.let { s -> json(s.currentJson)["coverArt"].text() } ?: "" }.distinctUntilChanged().collect { id ->
-                art = if (id.isEmpty()) null else Rela.core?.cover(id, 512u)?.let { id to it }
-                facade.update(facadeView(Rela.player.value, Rela.queue.value), art)
+            combine(Rela.player, Rela.subwave, ::coverId).distinctUntilChanged().collectLatest { id ->
+                art.value = if (id.isEmpty()) null else Rela.core?.cover(id, 512u)?.let { id to it }
             }
         }
     }
 
     private fun playingChanged(playing: Boolean) {
         if (playing) {
-            focusLostWhilePlaying = false // playing again, by hand or by us: no resume is owed any more
-            audio.requestAudioFocus(focus)
+            sound.playing(focus = audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
             if (!noisyOn) {
                 ContextCompat.registerReceiver(this, noisy, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), ContextCompat.RECEIVER_NOT_EXPORTED)
                 noisyOn = true
@@ -117,7 +123,7 @@ class RelaService : MediaSessionService() {
         } else if (noisyOn) {
             unregisterReceiver(noisy)
             noisyOn = false
-            if (!focusLostWhilePlaying) audio.abandonAudioFocusRequest(focus)
+            if (!sound.waiting) audio.abandonAudioFocusRequest(focus)
         }
     }
 
@@ -129,7 +135,7 @@ class RelaService : MediaSessionService() {
 
     /** Swiped away from recents: the app closes, music and listening together too. */
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (Rela.player.value?.playing == true) Rela.core?.toggle()
+        lost(passing = false)
         stopSelf()
     }
 

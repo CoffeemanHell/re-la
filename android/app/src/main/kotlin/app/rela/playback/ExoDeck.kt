@@ -39,6 +39,8 @@ class ExoDeck(context: Context, private val index: UInt, private val report: (UI
     private val main = Handler(Looper.getMainLooper())
     private val logic = DeckLogic { report(index, it) }
     private var released = false
+    private var level = 1f
+    private var muted = false
     private val player: ExoPlayer = ExoPlayer.Builder(context, renderers(context, AudioPrefs.floatOutput(context))).build().apply {
         if (AudioPrefs.offload(context)) trackSelectionParameters = trackSelectionParameters.buildUpon().setAudioOffloadPreferences(
             AudioOffloadPreferences.Builder()
@@ -55,9 +57,10 @@ class ExoDeck(context: Context, private val index: UInt, private val report: (UI
         addAnalyticsListener(Output())
     }
 
+    /** While it plays: paused, ended or buffering the position stands still. */
     private val poll = object : Runnable {
         override fun run() {
-            if (released || player.mediaItemCount == 0) return
+            if (released || !player.isPlaying) return
             logic.position(player.currentPosition)
             main.postDelayed(this, 100)
         }
@@ -72,8 +75,6 @@ class ExoDeck(context: Context, private val index: UInt, private val report: (UI
         logic.started()
         playWhenReady = !paused
         prepare()
-        main.removeCallbacks(poll)
-        main.post(poll)
     }
 
     override fun append(url: String) = on { addMediaItem(MediaItem.fromUri(url)) }
@@ -88,14 +89,22 @@ class ExoDeck(context: Context, private val index: UInt, private val report: (UI
 
     override fun seek(seconds: Double) = on { seekTo((seconds * 1000).toLong()) }
 
-    override fun setVolume(volume: Double) = on { this.volume = exoVolume(volume) }
+    override fun setVolume(volume: Double) = on {
+        level = exoVolume(volume)
+        this.volume = if (muted) 0f else level
+    }
+
+    /** Silent whatever volume the core sets, until it is lifted. */
+    fun mute(mute: Boolean) = on {
+        muted = mute
+        volume = if (mute) 0f else level
+    }
 
     override fun setSpeed(speed: Double) = on { playbackParameters = PlaybackParameters(speed.toFloat()) }
 
     override fun stop() = on {
         stop()
         clearMediaItems()
-        main.removeCallbacks(poll)
         logic.stopped()
     }
 
@@ -109,10 +118,18 @@ class ExoDeck(context: Context, private val index: UInt, private val report: (UI
     private inner class Events : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
             when (state) {
-                Player.STATE_READY -> logic.ready(player.duration)
+                Player.STATE_READY -> {
+                    logic.ready(player.duration)
+                    logic.position(player.currentPosition) // paused, too: where it opened or a seek landed
+                }
                 Player.STATE_ENDED -> logic.ended()
                 else -> Unit
             }
+        }
+
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            main.removeCallbacks(poll)
+            if (isPlaying) main.post(poll)
         }
 
         override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
@@ -131,16 +148,21 @@ class ExoDeck(context: Context, private val index: UInt, private val report: (UI
             val at = (error as? ExoPlaybackException)?.mediaPeriodId?.periodUid
             val t = player.currentTimeline
             val ahead = at != null && !t.isEmpty && at != t.getUidOfPeriod(player.currentPeriodIndex)
-            if (ahead) logic.failedAhead(message) else logic.failed(message)
+            when {
+                ahead -> logic.failedAhead(message)
+                player.hasNextMediaItem() -> {
+                    logic.failedIntoNext(message)
+                    player.seekToNextMediaItem()
+                    player.prepare()
+                }
+                else -> logic.failed(message)
+            }
         }
 
         override fun onTracksChanged(tracks: Tracks) {
-            val f = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }?.getTrackFormat(0) ?: return
-            report(index, DeckNote.Prop("audio-params/format", codecName(f.sampleMimeType)))
-            if (f.sampleRate > 0) report(index, DeckNote.Prop("audio-params/samplerate", f.sampleRate.toString()))
-            if (f.channelCount > 0) report(index, DeckNote.Prop("audio-params/channel-count", f.channelCount.toString()))
-            val bitrate = if (f.averageBitrate > 0) f.averageBitrate else f.bitrate
-            report(index, DeckNote.Bitrate(bitrate.takeIf { it > 0 }?.toDouble()))
+            val f = tracks.groups.firstOrNull { it.type == C.TRACK_TYPE_AUDIO && it.isSelected }?.getTrackFormat(0)
+            trackNotes(f?.sampleMimeType, f?.sampleRate ?: 0, f?.channelCount ?: 0, f?.run { if (averageBitrate > 0) averageBitrate else bitrate } ?: 0)
+                .forEach { report(index, it) }
         }
     }
 
@@ -159,6 +181,8 @@ class ExoDecks(private val context: Context, private val report: (UInt, DeckNote
     val decks = mutableListOf<ExoDeck>()
 
     override fun makeDeck(index: UInt): DeckOut = ExoDeck(context, index, report).also { decks += it }
+
+    fun mute(mute: Boolean) = decks.forEach { it.mute(mute) }
 
     fun release() = decks.forEach { it.release() }
 }

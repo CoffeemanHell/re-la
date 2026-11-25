@@ -75,6 +75,7 @@ struct SyncState {
     sent: Vec<(String, Value)>,
     started: Vec<String>,
     stopped: Vec<bool>,
+    unfollowed: bool,
 }
 
 #[derive(Clone, Default)]
@@ -98,6 +99,9 @@ impl SyncPort for FakeSync {
     }
     fn start(&self, url: String, _user: String, _token: String, _salt: String) {
         self.0.lock().unwrap().started.push(url);
+    }
+    fn unfollow(&self) {
+        self.0.lock().unwrap().unfollowed = true;
     }
     fn stop(&self, bye: bool) {
         self.0.lock().unwrap().stopped.push(bye);
@@ -653,7 +657,7 @@ fn failed(code: i64, msg: &str) -> Option<Value> {
 
 fn answers(m: &str, _q: &[(String, String)]) -> Option<Value> {
     match m {
-        "ping" | "savePlayQueue" | "scrobble" | "reportPlayback" | "setRating" => ok(json!({})),
+        "ping" | "savePlayQueue" | "scrobble" | "reportPlayback" | "setRating" | "star" | "unstar" => ok(json!({})),
         "getOpenSubsonicExtensions" => ok(json!({"openSubsonicExtensions": [{"name": "playbackReport", "versions": [1]}]})),
         "getPlayQueue" => ok(json!({})),
         _ => None,
@@ -1129,6 +1133,35 @@ fn set_rating_updates_queue_copy() {
 }
 
 #[test]
+fn star_updates_queue_copy() {
+    let mut t = T::new("star");
+    t.c.start();
+    t.run(false, answers);
+    t.c.play(songs(2), 0);
+    let mut call = |method: &str, key: &str| {
+        t.c.request(1, method, json!({key: "s1"}).as_object().cloned().unwrap(), true);
+        let n = t.published().len();
+        t.run(false, answers);
+        (t.c.snapshot().queue[1].get("starred").is_some(), t.published().len() - n)
+    };
+    assert_eq!(call("star", "albumId"), (false, 0), "an album of that id");
+    assert_eq!(call("star", "id"), (true, 1));
+    assert_eq!(call("unstar", "id"), (false, 1));
+}
+
+#[test]
+fn a_queue_save_that_fails_says_nothing() {
+    let mut t = T::new("save-quiet");
+    t.c.start();
+    t.run(false, answers);
+    t.c.play(songs(1), 0);
+    t.c.set_status("");
+    let calls = t.run(true, |m, q| if m == "savePlayQueue" { None } else { answers(m, q) });
+    assert!(has_call(&calls, "savePlayQueue"));
+    assert_eq!(t.c.snapshot().status, "");
+}
+
+#[test]
 fn demo_has_no_token() {
     let mut t = T::new("demo");
     t.c.demo();
@@ -1321,4 +1354,262 @@ fn the_audio_device_reaches_both_decks() {
     assert!(t.has("0 device pipewire/dac") && t.has("1 device pipewire/dac"), "{:?}", t.log());
     let t = T::with("device", t.dir.clone(), t.settings.clone());
     assert!(t.has("0 device pipewire/dac") && t.has("1 device pipewire/dac"), "at start too: {:?}", t.log());
+}
+
+// ------------------------------------------------------------ songs that fail, end or are short
+
+fn eof() -> DeckEvent {
+    DeckEvent::EndFile { reason: EndReason::Eof, error: String::new() }
+}
+
+fn long(id: &str, duration: i64) -> Value {
+    json!({"id": id, "title": id, "artist": "A", "duration": duration})
+}
+
+#[test]
+fn a_preload_that_failed_is_tried_once_more_when_it_plays() {
+    let mut t = T::new("preload-error");
+    t.c.online = true;
+    t.c.play(songs(3), 0);
+    t.at(180.0);
+    t.clear();
+    t.c.tick();
+    for _ in 0..20 {
+        ev(&mut t, 1, DeckEvent::EndFile { reason: EndReason::Error, error: "x".into() });
+        t.at(181.0);
+        t.c.tick();
+    }
+    assert_eq!(t.log().iter().filter(|l| l.starts_with("1 load")).count(), 1, "not on every tick");
+    t.at(194.5);
+    t.clear();
+    t.c.tick();
+    assert!(t.has("1 load s1 paused=true") && t.has("1 pause false"), "{:?}", t.log());
+    ev(&mut t, 1, DeckEvent::EndFile { reason: EndReason::Error, error: "x".into() });
+    assert_eq!(t.current(), "s2", "now it is an error like any other");
+}
+
+#[test]
+fn play_after_the_queue_end_opens_the_song_again() {
+    let mut t = T::new("after-end");
+    t.c.play(songs(1), 0);
+    t.at(199.0);
+    ev(&mut t, 0, eof());
+    assert!(!t.c.snapshot().playing);
+    t.clear();
+    t.c.toggle();
+    assert!(t.has("0 load s0 paused=false"), "{:?}", t.log());
+}
+
+#[test]
+fn a_song_shorter_than_the_crossfade_is_heard() {
+    let mut t = T::new("short");
+    t.c.play(vec![long("a", 4), song("b")], 0);
+    let anchor = t.c.anchor;
+    t.at(0.1);
+    t.c.tick();
+    assert_eq!(t.current(), "a");
+    t.at(2.1);
+    t.c.tick();
+    assert_eq!((t.current(), t.c.anchor - anchor), ("b".into(), 2000.0));
+    t.advance(2000.0);
+    t.c.tick();
+    assert!(!t.c.fading, "the fade is as short as the overlap");
+    // joining or restoring does not walk past it either, nor past songs of unknown length
+    t.c.apply(vec![long("x", 5), song("y")], 0, false, 6, 0.0, 0.0);
+    assert_eq!(t.current(), "x");
+    t.c.apply(vec![json!({"id": "p"}), json!({"id": "q"}), json!({"id": "r"})], 0, false, 6, 0.0, 12.0);
+    assert_eq!((t.current(), t.c.snapshot().position), ("p".into(), 12.0));
+}
+
+#[test]
+fn a_gapless_move_ends_the_skip_streak() {
+    let mut t = T::new("gapless-skips");
+    t.c.set_crossfade(0);
+    t.c.play(songs(3), 0);
+    t.c.skips = 2;
+    t.at(190.0);
+    t.c.tick();
+    ev(&mut t, 0, DeckEvent::StartFile);
+    assert_eq!((t.current(), t.c.skips), ("s1".into(), 0));
+}
+
+#[test]
+fn a_seek_while_loading_is_kept() {
+    let mut t = T::new("seek-loading");
+    t.c.play(songs(1), 0);
+    t.c.seek(60.0);
+    assert_eq!(t.c.snapshot().position, 60.0);
+    t.clear();
+    ev(&mut t, 0, DeckEvent::FileLoaded);
+    assert_eq!(t.log(), ["0 seek 60.0"]);
+    t.clear();
+    t.c.seek(-5.0);
+    assert_eq!(t.log(), ["0 seek 0.0"], "mpv would count from the end");
+}
+
+#[test]
+fn removing_the_last_song_leaves_the_one_before_it_paused() {
+    let mut t = T::new("remove-last");
+    t.c.play(songs(2), 1);
+    t.c.remove(1);
+    let s = t.c.snapshot();
+    assert_eq!((t.current(), s.index, s.playing), ("s0".into(), 0, false));
+    t.c.remove(0);
+    assert_eq!(t.c.snapshot().index, -1);
+}
+
+#[test]
+fn offline_a_song_not_held_leaves_the_queue_alone() {
+    let mut t = T::new("offline-refuse");
+    t.c.play(songs(2), 0);
+    t.c.offline = true;
+    t.c.play(vec![song("z")], 0);
+    t.c.add(vec![song("z")], 0);
+    assert_eq!(t.ids(), ["s0", "s1"]);
+    assert_eq!(t.c.snapshot().status, "Çevrimdışı: bu şarkı inmemiş");
+}
+
+#[test]
+fn a_new_quality_preloads_again() {
+    let mut t = T::new("quality-preload");
+    t.c.play(songs(2), 0);
+    t.at(180.0);
+    t.c.tick();
+    for mobile in [true, false] {
+        t.clear();
+        t.c.set_mobile(mobile);
+        t.c.tick();
+        assert!(t.has("1 load s1 paused=true"), "{:?}", t.log());
+    }
+    t.clear();
+    t.c.set_option("transcodeWifi", json!("opus-128"));
+    t.c.tick();
+    assert!(t.has("1 load s1 paused=true"), "{:?}", t.log());
+}
+
+#[test]
+fn a_followed_station_keeps_the_roots_place() {
+    let mut t = T::new("station-place");
+    t.c.online = true;
+    t.c.play(songs(3), 0);
+    t.at(99.0);
+    t.follow("root");
+    let state = json!({"queue": songs(2), "index": 1, "playing": true, "anchor": 0, "xfade": 6, "position": 12, "station": "1"});
+    t.c.on_sync(&SyncEvent::StateReceived(state.as_object().cloned().unwrap()));
+    t.run(false, stations);
+    assert_eq!((t.c.snapshot().station["id"].clone(), t.c.snapshot().position), (json!("1"), 12.0));
+}
+
+#[test]
+fn pause_here_stops_the_queue_or_the_station() {
+    let mut t = T::new("pause-here");
+    t.c.online = true;
+    t.c.play(songs(2), 0);
+    t.at(30.0);
+    t.c.pause_here();
+    let s = t.c.snapshot();
+    assert_eq!((s.playing, s.position), (false, 30.0));
+    t.c.play_station("1");
+    t.run(false, stations);
+    t.c.pause_here();
+    assert!(t.c.snapshot().station.is_empty() && !t.c.snapshot().playing);
+    assert!(!t.sync.0.lock().unwrap().unfollowed);
+}
+
+#[test]
+fn pause_here_leaves_the_root_playing() {
+    for station in ["", "1"] {
+        let mut t = T::new("pause-here-follower");
+        t.c.online = true;
+        t.follow("root");
+        let state = json!({"queue": songs(2), "index": 1, "playing": true, "anchor": t.c.server_now(), "xfade": 6, "position": 0, "station": station});
+        let state = SyncEvent::StateReceived(state.as_object().cloned().unwrap());
+        t.c.on_sync(&state);
+        t.run(false, stations);
+        assert!(t.c.snapshot().playing);
+        t.c.pause_here();
+        assert!(!t.c.snapshot().playing && t.sync.0.lock().unwrap().unfollowed);
+        assert!(t.sent().is_empty(), "nothing to the root: {:?}", t.sent());
+        t.c.on_sync(&state); // was on its way
+        t.run(false, stations);
+        t.follow("");
+        t.c.on_sync(&SyncEvent::Ended("unfollowed".into()));
+        assert!(!t.c.snapshot().playing && t.c.snapshot().station.is_empty(), "{station}");
+        // the next session starts as any other
+        t.follow("root");
+        t.c.on_sync(&state);
+        t.run(false, stations);
+        t.follow("");
+        t.c.on_sync(&SyncEvent::Ended("host-left".into()));
+        assert!(t.c.snapshot().playing, "{station}");
+    }
+}
+
+// ------------------------------------------------------------ whose queue it is
+
+#[test]
+fn logout_leaves_no_queue_for_the_next_user() {
+    let mut t = T::new("logout-queue");
+    t.c.start();
+    t.run(false, answers);
+    t.c.play(songs(2), 0);
+    t.c.tick();
+    t.c.logout();
+    let s = t.c.snapshot();
+    assert!(s.queue.is_empty() && s.index == -1 && !t.c.extending);
+    t.c.login("https://other.example.com", "bob", "pw");
+    t.run(false, answers);
+    t.c.on_sync(&SyncEvent::Connected);
+    let calls = t.run(true, answers);
+    assert!(!has_call(&calls, "savePlayQueue"), "{calls:?}");
+}
+
+#[test]
+fn a_queue_that_could_not_be_fetched_is_not_overwritten() {
+    let mut t = T::new("no-fetch");
+    let down = |m: &str, q: &[(String, String)]| if m == "getPlayQueue" { None } else { answers(m, q) };
+    t.c.start();
+    t.run(false, down);
+    t.c.on_sync(&SyncEvent::Connected);
+    let calls = t.run(true, down);
+    assert!(!has_call(&calls, "savePlayQueue"), "{calls:?}");
+    let quit = t.c.persist_now();
+    assert!(!quit.iter().any(|j| matches!(j, Job::Api { method, .. } if method == "savePlayQueue")));
+}
+
+#[test]
+fn a_saved_queue_too_long_for_the_relay_is_cut_around_the_song() {
+    let mut t = T::new("long-queue");
+    t.c.start();
+    t.run(false, |m, q| match m {
+        "getPlayQueue" => ok(json!({"playQueue": {"entry": songs(1500), "current": "s1200", "position": 0}})),
+        _ => answers(m, q),
+    });
+    assert_eq!((t.c.queue.len(), t.current()), (crate::queue::MAX_QUEUE, "s1200".into()));
+}
+
+#[test]
+fn a_new_queue_does_not_wait_for_the_old_ones_songs() {
+    let mut t = T::new("extend-reset");
+    t.c.online = true;
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    assert!(t.c.extending);
+    t.c.play(vec![song("n0")], 0);
+    assert!(!t.c.extending);
+}
+
+#[test]
+fn an_unusable_saved_address_fails_like_a_server_down() {
+    let dir = tmp("bad-url");
+    let s: Arc<dyn Settings> = Arc::new(JsonSettings::open(dir.join("settings.json")));
+    for (k, v) in [("url", "music.example.com"), ("user", "ana"), ("salt", "s"), ("token", "t")] {
+        s.set(k, json!(v));
+    }
+    let mut t = T::with("bad-url", dir, s);
+    t.c.start();
+    let job = t.c.take_jobs().remove(0);
+    let Job::Timer { then, .. } = job else { panic!("no call goes out") };
+    then(&mut t.c);
+    assert!(t.c.snapshot().login_failed && !t.c.snapshot().connecting);
 }

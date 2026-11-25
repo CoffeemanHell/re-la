@@ -1,6 +1,6 @@
 //! The server side of the player: login, the saved queue, listening together, calls from themes, demo, downloads.
 use super::state::{Job, PlayerCore, queue_key};
-use crate::queue::{apply_rating, for_themes, login_error, next_index, readable, subsonic_query, text, writable};
+use crate::queue::{apply_rating, apply_star, for_themes, login_error, next_index, queue_window, readable, subsonic_query, text, writable};
 use crate::subsonic::Login;
 use crate::subwave::SubwaveSnapshot;
 use crate::sync::{SyncEvent, relay_url};
@@ -53,9 +53,15 @@ impl PlayerCore {
         l.token.clear();
         self.set_login(l);
         self.sync.stop(true);
+        self.leaving = false;
         let _ = std::fs::remove_file(self.local_queue_file());
         self.local_key.clear();
         self.settings.remove("token");
+        self.queue = Arc::default(); // never the next user's, nor saved to their server
+        self.before.clear();
+        self.extend_seq += 1;
+        self.extending = false;
+        self.load(-1, 0.0);
         self.connecting = false;
         self.fresh = false;
         self.login_failed = false;
@@ -103,7 +109,10 @@ impl PlayerCore {
             let relay = relay_url(&l.server, &text(c.options.get("relayUrl").unwrap_or(&Value::Null)));
             c.sync.start(relay, l.user, l.token, l.salt);
             c.restore_queue();
-            c.api("getOpenSubsonicExtensions", vec![], true, |c, r| {
+            c.api("getOpenSubsonicExtensions", vec![], true, move |c, r| {
+                if g != c.generation {
+                    return;
+                }
                 let ext = r.and_then(|r| r["openSubsonicExtensions"].as_array().cloned()).unwrap_or_default();
                 if ext.iter().any(|e| e["name"] == "playbackReport") {
                     c.playback_report = true;
@@ -144,16 +153,17 @@ impl PlayerCore {
         self.api("getPlayQueue", vec![], false, move |c, r| {
             let Some(r) = r else { return };
             let pq = &r["playQueue"];
-            let q = pq["entry"].as_array().cloned().unwrap_or_default();
+            let mut q = pq["entry"].as_array().cloned().unwrap_or_default();
             if g != c.generation || q.is_empty() || (!c.queue.is_empty() && !c.untouched()) || c.following() || !c.station.is_empty() {
                 return;
             }
             c.local_key.clear();
             let cur = text(&pq["current"]);
-            let i = q.iter().rposition(|s| text(&s["id"]) == cur).unwrap_or(0) as i64;
+            let mut i = q.iter().rposition(|s| text(&s["id"]) == cur).unwrap_or(0);
+            q = queue_window(&q, &mut i); // another client may have saved more than the relay takes
             let xf = c.xfade;
             // the same song and place as from disk: the deck stays as it is
-            c.apply(q, i, false, xf, 0.0, pq["position"].as_f64().unwrap_or(0.0) / 1000.0);
+            c.apply(q, i as i64, false, xf, 0.0, pq["position"].as_f64().unwrap_or(0.0) / 1000.0);
             c.publish(); // the relay may already hold our empty state from before the reply
         });
     }
@@ -178,7 +188,7 @@ impl PlayerCore {
     pub fn persist_now(&mut self) -> Vec<Job> {
         self.persist_seq += 1; // the debounced save is this one now
         let mut out: Vec<Job> = self.report_stopped().into_iter().collect();
-        if self.online && !self.login.token.is_empty() && !self.following() {
+        if self.online && !self.login.token.is_empty() && !self.following() && !self.queue.is_empty() {
             if let Some(client) = self.client.clone() {
                 out.push(Job::Api { client, method: "savePlayQueue".into(), query: self.play_queue_query(), then: Box::new(|_, _| {}) });
             }
@@ -198,6 +208,9 @@ impl PlayerCore {
             SyncEvent::Connected => self.publish(), // the first state after a (re)connect carries the queue
             SyncEvent::Ended(_) => {
                 // stopped following: we are our own root now, with our own modes
+                if std::mem::take(&mut self.leaving) {
+                    self.stop_here();
+                }
                 self.shuffle = self.settings.get_bool("shuffle", false);
                 self.repeat = self.settings.get_i64("repeat", 0);
                 self.before.clear();
@@ -275,8 +288,13 @@ impl PlayerCore {
         self.xfade = xfade;
         let mut pos = if play { (self.server_now() - anchor) / 1000.0 } else { position };
         // joined late: walk past tracks that already finished
-        while i >= 0 && i + 1 < self.queue.len() as i64 && pos > self.song_dur(i) - xfade as f64 {
-            pos -= self.song_dur(i) - xfade as f64;
+        while i >= 0 && i + 1 < self.queue.len() as i64 {
+            let dur = self.song_dur(i);
+            let step = dur - self.fade_of(dur);
+            if step <= 0.0 || pos <= step {
+                break; // no duration known: nothing to walk by
+            }
+            pos -= step;
             i += 1;
         }
         // A follower gets the root's state often (seeks, re-anchors): the gapless next stays queued while it is still next.
@@ -341,13 +359,22 @@ impl PlayerCore {
                 return c.replies.push((id, None, false));
             }
             let Some(r) = r else { return c.replies.push((id, None, true)) };
-            // the queue keeps song copies: let them (and followers) know the new rating
-            if m == "setRating" {
-                let rating = params["rating"].as_i64().or_else(|| text(&params["rating"]).parse().ok()).unwrap_or(0);
-                if apply_rating(Arc::make_mut(&mut c.queue).as_mut_slice(), &text(&params["id"]), rating) > 0 {
-                    c.publish();
-                    c.state_changed();
+            // the queue keeps song copies: let them (and followers) know the new rating or favorite
+            let changed = match m.as_str() {
+                "setRating" => {
+                    let rating = params["rating"].as_i64().or_else(|| text(&params["rating"]).parse().ok()).unwrap_or(0);
+                    apply_rating(Arc::make_mut(&mut c.queue).as_mut_slice(), &text(&params["id"]), rating)
                 }
+                // albums and artists come as albumId and artistId
+                "star" | "unstar" => {
+                    let ids = subsonic_query(&params).into_iter().filter(|(k, _)| k == "id");
+                    ids.map(|(_, id)| apply_star(Arc::make_mut(&mut c.queue).as_mut_slice(), &id, m == "star")).sum()
+                }
+                _ => 0,
+            };
+            if changed > 0 {
+                c.publish();
+                c.state_changed();
             }
             c.replies.push((id, Some(for_themes(&m, r)), true));
         });

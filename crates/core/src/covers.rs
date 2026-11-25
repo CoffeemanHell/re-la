@@ -3,6 +3,7 @@
 use crate::disk::{hashed, touch, write_atomic};
 use crate::queue::without_login;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Freshness when the server says nothing.
@@ -11,6 +12,8 @@ const DEFAULT_FRESH: Duration = Duration::from_secs(24 * 3600);
 pub struct CoverCache {
     dir: PathBuf,
     cap: u64,
+    /// Bytes held, at most: what is written again counts twice until evict counts the files (as the first store does).
+    held: AtomicU64,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
@@ -54,7 +57,7 @@ impl CoverCache {
             let _ = std::fs::remove_dir_all(old);
         }
         let _ = std::fs::create_dir_all(&dir);
-        CoverCache { dir, cap: cap_bytes }
+        CoverCache { dir, cap: cap_bytes, held: AtomicU64::new(u64::MAX) }
     }
 
     fn paths(&self, key: &str) -> (PathBuf, PathBuf) {
@@ -72,14 +75,17 @@ impl CoverCache {
 
     fn store(&self, key: &str, body: &[u8], meta: &Meta) {
         let (img, m) = self.paths(key);
-        if write_atomic(&img, body).is_ok() && write_atomic(&m, &serde_json::to_vec(meta).unwrap_or_default()).is_ok() {
-            self.evict();
+        let meta = serde_json::to_vec(meta).unwrap_or_default();
+        if write_atomic(&img, body).is_ok() && write_atomic(&m, &meta).is_ok() {
+            let held = self.held.load(Ordering::Relaxed).saturating_add((body.len() + meta.len()) as u64);
+            self.held.store(if held > self.cap { self.evict() } else { held }, Ordering::Relaxed);
         }
     }
 
-    /// Over the cap: the entries used longest ago go first.
-    fn evict(&self) {
-        let Ok(rd) = std::fs::read_dir(&self.dir) else { return };
+    /// Over the cap: the entries used longest ago go first, down to 90 % of it, so a full cache is not read through for
+    /// every cover. The bytes left.
+    fn evict(&self) -> u64 {
+        let Ok(rd) = std::fs::read_dir(&self.dir) else { return 0 };
         let mut entries: Vec<(SystemTime, u64, PathBuf)> = rd
             .flatten()
             .filter(|e| e.path().extension().is_some_and(|x| x == "img"))
@@ -91,15 +97,19 @@ impl CoverCache {
             })
             .collect();
         let mut total: u64 = entries.iter().map(|e| e.1).sum();
+        if total <= self.cap {
+            return total;
+        }
         entries.sort_by_key(|e| e.0);
         for (_, len, p) in entries {
-            if total <= self.cap {
+            if total <= self.cap - self.cap / 10 {
                 break;
             }
             let _ = std::fs::remove_file(&p);
             let _ = std::fs::remove_file(p.with_extension("meta"));
             total = total.saturating_sub(len);
         }
+        total
     }
 
     /// The cover's bytes: a fresh entry without asking; otherwise the server (revalidating with the stored ETag or
@@ -138,7 +148,7 @@ impl CoverCache {
                 if etag.is_some() {
                     m.etag = etag;
                 }
-                self.store(&key, &body, &m);
+                let _ = write_atomic(&self.paths(&key).1, &serde_json::to_vec(&m).unwrap_or_default()); // the image is the same
                 Some(body)
             }
             200 => {
