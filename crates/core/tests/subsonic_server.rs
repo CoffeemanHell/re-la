@@ -3,7 +3,6 @@ use axum::Router;
 use axum::extract::{Path, RawQuery, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use axum::routing::get;
 use rela_core::queue::{NO_SERVER, NOT_SUBSONIC};
 use rela_core::subsonic::{Login, Subsonic};
 use serde_json::{Map, Value, json};
@@ -11,7 +10,7 @@ use std::sync::{Arc, Mutex};
 
 type Log = Arc<Mutex<Vec<(String, String)>>>; // (method, raw query)
 
-async fn handle(State(log): State<Log>, Path(method): Path<String>, RawQuery(q): RawQuery) -> Response {
+async fn handle(State(log): State<Log>, Path(method): Path<String>, RawQuery(q): RawQuery, body: axum::body::Bytes) -> Response {
     log.lock().unwrap().push((method.clone(), q.unwrap_or_default()));
     let ok = |extra: Value| {
         let mut r = json!({"status": "ok", "version": "1.16.1"});
@@ -19,6 +18,12 @@ async fn handle(State(log): State<Log>, Path(method): Path<String>, RawQuery(q):
         axum::Json(json!({"subsonic-response": r})).into_response()
     };
     match method.as_str() {
+        "getRandomSongs" => ok(json!({"randomSongs": {"song": [{"id": "r1"}]}})),
+        "getTranscodeDecision" => {
+            let wanted: Value = serde_json::from_slice(&body).unwrap();
+            let format = wanted["transcodingProfiles"][0]["audioCodec"].as_str().unwrap().to_string();
+            ok(json!({"transcodeDecision": {"canDirectPlay": false, "canTranscode": format == "opus" || format == "mp3"}}))
+        }
         "ping" | "updatePlaylist" => ok(json!({})),
         "getAlbum" => ok(json!({"album": {"id": "1", "name": "A"}})),
         "getInternetRadioStations" => ok(json!({"internetRadioStations": {"internetRadioStation": [
@@ -32,7 +37,7 @@ async fn handle(State(log): State<Log>, Path(method): Path<String>, RawQuery(q):
 
 async fn server() -> (String, Log) {
     let log: Log = Default::default();
-    let app = Router::new().route("/rest/{method}", get(handle)).with_state(log.clone());
+    let app = Router::new().route("/rest/{method}", axum::routing::any(handle)).with_state(log.clone());
     let l = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
     let addr = l.local_addr().unwrap();
     tokio::spawn(async move { axum::serve(l, app).await.unwrap() });
@@ -142,4 +147,13 @@ async fn list_params_repeat() {
     let (_, q) = log.lock().unwrap().last().unwrap().clone();
     assert_eq!(q.matches("songIdToAdd=").count(), 2);
     assert!(q.contains("name=R%26B%20%2B%20%C5%9Eark%C4%B1"), "{q}");
+}
+
+#[tokio::test]
+async fn only_the_formats_the_server_transcodes_to() {
+    let (url, log) = server().await;
+    let c = Subsonic::new(Login::from_password(&url, "ana", "pw").unwrap());
+    assert_eq!(c.transcode_formats().await, ["opus", "mp3"]);
+    let asked = log.lock().unwrap().iter().find(|(m, _)| m == "getTranscodeDecision").unwrap().1.clone();
+    assert!(asked.starts_with("mediaId=r1&mediaType=song&"), "{asked}");
 }

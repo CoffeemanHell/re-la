@@ -538,6 +538,59 @@ Item {
             m.openSettings("DJ")
             tryVerify(() => F.text(s.contentItem, trUp("DJ modu")) !== null)
         }
+        function test_settings_output_and_cache() {
+            Player.audioDevices = [{ name: "pipewire/dac", description: "DAC" }]
+            const m = createTemporaryObject(mainWindow, null)
+            m.openSettings("Çalma")
+            const named = n => F.all(m.settingsDialog.contentItem, it => it.objectName === n)[0]
+            verify(named("output_auto").on)
+            tryVerify(() => m.settingsDialog.opened && named("output_pipewire/dac").x > 0)
+            mouseClick(named("output_pipewire/dac"))
+            compare(Player.options.audioDevice, "pipewire/dac")
+            m.openSettings("Önbellek")
+            tryVerify(() => named("cache_5").visible)
+            mouseClick(named("cache_5"))
+            compare(Player.options.offlineGb, 5)
+            verify(named("cache_5").on)
+        }
+        function test_shortcuts_are_set_by_pressing_the_keys() {
+            const m = createTemporaryObject(mainWindow, null)
+            m.openSettings("Klavye")
+            const named = n => F.all(m.settingsDialog.contentItem, it => it.objectName === n)[0]
+            tryVerify(() => named("key_keyNext") && named("key_keyNext").visible)
+            const b = named("key_keyNext")
+            compare(b.text, "Ctrl+Right")
+            mouseClick(b)
+            keyClick(Qt.Key_Space) // the play key: taken
+            compare(Player.called("toggle").length, 0)
+            compare(Player.called("setOption").length, 0)
+            keyClick(Qt.Key_K, Qt.ControlModifier | Qt.ShiftModifier)
+            compare(Player.options.keyNext, "Ctrl+Shift+K")
+            compare(b.text, "Ctrl+Shift+K")
+            mouseClick(b)
+            keyClick(Qt.Key_Escape)
+            verify(m.settingsDialog.visible)
+            compare(Player.options.keyNext, "Ctrl+Shift+K")
+            m.settingsDialog.close()
+            tryVerify(() => !m.settingsDialog.visible)
+            keyClick(Qt.Key_K, Qt.ControlModifier | Qt.ShiftModifier)
+            compare(Player.called("next").length, 1)
+            keyClick(Qt.Key_Right, Qt.ControlModifier)
+            compare(Player.called("next").length, 1, "the standard keys no longer do")
+            m.openSettings("Klavye")
+            tryVerify(() => m.settingsDialog.opened)
+            mouseClick(named("reset_keyNext"))
+            compare(b.text, "Ctrl+Right")
+        }
+        function test_offline_opens_the_queue_not_the_login() {
+            Player.online = false; Player.offline = true
+            const m = createTemporaryObject(mainWindow, null)
+            compare(m.page, "nowplaying")
+            verify(m.footer.visible && !F.text(m.contentItem, hd("Vazgeç")))
+            Player.offline = false; Player.online = true
+            Player.status = "x"
+            compare(m.page, "nowplaying", "stays there when the server is back")
+        }
         function test_top_nav_centered() {
             const m = createTemporaryObject(mainWindow, null)
             const nav = F.all(m.header, it => it.objectName === "nav")[0]

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import shared
 import Rela
 
 Dialog {
@@ -10,7 +11,7 @@ Dialog {
     property var w // the window
     property string cat: "Genel"
     function show(c) { cat = c || "Genel"; open() }
-    readonly property var cats: [["Genel", "GENEL"], ["Çalma", "ÇALMA"], ["DJ", "DJ"], ["Scrobble", "SCROBBLE"], ["Hesap", "HESAP"], ["Hakkında", "HAKKINDA"]]
+    readonly property var cats: [["Genel", "GENEL"], ["Çalma", "ÇALMA"], ["DJ", "DJ"], ["Önbellek", "ÖNBELLEK"], ["Klavye", "KLAVYE"], ["Scrobble", "SCROBBLE"], ["Hesap", "HESAP"], ["Hakkında", "HAKKINDA"]]
 
     component Setting: ColumnLayout {
         id: st
@@ -37,6 +38,7 @@ Dialog {
     }
 
     objectName: "settings"
+    onOpened: Player.refreshAudioDevices()
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(760, d.w.width - 40); height: Math.min(560, d.w.height - 40)
@@ -90,8 +92,8 @@ Dialog {
                     }
                     SwitchRow {
                         visible: App.trayAvailable
-                        label: "KAPATINCA ARKA PLANDA ÇAL"
-                        hint: "PENCEREYİ KAPATINCA MÜZİK DURMAZ, TEPSİ SİMGESİNDEN KONTROL EDİLİR. ÇIKIŞ: SİMGEYE SAĞ TIK."
+                        label: "SİSTEM TEPSİSİ"
+                        hint: "TEPSİDE SİMGE DURUR; PENCEREYİ KAPATINCA MÜZİK DURMAZ. ÇIKIŞ: SİMGEYE SAĞ TIK. KAPALIYKEN PENCEREYİ KAPATMAK UYGULAMADAN ÇIKAR."
                         checked: Player.options.closeToTray === true
                         onToggled: on => Player.setOption("closeToTray", on)
                     }
@@ -106,6 +108,22 @@ Dialog {
 
                 Page {
                     name: "Çalma"
+                    Mono { text: "SES ÇIKIŞI"; color: App.theme.muted }
+                    Flow {
+                        id: outputs
+                        Layout.fillWidth: true; spacing: 8
+                        Repeater {
+                            model: Util.outputs()
+                            Pill {
+                                required property var modelData
+                                objectName: "output_" + modelData.name
+                                width: Math.min(implicitWidth, outputs.width)
+                                text: modelData.name === "auto" ? "SİSTEM VARSAYILANI" : d.w.up(modelData.description)
+                                on: (Player.options.audioDevice || "auto") === modelData.name
+                                onClicked: Player.setOption("audioDevice", modelData.name)
+                            }
+                        }
+                    }
                     Setting {
                         label: "ŞARKI GEÇİŞİ (CROSSFADE)"
                         valueText: Player.crossfade ? Player.crossfade + " SN" : "KAPALI · GAPLESS"
@@ -159,6 +177,70 @@ Dialog {
                         valueText: (Player.options.radioBatch || 10) + " ŞARKI"
                         dots: 6; value: ((Player.options.radioBatch || 10) - 5) / 25
                         onPicked: v => Player.setOption("radioBatch", 5 + Math.round(v * 5) * 5)
+                    }
+                }
+
+                Page {
+                    name: "Önbellek"
+                    Hint { text: "DİNLEDİĞİN VE SIRADAKİ ŞARKILAR DİSKE İNER. SUNUCUYA ULAŞILAMAYINCA UYGULAMA SON KUYRUKLA AÇILIR, İNEN ŞARKILAR ÇALAR. KENDİN ATLADIĞIN BİR ŞARKI BİR KEZ ÇALARKEN, BİR KEZ DE ÖNBELLEK İÇİN İNER." }
+                    Mono { text: "BOYUT SINIRI"; color: App.theme.muted }
+                    Flow {
+                        Layout.fillWidth: true; spacing: 8
+                        Repeater {
+                            model: Util.cacheSizes
+                            Pill {
+                                required property int modelData
+                                objectName: "cache_" + modelData
+                                text: modelData ? modelData + " GB" : "KAPALI"
+                                on: (Player.options.offlineGb || 0) === modelData
+                                onClicked: Player.setOption("offlineGb", modelData)
+                            }
+                        }
+                    }
+                    Hint { text: "DOLUNCA EN UZUN SÜREDİR DİNLENMEYEN SİLİNİR." }
+                    Setting {
+                        enabled: Player.options.offlineGb > 0
+                        label: "ÖNDEN İNEN"
+                        valueText: (Player.options.offlineAhead || 0) + " ŞARKI"
+                        hint: "KUYRUKTA SIRADAKİ KAÇ ŞARKI DİSKTE HAZIR OLSUN."
+                        dots: 21; value: (Player.options.offlineAhead || 0) / 20
+                        onPicked: v => Player.setOption("offlineAhead", Math.round(v * 20))
+                    }
+                    RowLayout {
+                        Mono { text: "DİSKTE: " + d.w.up(Util.dataSize(Player.cacheBytes)); Layout.fillWidth: true }
+                        Pill { text: "TEMİZLE"; enabled: Player.cacheBytes > 0; onClicked: Player.clearSongCache() }
+                    }
+                }
+
+                Page {
+                    name: "Klavye"
+                    Hint { text: "DEĞİŞTİRMEK İÇİN KISAYOLA BAS, SONRA YENİ TUŞLARA. VAZGEÇMEK: ESC." }
+                    Repeater {
+                        model: Shortcuts.all
+                        RowLayout {
+                            id: keyRow
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 8
+                            ColumnLayout {
+                                Layout.fillWidth: true; spacing: 4
+                                Mono { text: d.w.up(keyRow.modelData.title.replace(/i/g, "İ")); Layout.fillWidth: true }
+                                Hint { visible: text !== ""; text: d.w.up(cap.problem.replace(/i/g, "İ")); color: App.theme.accent }
+                            }
+                            KeyCapture { id: cap; action: keyRow.modelData.key }
+                            Pill {
+                                objectName: "key_" + keyRow.modelData.key
+                                text: cap.on ? "TUŞLARA BAS…" : Shortcuts.label(keyRow.modelData.key)
+                                on: cap.on
+                                onClicked: cap.start()
+                            }
+                            Pill {
+                                objectName: "reset_" + keyRow.modelData.key
+                                text: "STANDART"
+                                enabled: !!Player.options[keyRow.modelData.key]
+                                onClicked: Player.setOption(keyRow.modelData.key, "")
+                            }
+                        }
                     }
                 }
 

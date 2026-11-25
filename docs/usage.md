@@ -33,6 +33,14 @@ While a SUB/WAVE station plays, re-la also tells Navidrome what is on air for **
 
 Hearts and requests go out from your own connection, so they are counted for you, not for the person you listen with.
 
+## Without the server
+
+With a size limit set (settings, **Önbellek**; on Android **Veri ve depolama**) re-la keeps songs on disk: the next ones in the queue (**Önden inen** says how many) and each song that counted as played. When the limit is reached, the one not heard for the longest time goes. If the server can't be reached at start, re-la opens with the last queue and plays the songs it has; it keeps trying to connect. Plays made meanwhile are not counted on the server. A song you jump to yourself is loaded twice, once for playing and once for the disk.
+
+## Transcoding (Android)
+
+**Veri ve depolama** has a format and a bitrate for Wi-Fi and for mobile data. Only the formats the server says it can make are listed (OpenSubsonic `transcoding`, recent Navidrome versions); without it only **Orijinal** is there. A change applies from the next song on, and a song that is already at or under the bitrate comes as it is.
+
 ## Shortcuts
 
 | Key | Action |
@@ -40,6 +48,9 @@ Hearts and requests go out from your own connection, so they are counted for you
 | Space | Play / pause |
 | Ctrl+→ / Ctrl+← | Next / previous |
 | Ctrl+F | Search |
+| Alt+← / Alt+→ | Back / forward |
+
+They can be changed in the settings (**Klavye**).
 
 Right-click a song, album, artist or playlist for more actions.
 
@@ -47,4 +58,5 @@ Right-click a song, album, artist or playlist for more actions.
 
 - **Cannot connect:** open the address in a browser and check that Navidrome loads.
 - **No button for who is online:** the relay is not installed or not reachable.
-- **Closing the window does not quit:** re-la keeps playing in the tray. Right-click the tray icon → **Çıkış** (quit).
+- **Closing the window quits:** switch on **Sistem tepsisi** in the settings to keep playing in the tray. Right-click the tray icon → **Çıkış** quits then.
+- **Sound from the wrong device:** pick it in the settings, **Çalma** → **Ses çıkışı**.

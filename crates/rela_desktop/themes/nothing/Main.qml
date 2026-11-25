@@ -26,6 +26,7 @@ ApplicationWindow {
     font.family: App.theme.font
     font.pixelSize: App.theme.fontSize
 
+    readonly property bool usable: Player.online || Player.offline // offline: no server, but songs on disk
     readonly property bool hasSong: Player.current.id !== undefined
     readonly property bool live: !!Player.station.id && Subwave.active // a SUB/WAVE station is playing
     function fmt(t) { t = Math.max(0, Math.floor(t || 0)); return String(Math.floor(t / 60)).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0") }
@@ -130,7 +131,7 @@ ApplicationWindow {
 
     // ---------------------------------------------------------------- top bar
     header: Rectangle {
-        visible: Player.online
+        visible: win.usable
         implicitHeight: 108
         color: App.theme.bg
         Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: App.theme.line }
@@ -178,7 +179,7 @@ ApplicationWindow {
 
     // ---------------------------------------------------------------- player bar
     footer: Rectangle {
-        visible: Player.online
+        visible: win.usable
         implicitHeight: 96
         color: App.theme.bg
         Rectangle { width: parent.width; height: 1; color: App.theme.line }
@@ -340,7 +341,7 @@ ApplicationWindow {
     // ---------------------------------------------------------------- pages (first child: test grabs rely on it)
     Item {
         anchors.fill: parent
-        visible: Player.online
+        visible: win.usable
         Loader {
             id: view
             anchors.fill: parent
@@ -370,7 +371,7 @@ ApplicationWindow {
 
     // ---------------------------------------------------------------- login
     ColumnLayout {
-        visible: !Player.online
+        visible: !win.usable
         anchors.centerIn: parent
         width: 380
         spacing: 18
@@ -421,10 +422,10 @@ ApplicationWindow {
         start()
         if (Qt.application.arguments.indexOf("--settings") >= 0) openSettings("Genel")
     }
-    Shortcut { sequence: "Space"; onActivated: Player.toggle() }
-    Shortcut { sequence: "Ctrl+F"; onActivated: q.forceActiveFocus() }
-    Shortcut { sequence: "Ctrl+Right"; onActivated: Player.next() }
-    Shortcut { sequence: "Ctrl+Left"; onActivated: Player.prev() }
-    Shortcut { sequences: [StandardKey.Back]; onActivated: win.back() }
-    Shortcut { sequences: [StandardKey.Forward]; onActivated: win.forward() }
+    Shortcut { sequences: Shortcuts.sequences("keyToggle"); onActivated: Player.toggle() }
+    Shortcut { sequences: Shortcuts.sequences("keySearch"); onActivated: q.forceActiveFocus() }
+    Shortcut { sequences: Shortcuts.sequences("keyNext"); onActivated: Player.next() }
+    Shortcut { sequences: Shortcuts.sequences("keyPrev"); onActivated: Player.prev() }
+    Shortcut { sequences: Shortcuts.sequences("keyBack"); onActivated: win.back() }
+    Shortcut { sequences: Shortcuts.sequences("keyForward"); onActivated: win.forward() }
 }

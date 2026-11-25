@@ -43,6 +43,7 @@ ArtistData {          // artist, topSongs, similar, load(), radio() ... come fro
 - `…Data` (`AlbumData`, `PlaylistData`, `SearchData`, ...): one per page. `LyricsData` and `SimilarSongs` are the same for parts of Now Playing.
 - `Navigation`: the page history behind the window's `go`, `back`, `forward`.
 - `ItemActions`, `Favorite`, `Rating`: what a menu, a heart and the stars do.
+- `Shortcuts` (the keyboard shortcuts, the user's or the standard ones: `Shortcut { sequences: Shortcuts.sequences("keyNext") }`) and `KeyCapture` (takes new keys for one).
 - `Columns` (the track table's columns) and `Util` (`shuffled`, `fileName`, `icon`).
 - Write icons as `icon.name: Util.icon("radio")`. On Linux the name comes from the system's icon theme. Windows has an icon font instead: a name that neither Qt nor `Util.icon` knows shows nothing there.
 
@@ -59,6 +60,8 @@ The app is the `Rela` module: `import Rela` gives the singletons `Player`, `Sync
   - `Player.play(songs, i)`, `Player.add(songs, where)` (`0` now, `1` next, `2` last).
   - `Player.shuffle`, `Player.repeat` (`0` off, `1` all, `2` one), `Player.dj`, `Player.bitrate`. `Player.waveform` and `Player.waveformRms` (0..1) are the current song's levels from the relay, empty until they come or when the relay has none.
   - `Player.options` and `Player.setOption(name, value)`.
+  - `Player.online`; `Player.offline`: no server, but songs of the queue are on disk: show the player, not the login.
+  - `Player.audioDevices` (`[{name, description}]`, after `Player.refreshAudioDevices()`), `Player.cacheBytes`, `Player.clearSongCache()`.
 - `Sync`: the relay connection (online users, following, listeners).
 - `Subwave`: the SUB/WAVE station that is playing (`active`, `now`, `coverUrl`, `elapsedMs`, `lyrics`, `request`, `like()`, `sendRequest(text, name)`). The full list is in `crates/rela_desktop/src/subwave.rs`.
 - `App` (`crates/rela_desktop/src/app.rs`):

@@ -101,6 +101,24 @@ private fun AudioSwitch(label: String, hint: String, key: String, enabled: Boole
     SwitchRow(label, hint, on, enabled) { on = it; AudioPrefs.set(ctx, key, it) }
 }
 
+/** The transcode of one network, as "opus-128" ("" = the original). Only what the server says it can make. */
+@Composable
+private fun TranscodeRows(label: String, value: String, formats: List<String>, onPick: (String) -> Unit) {
+    val format = value.substringBefore('-', "")
+    val kbps = value.substringAfter('-', "").toIntOrNull() ?: 128
+    // the saved one stays shown when the server can't be asked now
+    val shown = (formats + format).filter { it.isNotEmpty() }.distinct()
+    ChoiceRow(label, listOf("" to "Orijinal") + shown.map { it to it.uppercase() }, format) {
+        onPick(if (it.isEmpty()) "" else "$it-$kbps")
+    }
+    if (format.isNotEmpty()) SliderRow("Bit hızı", bitrates.indexOf(kbps).coerceAtLeast(0), bitrates.indices, 1, text = { "${bitrates[it]} kbps" }) {
+        onPick("$format-${bitrates[it]}")
+    }
+}
+
+private val bitrates = listOf(64, 96, 128, 160, 192, 256, 320)
+private val cacheSizes = listOf(0, 1, 2, 5, 10, 20, 50) // GB
+
 private data class Category(val page: String, val title: String, val sub: String, val icon: Int)
 
 private val categories = listOf(
@@ -108,7 +126,7 @@ private val categories = listOf(
     Category("player", "Çalan ekran", "Kapağa dokununca ne olacağı", R.drawable.ic_play_arrow_fill),
     Category("bar", "Alt çubuk", "Görünen sekmeler", R.drawable.ic_bottom_navigation_fill),
     Category("playback", "Çalma", "Geçiş, DJ, ses, dinleme bildirimi", R.drawable.ic_music_note_2_fill),
-    Category("data", "Veri ve depolama", "Kapak kalitesi ve önbellek", R.drawable.ic_data_table),
+    Category("data", "Veri ve depolama", "Transcoding, çevrimdışı şarkılar, kapaklar", R.drawable.ic_data_table),
     Category("account", "Hesap", "Sunucu ve çıkış", R.drawable.ic_account_circle_fill),
 )
 
@@ -250,6 +268,37 @@ fun SettingsPage(page: String) {
                     }
                 }
                 "data" -> {
+                    item { Header("Transcoding") }
+                    item {
+                        var formats by remember { mutableStateOf<List<String>?>(null) }
+                        LaunchedEffect(s.online) { formats = core?.transcodeFormats() }
+                        Column {
+                            val f = formats
+                            Text(
+                                if (s.online && f != null && f.isEmpty()) "Sunucu dönüştürme seçeneği bildirmiyor." else "Seçilen biçim sıradaki şarkıdan başlar. Zaten bu bit hızında veya altında olan şarkı olduğu gibi gelir.",
+                                Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            TranscodeRows("Wi-Fi", o["transcodeWifi"].text(), f.orEmpty()) { set("transcodeWifi", it) }
+                            TranscodeRows("Mobil veri", o["transcodeMobile"].text(), f.orEmpty()) { set("transcodeMobile", it) }
+                        }
+                    }
+                    item { Header("Çevrimdışı şarkılar") }
+                    item {
+                        SliderRow(
+                            "Boyut sınırı", cacheSizes.indexOf(num("offlineGb", 0)).coerceAtLeast(0), cacheSizes.indices, 1,
+                            hint = "Dinlediğin ve sıradaki şarkılar telefona iner; sunucuya ulaşılamayınca onlar çalar. Dolunca en uzun süredir dinlenmeyen silinir. Kendin atladığın bir şarkı bir kez çalarken, bir kez de önbellek için iner.",
+                            text = { if (it == 0) "Kapalı" else "${cacheSizes[it]} GB" },
+                        ) { set("offlineGb", cacheSizes[it]) }
+                    }
+                    item { SliderRow("Önden inen", num("offlineAhead", 3), 0..20, 1, num("offlineGb", 0) > 0, text = { "$it şarkı" }) { set("offlineAhead", it) } }
+                    item {
+                        ListItem(
+                            headlineContent = { Text("Şarkı önbelleği") },
+                            supportingContent = { Text(Formatter.formatFileSize(LocalContext.current, s.cacheBytes.toLong())) },
+                            trailingContent = { OutlinedButton({ core?.clearSongCache() }, enabled = s.cacheBytes > 0uL) { Text("Temizle") } },
+                        )
+                    }
+                    item { Header("Kapaklar") }
                     item {
                         ChoiceRow("Kapak kalitesi", listOf("low" to "Düşük", "medium" to "Orta", "high" to "Yüksek"), look.coverQuality) { set("coverQuality", it) }
                     }

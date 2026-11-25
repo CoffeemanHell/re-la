@@ -28,6 +28,7 @@ pub trait PlayerListener: Send + Sync {
 
 type Run = Box<dyn FnOnce(&mut PlayerCore) + Send>;
 type CoverDone = Box<dyn FnOnce(Option<Vec<u8>>) + Send>;
+type FormatsDone = Box<dyn FnOnce(Vec<String>) + Send>;
 type WaveformDone = Box<dyn FnOnce(Option<crate::waveform::Waveform>) + Send>;
 
 enum Msg {
@@ -39,6 +40,7 @@ enum Msg {
     PersistNow(std::sync::mpsc::Sender<()>),
     Cover(String, u32, CoverDone),
     Waveform(String, WaveformDone),
+    TranscodeFormats(FormatsDone),
     Quit,
 }
 
@@ -159,13 +161,14 @@ impl Player {
             Box::new(StationPortImpl(subwave.clone())),
         );
         let sw = subwave.clone();
+        let waves = cache_dir.join("waveforms");
         let covers = Arc::new(CoverCache::open(cache_dir.join("covers-rs"), 256 * 1024 * 1024));
         let tx2 = tx.clone();
         let thread = std::thread::Builder::new()
             .name("re-la-player".into())
             .spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("player runtime");
-                rt.block_on(run(core, rx, tx2, listener, covers, sw));
+                rt.block_on(run(core, rx, tx2, listener, covers, waves, sw));
             })
             .expect("player thread");
         Player { tx, sync, subwave, settings, thread: Some(thread) }
@@ -194,10 +197,15 @@ impl Player {
         let _ = self.tx.send(Msg::Cover(id, size, Box::new(done)));
     }
 
-    /// The song's waveform from the relay, then done(it) on the player's runtime. None without asking when
-    /// offline, for SUB/WAVE ("sw:") or no song; None too when the relay has none (yet).
+    /// The song's waveform from the disk cache or the relay, then done(it) on the player's runtime. None without asking
+    /// the relay when offline, for SUB/WAVE ("sw:") or no song; None too when the relay has none (yet).
     pub fn waveform(&self, id: String, done: impl FnOnce(Option<crate::waveform::Waveform>) + Send + 'static) {
         let _ = self.tx.send(Msg::Waveform(id, Box::new(done)));
+    }
+
+    /// The formats the server can transcode to, then done(them) on the player's runtime.
+    pub fn transcode_formats(&self, done: impl FnOnce(Vec<String>) + Send + 'static) {
+        let _ = self.tx.send(Msg::TranscodeFormats(Box::new(done)));
     }
 
     /// On quit: saves the play queue and clears now playing on the server; blocks up to 1.5 s (2 s at most).
@@ -232,6 +240,12 @@ impl Drop for Player {
     }
 }
 
+#[derive(Default)]
+struct Downloads {
+    user: Option<Download>,
+    cache: Option<Download>,
+}
+
 struct Download {
     task: tokio::task::JoinHandle<()>,
     part: PathBuf,
@@ -243,11 +257,12 @@ async fn run(
     tx: mpsc::UnboundedSender<Msg>,
     listener: Arc<dyn PlayerListener>,
     covers: Arc<CoverCache>,
+    waves: PathBuf,
     subwave: Arc<SubwaveClient>,
 ) {
     // covers and downloads: no 30 s cap on the whole transfer, only on silence (as Qt's transfer timeout did)
     let http = crate::http_client().connect_timeout(Duration::from_secs(15)).read_timeout(Duration::from_secs(15)).build().expect("http");
-    let mut download: Option<Download> = None;
+    let mut download = Downloads::default();
     core.clock_ms = wall_ms();
     core.start();
     flush(&mut core, &tx, &*listener, &http, &mut download);
@@ -291,11 +306,21 @@ async fn run(
                         let url = (core.is_online() && !id.is_empty() && !id.starts_with("sw:"))
                             .then(|| crate::waveform::url(&core.login.server, &relay, &id))
                             .flatten();
-                        let (login, http) = (core.login.clone(), http.clone());
+                        let (login, http, waves) = (core.login.clone(), http.clone(), waves.clone());
                         tokio::spawn(async move {
-                            done(match url {
-                                Some(u) => crate::waveform::fetch(&http, u, &login).await,
-                                None => None,
+                            let held = crate::waveform::cached(&waves, &login.server, &id);
+                            done(match (held, url) {
+                                (None, Some(u)) => crate::waveform::fetch(&http, u, &login, &waves, &id).await,
+                                (held, _) => held,
+                            });
+                        });
+                    }
+                    Msg::TranscodeFormats(done) => {
+                        let client = core.client.clone().filter(|_| core.is_online());
+                        tokio::spawn(async move {
+                            done(match client {
+                                Some(c) => c.transcode_formats().await,
+                                None => vec![],
                             });
                         });
                     }
@@ -315,7 +340,7 @@ async fn run(
 }
 
 /// Runs what the core queued, then tells the front end what changed.
-fn flush(core: &mut PlayerCore, tx: &mpsc::UnboundedSender<Msg>, listener: &dyn PlayerListener, http: &reqwest::Client, download: &mut Option<Download>) {
+fn flush(core: &mut PlayerCore, tx: &mpsc::UnboundedSender<Msg>, listener: &dyn PlayerListener, http: &reqwest::Client, download: &mut Downloads) {
     for job in core.take_jobs() {
         let tx = tx.clone();
         match job {
@@ -332,21 +357,31 @@ fn flush(core: &mut PlayerCore, tx: &mpsc::UnboundedSender<Msg>, listener: &dyn 
                 });
             }
             Job::Download { client, id, path } => {
-                let mut part = path.clone().into_os_string();
-                part.push(".part");
-                let part = PathBuf::from(part);
+                let part = part_of(&path);
                 let (http, p) = (http.clone(), part.clone());
                 let task = tokio::spawn(async move {
-                    let r = fetch_to(&http, &client, &id, &path, &p, &tx).await;
-                    if r.is_err() {
-                        let _ = tokio::fs::remove_file(&p).await; // a failure leaves nothing behind
-                    }
+                    let url = client.url("download", &[("id".into(), id)]);
+                    let r = fetch_to(&http, &client, url, &path, &p, Some(&tx)).await;
                     let _ = tx.send(Msg::Run(Box::new(move |c| c.download_done(r))));
                 });
-                *download = Some(Download { task, part });
+                download.user = Some(Download { task, part });
+            }
+            Job::CacheSong { client, query, path } => {
+                let part = part_of(&path);
+                let (http, p) = (http.clone(), part.clone());
+                let task = tokio::spawn(async move {
+                    let ok = fetch_to(&http, &client, client.url("stream", &query), &path, &p, None).await.is_ok();
+                    let _ = tx.send(Msg::Run(Box::new(move |c| c.cache_done(ok))));
+                });
+                download.cache = Some(Download { task, part });
             }
             Job::CancelDownload => {
-                if let Some(d) = download.take() {
+                if let Some(d) = download.cache.take().filter(|_| core.caching) {
+                    d.task.abort();
+                    let _ = std::fs::remove_file(d.part);
+                    core.cache_done(false);
+                }
+                if let Some(d) = download.user.take().filter(|_| core.downloading) {
                     d.task.abort();
                     let _ = std::fs::remove_file(d.part);
                     core.download_done(Err("iptal edildi".into()));
@@ -363,18 +398,39 @@ fn flush(core: &mut PlayerCore, tx: &mpsc::UnboundedSender<Msg>, listener: &dyn 
     }
 }
 
-/// Streams the download to part, then renames it to path: the file appears only when complete. Ok(file name).
+fn part_of(path: &std::path::Path) -> PathBuf {
+    let mut part = path.to_path_buf().into_os_string();
+    part.push(".part");
+    part.into()
+}
+
+/// Streams url to part, then renames it to path: the file appears only when complete; a failure leaves nothing behind.
+/// Ok(file name).
 async fn fetch_to(
     http: &reqwest::Client,
     client: &Subsonic,
-    id: &str,
+    url: url::Url,
     path: &std::path::Path,
     part: &std::path::Path,
-    tx: &mpsc::UnboundedSender<Msg>,
+    progress: Option<&mpsc::UnboundedSender<Msg>>,
+) -> Result<String, String> {
+    let r = fetch_part(http, client, url, path, part, progress).await;
+    if r.is_err() {
+        let _ = tokio::fs::remove_file(part).await;
+    }
+    r
+}
+
+async fn fetch_part(
+    http: &reqwest::Client,
+    client: &Subsonic,
+    url: url::Url,
+    path: &std::path::Path,
+    part: &std::path::Path,
+    progress: Option<&mpsc::UnboundedSender<Msg>>,
 ) -> Result<String, String> {
     let l = client.login();
     let secrets = [l.token.as_str(), l.salt.as_str()];
-    let url = client.url("download", &[("id".into(), id.into())]);
     let mut resp = http.get(url).send().await.map_err(|e| failure_text("", 0, &e.to_string(), &secrets))?;
     let status = resp.status().as_u16();
     // a Subsonic error comes back as a small JSON/XML body instead of the file: keep it for its message
@@ -390,7 +446,9 @@ async fn fetch_to(
     while let Some(chunk) = resp.chunk().await.map_err(|e| failure_text("", 0, &e.to_string(), &secrets))? {
         f.write_all(&chunk).await.map_err(|_| "dosya yazılamıyor".to_string())?;
         got += chunk.len() as u64;
-        if shown.elapsed() > Duration::from_millis(250) {
+        if let Some(tx) = progress
+            && shown.elapsed() > Duration::from_millis(250)
+        {
             shown = std::time::Instant::now();
             let _ = tx.send(Msg::Run(Box::new(move |c| c.download_progress(got, total))));
         }

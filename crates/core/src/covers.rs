@@ -1,8 +1,8 @@
 //! Cover art disk cache. Entries are keyed by the getCoverArt URL without the login (`without_login`), so the files
 //! hold no secret and a new login keeps the covers. The server's cache headers decide when to ask again.
+use crate::disk::{hashed, touch, write_atomic};
 use crate::queue::without_login;
-use sha2::{Digest, Sha256};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 /// Freshness when the server says nothing.
@@ -47,18 +47,6 @@ fn header(headers: &reqwest::header::HeaderMap, name: &str) -> Option<String> {
     headers.get(name).and_then(|v| v.to_str().ok()).map(str::to_string)
 }
 
-fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, bytes)?;
-    std::fs::rename(tmp, path)
-}
-
-fn touch(path: &Path) {
-    if let Ok(f) = std::fs::File::options().write(true).open(path) {
-        let _ = f.set_modified(SystemTime::now());
-    }
-}
-
 impl CoverCache {
     /// `dir` is created; a sibling `covers` folder (the old Qt disk cache) is deleted.
     pub fn open(dir: PathBuf, cap_bytes: u64) -> CoverCache {
@@ -70,7 +58,7 @@ impl CoverCache {
     }
 
     fn paths(&self, key: &str) -> (PathBuf, PathBuf) {
-        let h: String = Sha256::digest(key.as_bytes()).iter().map(|b| format!("{b:02x}")).collect();
+        let h = hashed(key);
         (self.dir.join(format!("{h}.img")), self.dir.join(format!("{h}.meta")))
     }
 

@@ -31,7 +31,8 @@ impl FakeDeck {
 
 impl Deck for FakeDeck {
     fn load(&mut self, url: &str, paused: bool) {
-        self.push(format!("load {} paused={paused}", id_of_url(url)));
+        let from = url.split_once("&timeOffset=").map_or(String::new(), |(_, s)| format!(" from {s}"));
+        self.push(format!("load {}{from} paused={paused}", id_of_url(url)));
     }
     fn append(&mut self, url: &str) {
         self.push(format!("append {}", id_of_url(url)));
@@ -59,6 +60,9 @@ impl Deck for FakeDeck {
     }
     fn set_exclusive(&mut self, on: bool) {
         self.push(format!("exclusive {on}"));
+    }
+    fn set_audio_device(&mut self, name: &str) {
+        self.push(format!("device {name}"));
     }
 }
 
@@ -227,6 +231,11 @@ impl T {
                     }
                     Job::Timer { ms, .. } => calls.push(format!("timer {ms} (not run)")),
                     Job::Download { id, .. } => calls.push(format!("download {id}")),
+                    Job::CacheSong { query, path, .. } => {
+                        calls.push(format!("cache {}", crate::queue::encode_query(&query)));
+                        std::fs::write(&path, b"song").unwrap();
+                        self.c.cache_done(true);
+                    }
                     Job::CancelDownload => calls.push("cancel download".into()),
                 }
             }
@@ -1164,4 +1173,152 @@ fn android_look_options_survive_a_restart() {
     assert_eq!(o["coverTap"], json!("queue"));
     assert_eq!(o["tabs"], json!("library,radio"));
     assert_eq!(o["coverQuality"], json!("low"));
+}
+
+// ---------------------------------------------------------------- the song cache, offline, transcodes
+
+/// Online with a cache of 1 GB; nothing on disk yet.
+fn caching(name: &str) -> T {
+    let mut t = T::new(name);
+    t.c.start();
+    t.run(false, |m, _| (m == "ping").then(|| ok(json!({}))).flatten());
+    assert!(t.c.is_online());
+    t.c.set_option("offlineGb", json!(1));
+    t.c.set_option("autoContinue", json!(false));
+    t.c.set_crossfade(0);
+    t
+}
+
+fn cached(calls: &[String]) -> Vec<String> {
+    let id = |c: &String| c.strip_prefix("cache id=").map(|q| q.split('&').next().unwrap().to_string());
+    calls.iter().filter_map(id).collect()
+}
+
+#[test]
+fn songs_coming_up_are_cached_then_the_one_heard() {
+    let mut t = caching("fill");
+    t.c.set_option("offlineAhead", json!(2));
+    t.c.play(songs(5), 0);
+    t.at(10.0);
+    let mut got = vec![];
+    for _ in 0..4 {
+        t.advance(1500.0);
+        t.c.tick();
+        got.extend(cached(&t.run(false, |_, _| None)));
+    }
+    assert_eq!(got, ["s1", "s2"], "the next two; the playing one is not worth it yet");
+    t.at(150.0);
+    for _ in 0..3 {
+        t.advance(1500.0);
+        t.at(150.0);
+        t.c.tick();
+        got.extend(cached(&t.run(false, |_, _| None)));
+    }
+    assert_eq!(got, ["s1", "s2", "s0"]);
+    assert_eq!(t.c.snapshot().cache_bytes, 12);
+    // the next song plays from the file
+    t.clear();
+    t.c.next();
+    assert!(t.log().iter().any(|l| l.starts_with("0 load ") && l.contains(".raw ")), "{:?}", t.log());
+    // the clear button: all but what plays and the one after it
+    t.c.clear_song_cache();
+    assert_eq!(t.c.snapshot().cache_bytes, 8);
+}
+
+#[test]
+fn off_or_paused_nothing_is_cached() {
+    let mut t = caching("off");
+    t.c.play(songs(5), 0);
+    t.at(10.0);
+    t.c.toggle();
+    t.advance(1500.0);
+    t.c.tick();
+    assert!(cached(&t.run(false, |_, _| None)).is_empty(), "paused");
+    t.c.toggle();
+    t.c.set_option("offlineGb", json!(0));
+    t.advance(1500.0);
+    t.c.tick();
+    assert!(cached(&t.run(false, |_, _| None)).is_empty(), "off");
+}
+
+#[test]
+fn offline_the_held_songs_play() {
+    let mut t = caching("offline");
+    let hold = |t: &T, id: &str| std::fs::write(t.c.songs.path("https://music.example.com", id, "raw"), b"x").unwrap();
+    for id in ["s1", "s3"] {
+        hold(&t, id);
+    }
+    t.c.play(songs(5), 0);
+    t.run(true, |_, _| ok(json!({}))); // the queue goes to disk
+    let mut t = T::with("offline", t.dir.clone(), t.settings.clone());
+    t.c.start();
+    assert!(!t.c.snapshot().offline, "still connecting");
+    t.run(false, |_, _| None);
+    let s = t.c.snapshot();
+    assert!(s.offline && !s.online && s.status.starts_with("Çevrimdışı"), "{}", s.status);
+    t.c.jump(2);
+    assert_eq!(t.current(), "s0", "not held: stays");
+    t.c.toggle();
+    assert_eq!((t.current(), t.c.snapshot().playing), ("s1".into(), true));
+    t.c.next();
+    assert_eq!(t.current(), "s3");
+    t.c.prev();
+    assert_eq!(t.current(), "s1");
+    t.c.deck_event(0, DeckEvent::EndFile { reason: EndReason::Eof, error: String::new() });
+    assert_eq!(t.current(), "s3");
+    let k = t.c.cur;
+    t.c.deck_event(k, DeckEvent::EndFile { reason: EndReason::Eof, error: String::new() });
+    assert!(!t.c.snapshot().playing, "nothing held after it");
+    // the server is back
+    t.c.connect_server();
+    t.run(false, |m, _| (m == "ping").then(|| ok(json!({}))).flatten());
+    assert!(t.c.is_online() && !t.c.snapshot().offline);
+    assert_eq!(t.current(), "s3");
+}
+
+#[test]
+fn without_held_songs_there_is_no_offline() {
+    let mut t = caching("no-offline");
+    t.c.play(songs(2), 0);
+    t.run(true, |_, _| ok(json!({})));
+    let mut t = T::with("no-offline", t.dir.clone(), t.settings.clone());
+    t.c.start();
+    t.run(false, |_, _| None);
+    assert!(!t.c.snapshot().offline);
+}
+
+#[test]
+fn a_live_transcode_seeks_by_a_new_stream() {
+    let mut t = T::new("transcode");
+    t.c.set_option("transcodeMobile", json!("opus-128"));
+    t.c.play(songs(2), 0);
+    assert!(!t.c.decks[0].live_transcode, "Wi-Fi: the original");
+    t.c.set_mobile(true);
+    t.clear();
+    t.c.play(songs(2), 0);
+    assert!(t.c.source("s0").url.contains("stream?id=s0&format=opus&maxBitRate=128&"), "{}", t.c.source("s0").url);
+    t.c.deck_event(0, DeckEvent::FileLoaded);
+    t.c.deck_event(0, DeckEvent::Duration(3.0));
+    assert_eq!(t.c.snapshot().duration, 200.0, "the song's, not the stream's guess");
+    t.c.seek(95.7);
+    assert!(t.has("0 load s0 from 95 paused=false"), "{:?}", t.log());
+    assert_eq!(t.c.snapshot().position, 95.7, "shown at once");
+    t.c.deck_event(0, DeckEvent::FileLoaded);
+    t.c.deck_event(0, DeckEvent::Position(Some(1.5)));
+    assert_eq!(t.c.snapshot().position, 96.5);
+    assert!(!t.log().iter().any(|l| l.contains("seek")), "{:?}", t.log());
+    // small enough already: as it is
+    let mut small = song("s9");
+    small["bitRate"] = 96.into();
+    t.c.play(vec![small], 0);
+    assert!(!t.c.decks[0].live_transcode);
+}
+
+#[test]
+fn the_audio_device_reaches_both_decks() {
+    let mut t = T::new("device");
+    t.c.set_option("audioDevice", json!("pipewire/dac"));
+    assert!(t.has("0 device pipewire/dac") && t.has("1 device pipewire/dac"), "{:?}", t.log());
+    let t = T::with("device", t.dir.clone(), t.settings.clone());
+    assert!(t.has("0 device pipewire/dac") && t.has("1 device pipewire/dac"), "at start too: {:?}", t.log());
 }

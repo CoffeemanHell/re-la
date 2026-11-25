@@ -8,6 +8,9 @@ import android.content.IntentFilter
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
 import androidx.media3.common.util.UnstableApi
@@ -66,11 +69,19 @@ class RelaService : MediaSessionService() {
     }
     private var noisyOn = false
 
+    /** Wi-Fi or mobile data: the transcode setting follows the network. */
+    private val network = object : ConnectivityManager.NetworkCallback() {
+        override fun onCapabilitiesChanged(n: Network, c: NetworkCapabilities) {
+            Rela.core?.setMobile(c.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR))
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         audio = getSystemService(AudioManager::class.java)
         decks = ExoDecks(this) { k, note -> Rela.core?.deckEvent(k, note) }
         Rela.start(this, decks)
+        getSystemService(ConnectivityManager::class.java).registerDefaultNetworkCallback(network)
         facade = FacadePlayer()
         session = MediaSession.Builder(this, facade)
             .setSessionActivity(
@@ -124,6 +135,7 @@ class RelaService : MediaSessionService() {
 
     override fun onDestroy() {
         scope.cancel()
+        getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(network)
         if (noisyOn) unregisterReceiver(noisy)
         audio.abandonAudioFocusRequest(focus)
         session.release()

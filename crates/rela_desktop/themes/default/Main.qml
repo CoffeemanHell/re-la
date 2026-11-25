@@ -24,6 +24,7 @@ ApplicationWindow {
     title: Player.station.id ? Player.station.name + " · re-la" : Player.current.title ? Player.current.title + " · " + Player.current.artist : "re-la"
     color: palette.window
 
+    readonly property bool usable: Player.online || Player.offline // offline: no server, but songs on disk
     readonly property bool hasSong: Player.current.id !== undefined
     readonly property bool live: !!Player.station.id && Subwave.active // a SUB/WAVE station is playing
     function fmt(t) { t = Math.max(0, Math.floor(t || 0)); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0") }
@@ -114,7 +115,7 @@ ApplicationWindow {
     // ---------------------------------------------------------------- toolbar
     header: ToolBar {
         id: bar
-        visible: Player.online
+        visible: win.usable
         component Tool: ToolButton {
             property string tip
             display: AbstractButton.IconOnly
@@ -182,7 +183,7 @@ ApplicationWindow {
 
     // ---------------------------------------------------------------- player bar
     footer: ToolBar {
-        visible: Player.online
+        visible: win.usable
         implicitHeight: 80
         RowLayout {
             anchors.fill: parent
@@ -343,7 +344,7 @@ ApplicationWindow {
     Rectangle {
         anchors.fill: parent
         color: palette.window
-        visible: Player.online
+        visible: win.usable
         Loader {
             id: view
             anchors.fill: parent
@@ -359,7 +360,7 @@ ApplicationWindow {
     Pane {
         anchors.centerIn: parent
         width: 400
-        visible: !Player.online
+        visible: !win.usable
         padding: 32
         ColumnLayout {
             anchors.fill: parent
@@ -416,10 +417,10 @@ ApplicationWindow {
         start()
         if (Qt.application.arguments.indexOf("--settings") >= 0) openSettings("Genel")
     }
-    Shortcut { sequence: "Space"; onActivated: Player.toggle() }
-    Shortcut { sequence: "Ctrl+F"; onActivated: q.forceActiveFocus() }
-    Shortcut { sequence: "Ctrl+Right"; onActivated: Player.next() }
-    Shortcut { sequence: "Ctrl+Left"; onActivated: Player.prev() }
-    Shortcut { sequences: [StandardKey.Back]; onActivated: win.back() }
-    Shortcut { sequences: [StandardKey.Forward]; onActivated: win.forward() }
+    Shortcut { sequences: Shortcuts.sequences("keyToggle"); onActivated: Player.toggle() }
+    Shortcut { sequences: Shortcuts.sequences("keySearch"); onActivated: q.forceActiveFocus() }
+    Shortcut { sequences: Shortcuts.sequences("keyNext"); onActivated: Player.next() }
+    Shortcut { sequences: Shortcuts.sequences("keyPrev"); onActivated: Player.prev() }
+    Shortcut { sequences: Shortcuts.sequences("keyBack"); onActivated: win.back() }
+    Shortcut { sequences: Shortcuts.sequences("keyForward"); onActivated: win.forward() }
 }

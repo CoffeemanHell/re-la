@@ -29,6 +29,7 @@ async fn handle(State(log): State<Log>, Path(method): Path<String>, RawQuery(q):
         "ping" | "savePlayQueue" | "scrobble" => ok(json!({})),
         "getOpenSubsonicExtensions" => ok(json!({"openSubsonicExtensions": []})),
         "getPlayQueue" => ok(json!({"playQueue": {"entry": [song("s1"), song("s2")], "current": "s2", "position": 7000}})),
+        "stream" => ([(header::CONTENT_TYPE, "audio/flac")], "audio").into_response(),
         "getAlbum" => ok(json!({"album": {"id": "al1", "name": "Album"}})),
         "getCoverArt" => ([(header::CONTENT_TYPE, "image/png"), (header::CACHE_CONTROL, "max-age=0")], COVER).into_response(),
         _ => (StatusCode::NOT_FOUND, "<html>404</html>").into_response(),
@@ -210,6 +211,29 @@ fn waveform_comes_from_the_relay_with_the_login_in_headers() {
     assert_eq!(parts[2].len(), 32, "an md5 token in the header");
     assert!(!parts[3].is_empty());
     assert_eq!(waveform_of(&player, "w2"), None, "not made yet");
+    // from disk now, also without the server
+    assert_eq!(waveform_of(&player, "w1").map(|w| w.peaks.len()), Some(4096));
+    player.call(|c| c.logout());
+    assert_eq!(waveform_of(&player, "w1").map(|w| w.peaks.len()), Some(4096));
+    assert_eq!(log.lock().unwrap().iter().filter(|(m, _)| m == "waveform/w1").count(), 1);
+}
+
+#[test]
+fn songs_coming_up_land_on_disk() {
+    let (url, log, _rt) = server();
+    let (player, front, _, dir) = start("songs");
+    player.call(move |c| c.login(&url, "ana", "pw"));
+    wait_for("online", || front.last.lock().unwrap().as_ref().is_some_and(|s| s.online));
+    player.call(|c| {
+        c.set_option("offlineGb", json!(1));
+        c.set_option("offlineAhead", json!(1));
+        c.play(vec![json!({"id": "s1", "duration": 200}), json!({"id": "s2", "duration": 200}), json!({"id": "s3"})], 0);
+    });
+    wait_for("the song", || front.last.lock().unwrap().as_ref().is_some_and(|s| s.cache_bytes == 5));
+    let files: Vec<String> = std::fs::read_dir(dir.join("songs")).unwrap().flatten().map(|e| e.file_name().into_string().unwrap()).collect();
+    assert_eq!(files.len(), 1, "{files:?}");
+    assert!(files[0].ends_with(".raw"), "{files:?}");
+    assert!(log.lock().unwrap().iter().any(|(m, q)| m == "stream" && q.starts_with("id=s2&format=raw&")));
 }
 
 #[test]

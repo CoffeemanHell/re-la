@@ -1,6 +1,13 @@
-//! A song's waveform from the relay (re-with works it out once on the server): peaks and RMS, 0..1.
+//! A song's waveform from the relay (re-with works it out once on the server): peaks and RMS, 0..1. Kept on disk as it
+//! came.
+use crate::disk;
 use crate::subsonic::Login;
 use crate::sync::relay_url;
+use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+
+/// About 8000 songs.
+const CACHE_BYTES: u64 = 64 << 20;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Waveform {
@@ -28,8 +35,21 @@ pub fn parse(b: &[u8]) -> Option<Waveform> {
     Some(Waveform { peaks: f(&b[2..2 + bins]), rms: f(&b[2 + bins..]) })
 }
 
-/// The login goes in headers, so it is in no URL (nor in a proxy's access log).
-pub async fn fetch(http: &reqwest::Client, url: url::Url, login: &Login) -> Option<Waveform> {
+fn file(dir: &Path, server: &str, id: &str) -> PathBuf {
+    dir.join(disk::hashed(&format!("{server}\n{id}")))
+}
+
+/// From the disk cache. shortcut: an entry is never asked for again; a song file replaced under the same id keeps its
+/// old waveform until the cache drops it.
+pub fn cached(dir: &Path, server: &str, id: &str) -> Option<Waveform> {
+    let f = file(dir, server, id);
+    let w = parse(&std::fs::read(&f).ok()?)?;
+    disk::touch(&f);
+    Some(w)
+}
+
+/// From the relay, into the disk cache. The login goes in headers, so it is in no URL (nor in a proxy's access log).
+pub async fn fetch(http: &reqwest::Client, url: url::Url, login: &Login, dir: &Path, id: &str) -> Option<Waveform> {
     let r = http
         .get(url)
         .header("X-Subsonic-User", &login.user)
@@ -41,7 +61,13 @@ pub async fn fetch(http: &reqwest::Client, url: url::Url, login: &Login) -> Opti
     if !r.status().is_success() {
         return None;
     }
-    parse(&r.bytes().await.ok()?)
+    let body = r.bytes().await.ok()?;
+    let w = parse(&body)?;
+    let _ = std::fs::create_dir_all(dir);
+    if disk::write_atomic(&file(dir, &login.server, id), &body).is_ok() {
+        disk::trim(dir, CACHE_BYTES, &HashSet::new());
+    }
+    Some(w)
 }
 
 #[cfg(test)]

@@ -13,7 +13,7 @@ import uniffi.rela.SyncState
 class FacadeViewTest {
     private fun state(index: Long = 0, playing: Boolean = true, station: String = "{}", position: Double = 12.5, duration: Double = 0.0) =
         PlayerState(
-            online = true, signedIn = true, loginFailed = false, status = "", user = "u", connecting = false, queueLength = 3u,
+            online = true, offline = false, cacheBytes = 0uL, signedIn = true, loginFailed = false, status = "", user = "u", connecting = false, queueLength = 3u,
             index = index, currentJson = "{}", playing = playing, crossfade = 0, dj = false, stationJson = station,
             shuffle = false, repeat = 0, volume = 100.0, position = position, duration = duration, signalPath = "",
             bitrate = 0, streamInfo = "", optionsJson = "{}", theme = "",

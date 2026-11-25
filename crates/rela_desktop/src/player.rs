@@ -7,7 +7,7 @@ use core::pin::Pin;
 use cxx_qt::{CxxQtType, Threading};
 use cxx_qt_lib::{QList, QMap, QMapPair_QString_QVariant, QString, QVariant};
 use rela_core::player::{Changes, PlayerSnapshot};
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 
 #[cxx_qt::bridge]
 pub mod ffi {
@@ -24,6 +24,7 @@ pub mod ffi {
         #[qobject]
         #[qml_element] // the base of Player.qml, which themes see as Player
         #[qproperty(bool, online, READ, NOTIFY = status_changed)]
+        #[qproperty(bool, offline, READ, NOTIFY = status_changed)] // no server, but songs of the queue are on disk
         #[qproperty(bool, signed_in, cxx_name = "signedIn", READ, NOTIFY = status_changed)] // has a saved token; may still be connecting
         #[qproperty(bool, login_failed, cxx_name = "loginFailed", READ, NOTIFY = status_changed)] // status says why the last connect failed
         #[qproperty(QString, status, READ, NOTIFY = status_changed)]
@@ -49,6 +50,8 @@ pub mod ffi {
         #[qproperty(QList_QVariant, waveform, READ, NOTIFY = waveform_changed)] // the relay's, empty until it comes
         #[qproperty(QList_QVariant, waveform_rms, cxx_name = "waveformRms", READ, NOTIFY = waveform_changed)]
         #[qproperty(QMap_QString_QVariant, options, READ, NOTIFY = options_changed)]
+        #[qproperty(f64, cache_bytes, cxx_name = "cacheBytes", READ, NOTIFY = options_changed)] // what the song cache holds
+        #[qproperty(QList_QVariant, audio_devices, cxx_name = "audioDevices", READ, NOTIFY = options_changed)] // [{name, description}], after refreshAudioDevices
         #[qproperty(QString, theme, READ, WRITE = set_theme, NOTIFY = theme_changed)]
         #[cxx_name = "PlayerCore"]
         type RustPlayer = super::PlayerRust;
@@ -113,6 +116,12 @@ pub mod ffi {
         #[qinvokable]
         #[cxx_name = "setOptionJson"]
         fn set_option_json(self: &RustPlayer, key: &QString, json: &QString);
+        #[qinvokable]
+        #[cxx_name = "refreshAudioDevices"]
+        fn refresh_audio_devices(self: &RustPlayer);
+        #[qinvokable]
+        #[cxx_name = "clearSongCache"]
+        fn clear_song_cache(self: &RustPlayer);
         #[qinvokable]
         fn login(self: &RustPlayer, server: &QString, user: &QString, password: &QString);
         #[qinvokable]
@@ -182,6 +191,9 @@ pub mod ffi {
 #[derive(Default)]
 pub struct PlayerRust {
     online: bool,
+    offline: bool,
+    cache_bytes: f64,
+    audio_devices: QList<QVariant>,
     signed_in: bool,
     login_failed: bool,
     status: QString,
@@ -265,6 +277,7 @@ impl ffi::RustPlayer {
         {
             let mut r = self.as_mut().rust_mut();
             r.online = s.online;
+            r.offline = s.offline;
             r.signed_in = s.signed_in;
             r.login_failed = s.login_failed;
             r.status = QString::from(s.status.as_str());
@@ -290,6 +303,8 @@ impl ffi::RustPlayer {
             r.bitrate = s.bitrate as i32;
             r.stream_info = QString::from(s.stream_info.as_str());
             if ch.options {
+                r.cache_bytes = s.cache_bytes as f64;
+                r.audio_devices = s.audio_devices.iter().map(|(n, d)| to_qvariant(&json!({"name": n, "description": d}))).collect();
                 r.options = to_qvariant_map(&Value::Object(s.options));
             }
         }
@@ -391,6 +406,12 @@ impl ffi::RustPlayer {
     fn set_option_json(&self, key: &QString, json: &QString) {
         let (k, v) = (key.to_string(), json_value(json));
         player().call(move |c| c.set_option(&k, v));
+    }
+    fn refresh_audio_devices(&self) {
+        player().call(|c| c.refresh_audio_devices());
+    }
+    fn clear_song_cache(&self) {
+        player().call(|c| c.clear_song_cache());
     }
     fn login(&self, server: &QString, user: &QString, password: &QString) {
         let (s, u, p) = (server.to_string(), user.to_string(), password.to_string());

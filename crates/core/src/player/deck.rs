@@ -20,6 +20,12 @@ pub trait Deck: Send {
     fn stop(&mut self);
     /// Exclusive device access (audio-exclusive + ao-reload).
     fn set_exclusive(&mut self, on: bool);
+    /// The output device by the name audio_devices gives; "auto": the system's choice. Desktop only.
+    fn set_audio_device(&mut self, _name: &str) {}
+    /// (name, description) of each output device.
+    fn audio_devices(&self) -> Vec<(String, String)> {
+        vec![]
+    }
     /// One line for RELA_AUDIO_LOG: what the output says about itself.
     fn audio_log(&self) -> String {
         String::new()

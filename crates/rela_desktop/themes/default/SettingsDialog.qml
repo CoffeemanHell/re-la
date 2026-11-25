@@ -32,6 +32,24 @@ Dialog {
         Slider { id: s; Layout.fillWidth: true; snapMode: Slider.SnapAlways; onMoved: ls.moved(value) }
         Hint { text: ls.hint }
     }
+    component ComboRow: RowLayout { // laid out like a SwitchRow, a combo box in place of the switch
+        id: cr
+        property string label
+        property string hint
+        property alias box: cb.objectName
+        property alias model: cb.model
+        property alias currentIndex: cb.currentIndex
+        property alias displayText: cb.displayText
+        property real boxWidth: cb.implicitWidth
+        signal picked(int i)
+        Layout.fillWidth: true
+        ColumnLayout {
+            Layout.fillWidth: true; spacing: 2
+            Plain { text: cr.label }
+            Hint { text: cr.hint }
+        }
+        ComboBox { id: cb; Layout.preferredWidth: cr.boxWidth; onActivated: i => cr.picked(i) }
+    }
     component Page: ColumnLayout {
         required property string name
         visible: d.cat === name
@@ -40,6 +58,7 @@ Dialog {
     }
 
     objectName: "settings"
+    onOpened: Player.refreshAudioDevices()
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(760, d.w.width - 40); height: Math.min(560, d.w.height - 40)
@@ -51,8 +70,9 @@ Dialog {
             Layout.preferredWidth: 190; Layout.fillHeight: true
             Layout.topMargin: 16
             readonly property var icons: ({ "Genel": "configure", "Çalma": "audio-volume-high", "DJ": "media-playlist-shuffle",
+                                            "Önbellek": "drive-harddisk", "Klavye": "input-keyboard",
                                             "Scrobble": "view-statistics", "Hesap": "user-identity", "Hakkında": "help-about" })
-            model: ["Genel", "Çalma", "DJ", "Scrobble", "Hesap", "Hakkında"]
+            model: ["Genel", "Çalma", "DJ", "Önbellek", "Klavye", "Scrobble", "Hesap", "Hakkında"]
             delegate: ItemDelegate {
                 required property string modelData
                 objectName: "cat_" + modelData
@@ -82,24 +102,18 @@ Dialog {
 
                 Page {
                     name: "Genel"
-                    RowLayout { // laid out like a SwitchRow, a combo box in place of the switch
-                        Layout.fillWidth: true
-                        ColumnLayout {
-                            Layout.fillWidth: true; spacing: 2
-                            Plain { text: "Tema" }
-                            Hint { text: "Uygulamanın görünümü." }
-                        }
-                        ComboBox {
-                            objectName: "themeBox"
-                            model: App.themeNames.map(n => App.themeTitles[n] || n)
-                            currentIndex: App.themeNames.indexOf(Player.theme)
-                            onActivated: i => Player.theme = App.themeNames[i]
-                        }
+                    ComboRow {
+                        label: "Tema"
+                        hint: "Uygulamanın görünümü."
+                        box: "themeBox"
+                        model: App.themeNames.map(n => App.themeTitles[n] || n)
+                        currentIndex: App.themeNames.indexOf(Player.theme)
+                        onPicked: i => Player.theme = App.themeNames[i]
                     }
                     SwitchRow {
                         visible: App.trayAvailable
-                        label: "Kapatınca arka planda çal"
-                        hint: "Pencereyi kapatınca müzik durmaz, tepsi simgesinden kontrol edilir. Çıkış: simgeye sağ tık."
+                        label: "Sistem tepsisi"
+                        hint: "Tepside simge durur; pencereyi kapatınca müzik durmaz. Çıkış: simgeye sağ tık. Kapalıyken pencereyi kapatmak uygulamadan çıkar."
                         checked: Player.options.closeToTray === true
                         onToggled: on => Player.setOption("closeToTray", on)
                     }
@@ -114,6 +128,17 @@ Dialog {
 
                 Page {
                     name: "Çalma"
+                    ComboRow {
+                        readonly property var outputs: Util.outputs()
+                        label: "Ses çıkışı"
+                        hint: "Sesin çalacağı aygıt."
+                        box: "outputBox"
+                        boxWidth: 300
+                        model: outputs.map(o => o.description)
+                        currentIndex: outputs.findIndex(o => o.name === (Player.options.audioDevice || "auto"))
+                        displayText: currentIndex < 0 ? "Bağlı değil" : outputs[currentIndex].description
+                        onPicked: i => Player.setOption("audioDevice", outputs[i].name)
+                    }
                     LabeledSlider {
                         label: "Şarkı geçişi (crossfade)"
                         valueText: Player.crossfade ? Player.crossfade + " sn" : "Kapalı · gapless"
@@ -167,6 +192,64 @@ Dialog {
                         valueText: (Player.options.radioBatch || 10) + " şarkı"
                         from: 5; to: 30; stepSize: 5; value: Player.options.radioBatch || 10
                         onMoved: v => Player.setOption("radioBatch", v)
+                    }
+                }
+
+                Page {
+                    name: "Önbellek"
+                    Hint { text: "Dinlediğin ve sıradaki şarkılar diske iner. Sunucuya ulaşılamayınca uygulama son kuyrukla açılır, inen şarkılar çalar. Kendin atladığın bir şarkı bir kez çalarken, bir kez de önbellek için iner." }
+                    ComboRow {
+                        label: "Boyut sınırı"
+                        hint: "Dolunca en uzun süredir dinlenmeyen silinir."
+                        box: "cacheBox"
+                        model: Util.cacheSizes.map(g => g ? g + " GB" : "Kapalı")
+                        currentIndex: Util.cacheSizes.indexOf(Player.options.offlineGb || 0)
+                        onPicked: i => Player.setOption("offlineGb", Util.cacheSizes[i])
+                    }
+                    LabeledSlider {
+                        label: "Önden inen"
+                        enabled: Player.options.offlineGb > 0
+                        valueText: (Player.options.offlineAhead || 0) + " şarkı"
+                        hint: "Kuyrukta sıradaki kaç şarkı diskte hazır olsun."
+                        from: 0; to: 20; stepSize: 1; value: Player.options.offlineAhead || 0
+                        onMoved: v => Player.setOption("offlineAhead", v)
+                    }
+                    RowLayout {
+                        Plain { text: "Diskte: " + Util.dataSize(Player.cacheBytes); Layout.fillWidth: true }
+                        Button { text: "Temizle"; icon.name: Util.icon("edit-clear-all"); enabled: Player.cacheBytes > 0; onClicked: Player.clearSongCache() }
+                    }
+                }
+
+                Page {
+                    name: "Klavye"
+                    Hint { text: "Değiştirmek için kısayola bas, sonra yeni tuşlara. Vazgeçmek: Esc." }
+                    Repeater {
+                        model: Shortcuts.all
+                        RowLayout {
+                            id: keyRow
+                            required property var modelData
+                            Layout.fillWidth: true
+                            ColumnLayout {
+                                Layout.fillWidth: true; spacing: 2
+                                Plain { text: keyRow.modelData.title; Layout.fillWidth: true }
+                                Hint { visible: text !== ""; text: cap.problem; color: "#e5484d" }
+                            }
+                            KeyCapture { id: cap; action: keyRow.modelData.key }
+                            Button {
+                                objectName: "key_" + keyRow.modelData.key
+                                Layout.preferredWidth: 160
+                                text: cap.on ? "Tuşlara bas…" : Shortcuts.label(keyRow.modelData.key)
+                                highlighted: cap.on
+                                onClicked: cap.start()
+                            }
+                            ToolButton {
+                                objectName: "reset_" + keyRow.modelData.key
+                                icon.name: Util.icon("edit-undo")
+                                enabled: !!Player.options[keyRow.modelData.key]
+                                onClicked: Player.setOption(keyRow.modelData.key, "")
+                                ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: "Standart"
+                            }
+                        }
                     }
                 }
 

@@ -9,6 +9,7 @@ GenreData 1.0 GenreData.qml
 GenresData 1.0 GenresData.qml
 HomeData 1.0 HomeData.qml
 ItemActions 1.0 ItemActions.qml
+KeyCapture 1.0 KeyCapture.qml
 LyricsData 1.0 LyricsData.qml
 Navigation 1.0 Navigation.qml
 NowPlayingData 1.0 NowPlayingData.qml
@@ -20,4 +21,5 @@ SearchData 1.0 SearchData.qml
 SimilarSongs 1.0 SimilarSongs.qml
 TracksData 1.0 TracksData.qml
 singleton Columns 1.0 Columns.qml
+singleton Shortcuts 1.0 Shortcuts.qml
 singleton Util 1.0 Util.qml

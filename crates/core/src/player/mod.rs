@@ -2,6 +2,7 @@
 //! gapless, listening together, reports, DJ, stations); `Player` runs it on its own thread for a front end.
 mod actor;
 mod deck;
+mod offline;
 mod playback;
 mod server;
 mod state;

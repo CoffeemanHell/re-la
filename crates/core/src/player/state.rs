@@ -8,10 +8,11 @@ use crate::queue::{
 };
 use crate::queue::{RadioPlays, ReportGate};
 use crate::settings::{Settings, migrate_settings};
+use crate::songs::SongCache;
 use crate::subsonic::{Failure, Login, Subsonic};
 use md5::{Digest, Md5};
 use serde_json::{Map, Value, json};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -41,7 +42,9 @@ pub enum Job {
     Timer { ms: u64, then: Box<dyn FnOnce(&mut PlayerCore) + Send> },
     /// The original file (song) or a zip (album, playlist) to path; the actor reports through download_progress/_done.
     Download { client: Arc<Subsonic>, id: String, path: PathBuf },
-    /// Logout: its URL carries this login's token.
+    /// A song into the song cache; the actor reports through cache_done.
+    CacheSong { client: Arc<Subsonic>, query: Vec<(String, String)>, path: PathBuf },
+    /// Logout: the URLs (also CacheSong's) carry this login's token.
     CancelDownload,
 }
 
@@ -71,6 +74,9 @@ impl Changes {
 #[derive(Debug, Clone, Default)]
 pub struct PlayerSnapshot {
     pub online: bool,
+    pub offline: bool, // no server, but songs of the queue are on disk
+    pub cache_bytes: u64, // what the song cache holds
+    pub audio_devices: Vec<(String, String)>, // (name, description), once asked for
     pub signed_in: bool,
     pub login_failed: bool, // status says why the last connect failed
     pub status: String,
@@ -108,8 +114,11 @@ pub(super) struct DeckState {
     pub(super) loading: bool,
     pub(super) seeking: bool, // a seek is out: time-pos is stale until it is near pos
     pub(super) seek_at: f64,  // clock ms of that seek
+    pub(super) base: f64,     // a live transcode: the second of the song its stream starts at
+    pub(super) live_transcode: bool, // no seeking inside the stream (see Source)
     pub(super) appended: bool, // gapless: next song already queued in this deck
     pub(super) appended_from_dur: f64,
+    pub(super) appended_live: bool, // the appended song is a live transcode
     pub(super) appended_idx: i64, // queue index of the appended song
     pub(super) props: HashMap<String, String>, // observed audio-params/* etc.
 }
@@ -127,8 +136,11 @@ impl DeckState {
             loading: false,
             seeking: false,
             seek_at: 0.0,
+            base: 0.0,
+            live_transcode: false,
             appended: false,
             appended_from_dur: 0.0,
+            appended_live: false,
             appended_idx: -1,
             props: HashMap::new(),
         }
@@ -172,7 +184,17 @@ pub(super) fn default_options() -> Map<String, Value> {
         "radioLanguage": 80,  // % of radio picks in the seed's language
         "radioGenre": 50,     // seed genre preference
         "radioBatch": 10,
-        "closeToTray": true,  // closing the window keeps playing in the tray
+        "closeToTray": false, // the tray: its icon, and closing the window keeps playing there
+        "audioDevice": "auto", // the desktop's output device
+        "offlineGb": 0,       // song cache limit; 0: no new songs
+        "offlineAhead": 3,    // songs of the queue to have on disk ahead
+        // keyboard shortcuts (themes/shared/Shortcuts.qml has the standard ones); empty: the standard one
+        "keyToggle": "",
+        "keyNext": "",
+        "keyPrev": "",
+        "keySearch": "",
+        "keyBack": "",
+        "keyForward": "",
         "gridSize": 172,      // album card width in px (grids)
         "columns": "artist,album,duration,year,fav,rating,bitrate", // track table columns (themes' Columns.qml keys)
         "autoContinue": true, // queue end: add songs (dj picks how)
@@ -189,6 +211,8 @@ pub(super) fn default_options() -> Map<String, Value> {
         "albumOrder": "newest",
         "coverTap": "lyrics",     // Now Playing cover tap: lyrics | queue | none
         "tabs": "library,albums,playlists,artists,radio,together", // bottom bar tabs shown
+        "transcodeWifi": "",      // "opus-128"; empty: the original
+        "transcodeMobile": "",
         "coverQuality": "high",   // low | medium | high: cover pixels ×0.5 / ×0.75 / ×1
     })
     .as_object()
@@ -202,6 +226,15 @@ pub struct PlayerCore {
     pub(super) settings: Arc<dyn Settings>,
     pub(super) cache_dir: PathBuf,
     pub(super) decks: [DeckState; 2],
+    pub(super) songs: SongCache,
+    pub(super) cache_bytes: u64,
+    pub(super) cache_next: f64, // clock ms; no new download before it
+    pub(super) caching: bool,
+    pub(super) cache_keep: HashSet<PathBuf>, // what the running download must not push out
+    pub(super) held: HashSet<String>, // the cached songs, while offline
+    pub(super) offline: bool,
+    pub(super) mobile: bool, // on mobile data (Android)
+    pub(super) audio_devices: Vec<(String, String)>,
     pub(super) cur: usize,
     pub(super) sync: Box<dyn SyncPort>,
     pub(super) station_port: Box<dyn StationPort>,
@@ -289,8 +322,18 @@ impl PlayerCore {
             };
         }
         let [a, b] = decks;
+        let songs = SongCache::open(cache_dir.join("songs"));
         let mut c = PlayerCore {
             clock_ms: 0.0,
+            cache_bytes: songs.trim(u64::MAX, &HashSet::new()),
+            songs,
+            cache_next: 0.0,
+            caching: false,
+            cache_keep: HashSet::new(),
+            held: HashSet::new(),
+            offline: false,
+            mobile: false,
+            audio_devices: vec![],
             cache_dir,
             decks: [DeckState::new(a), DeckState::new(b)],
             cur: 0,
@@ -298,7 +341,7 @@ impl PlayerCore {
             station_port,
             client: None,
             status: String::new(),
-            theme: if s.contains("theme") { s.get_string("theme") } else { "nothing".into() },
+            theme: if s.contains("theme") { s.get_string("theme") } else if cfg!(windows) { "default".into() } else { "nothing".into() },
             qhash: String::new(),
             queue: Arc::default(),
             queue_sent: Arc::default(),
@@ -356,8 +399,12 @@ impl PlayerCore {
         };
         c.set_login(c.login.clone());
         let v = c.volume;
+        let device = c.options.get("audioDevice").map(text).unwrap_or_default();
         for d in &mut c.decks {
             d.out.set_volume(v);
+            if device != "auto" {
+                d.out.set_audio_device(&device);
+            }
             if exclusive {
                 d.out.set_exclusive(true);
             }
@@ -389,6 +436,9 @@ impl PlayerCore {
     pub fn snapshot(&self) -> PlayerSnapshot {
         PlayerSnapshot {
             online: self.online,
+            offline: self.offline,
+            cache_bytes: self.cache_bytes,
+            audio_devices: self.audio_devices.clone(),
             signed_in: !self.login.token.is_empty(),
             login_failed: self.login_failed,
             status: self.status.clone(),
@@ -443,7 +493,11 @@ impl PlayerCore {
 
     /// raw = original file: bit-exact and seekable over HTTP ranges.
     pub fn stream_url(&self, id: &str) -> String {
-        self.client.as_ref().map_or(String::new(), |c| c.url("stream", &[("id".into(), id.into()), ("format".into(), "raw".into())]).to_string())
+        self.call_url("stream", &[("id".into(), id.into()), ("format".into(), "raw".into())])
+    }
+
+    pub(super) fn call_url(&self, method: &str, query: &[(String, String)]) -> String {
+        self.client.as_ref().map_or(String::new(), |c| c.url(method, query).to_string())
     }
 
     /// getCoverArt for the cover cache; built without a token too (the cache keys on the URL without the login).
@@ -659,8 +713,11 @@ impl PlayerCore {
     // ------------------------------------------------------------ decks
 
     pub(super) fn load_deck(&mut self, k: usize, id: &str, pos: f64, paused: bool) {
-        let url = self.stream_url(id);
+        let src = self.source(id);
         let d = &mut self.decks[k];
+        d.live_transcode = src.live_transcode;
+        d.base = if src.live_transcode { pos.floor().max(0.0) } else { 0.0 }; // timeOffset takes whole seconds
+        let url = if d.base > 0.0 { format!("{}&timeOffset={}", src.url, d.base) } else { src.url };
         d.id = id.into();
         d.pos = -1.0;
         d.dur = 0.0;
@@ -726,6 +783,10 @@ impl PlayerCore {
     /// Every seek goes here: until the deck's position is near the target (at most 3 s), the old place or one in
     /// between is not shown.
     pub(super) fn seek_deck(&mut self, k: usize, pos: f64) {
+        if self.decks[k].live_transcode {
+            let (id, paused) = (self.decks[k].id.clone(), !self.playing);
+            return self.load_deck(k, &id, pos, paused);
+        }
         let now = self.clock_ms;
         let d = &mut self.decks[k];
         d.out.seek(pos);
@@ -797,6 +858,9 @@ impl PlayerCore {
         if !self.valid(i) || self.remote("jump", json!({"i": i})) {
             return;
         }
+        if self.offline && !self.holds(i) {
+            return self.set_status("Çevrimdışı: bu şarkı inmemiş");
+        }
         self.end_station();
         self.drop_prefetch();
         self.playing = true;
@@ -851,6 +915,10 @@ impl PlayerCore {
         if !self.station.is_empty() {
             return self.stop_station(); // pausing a stream ends it; the queue waits where it was
         }
+        if !self.playing && self.offline && !self.holds(self.idx) {
+            let n = self.playable(self.idx, 1);
+            return self.jump(if n < 0 { self.idx } else { n });
+        }
         if !self.playing && self.decks[self.cur].id.is_empty() {
             return self.jump(self.idx); // the song failed to open: try it again
         }
@@ -860,6 +928,7 @@ impl PlayerCore {
 
     pub fn next(&mut self) {
         let n = next_index(self.idx, self.queue.len() as i64, if self.repeat == 0 { 0 } else { 1 }); // the button always moves on
+        let n = self.playable(n, 1);
         if n < 0 || self.remote("next", json!({})) {
             return;
         }
@@ -889,7 +958,8 @@ impl PlayerCore {
         }
         let restart = self.station.is_empty() && self.position() > 3.0;
         self.end_station();
-        self.load(if restart { self.idx } else { (self.idx - 1).max(0) }, 0.0);
+        let before = self.playable((self.idx - 1).max(0), -1);
+        self.load(if restart || before < 0 { self.idx } else { before }, 0.0);
         self.publish();
     }
 
@@ -1003,7 +1073,24 @@ impl PlayerCore {
                 self.jobs.push(j);
             }
         self.settings.set(&format!("options/{key}"), value.clone());
-        self.options.insert(key.into(), value);
+        self.options.insert(key.into(), value.clone());
+        self.changes.options = true;
+        match key {
+            "audioDevice" => self.decks.iter_mut().for_each(|d| d.out.set_audio_device(&text(&value))),
+            "transcodeWifi" | "transcodeMobile" => self.drop_prefetch(),
+            "offlineGb" => {
+                self.cache_next = 0.0;
+                if self.cache_cap() > 0 {
+                    self.trim_songs(self.cache_cap(), HashSet::new());
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Asks the output for its devices; the snapshot has them then.
+    pub fn refresh_audio_devices(&mut self) {
+        self.audio_devices = self.decks[0].out.audio_devices();
         self.changes.options = true;
     }
 
@@ -1058,6 +1145,8 @@ impl PlayerCore {
         d.pos = -1.0;
         d.dur = 0.0;
         d.pending_seek = 0.0;
+        d.base = 0.0;
+        d.live_transcode = false;
         d.loading = true;
         d.seeking = false;
         self.set_speed(cur, 1.0);

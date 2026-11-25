@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -162,6 +163,8 @@ fun App() {
     // a saved login reconnecting at start: the spinner, not a flash of the form (the library waits for online, as
     // the core answers calls before it with null); once that connect fails, the form as before
     val resume = remember { BooleanArray(2) } // [decided, resume]
+    val usable = s?.let { it.online || it.offline } ?: false
+    val nav = remember(usable) { mutableStateListOf<Screen>(Screen.Library).apply { if (s?.offline == true) add(Screen.NowPlaying) } }
     s?.let { st ->
         if (!resume[0]) { resume[0] = true; resume[1] = st.connecting }
         if (!st.online && !st.connecting) resume[1] = false
@@ -170,17 +173,17 @@ fun App() {
         CompositionLocalProvider(LocalLook provides lk) { Surface(Modifier.fillMaxSize()) {
             val state = s
             when {
-                state == null || (!state.online && resume[1]) -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
-                !state.online -> Login(state)
-                else -> Shell()
+                state == null || (!usable && resume[1]) -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { LoadingIndicator() }
+                !usable -> Login(state)
+                // the server is back: every page loads anew, where it was
+                else -> key(state.online) { Shell(nav) }
             }
         } }
     }
 }
 
 @Composable
-private fun Shell() {
-    val nav = remember { mutableStateListOf<Screen>(Screen.Library) }
+private fun Shell(nav: SnapshotStateList<Screen>) {
     val s by Rela.player.collectAsStateWithLifecycle()
     val queue by Rela.queue.collectAsStateWithLifecycle()
     val playing = nav.lastOrNull() == Screen.NowPlaying

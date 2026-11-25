@@ -15,7 +15,7 @@ AbstractButton {
         text: pill.text; textFormat: Text.PlainText
         color: pill.on ? (pill.danger ? App.theme.fg : App.theme.bg) : (pill.enabled ? App.theme.fg : App.theme.muted)
         font.family: App.theme.font; font.pixelSize: 11; font.letterSpacing: 1.5
-        horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
+        elide: Text.ElideRight; horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
     }
     background: Rectangle {
         radius: height / 2

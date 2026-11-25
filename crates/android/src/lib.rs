@@ -67,6 +67,10 @@ pub struct PlayerChanges {
 #[derive(uniffi::Record, Debug, Clone, PartialEq)]
 pub struct PlayerState {
     pub online: bool,
+    /// No server, but songs of the queue are on disk.
+    pub offline: bool,
+    /// What the song cache holds.
+    pub cache_bytes: u64,
     pub signed_in: bool,
     pub login_failed: bool,
     pub status: String,
@@ -172,6 +176,8 @@ fn player_changes(c: Changes) -> PlayerChanges {
 fn player_state(s: &PlayerSnapshot) -> PlayerState {
     PlayerState {
         online: s.online,
+        offline: s.offline,
+        cache_bytes: s.cache_bytes,
         signed_in: s.signed_in,
         login_failed: s.login_failed,
         status: s.status.clone(),
@@ -439,6 +445,13 @@ impl Core {
     pub fn set_theme(&self, name: String) {
         self.player.call(move |c| c.set_theme(&name));
     }
+    /// On mobile data: which of the two transcode settings applies.
+    pub fn set_mobile(&self, on: bool) {
+        self.player.call(move |c| c.set_mobile(on));
+    }
+    pub fn clear_song_cache(&self) {
+        self.player.call(|c| c.clear_song_cache());
+    }
     pub fn demo(&self) {
         self.player.call(|c| c.demo());
     }
@@ -456,13 +469,22 @@ impl Core {
         rx.await.ok().flatten()
     }
 
-    /// The song's waveform from the relay; None offline, for SUB/WAVE, or when the relay has none (yet).
+    /// The song's waveform from disk or the relay; None for SUB/WAVE, or when the relay has none (yet).
     pub async fn waveform(&self, id: String) -> Option<Wave> {
         let (tx, rx) = tokio::sync::oneshot::channel();
         self.player.waveform(id, move |w| {
             let _ = tx.send(w.map(|w| Wave { peaks: w.peaks, rms: w.rms }));
         });
         rx.await.ok().flatten()
+    }
+
+    /// The formats the server transcodes to ("opus", "mp3"); empty offline or when it can't tell.
+    pub async fn transcode_formats(&self) -> Vec<String> {
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        self.player.transcode_formats(move |f| {
+            let _ = tx.send(f);
+        });
+        rx.await.unwrap_or_default()
     }
 
     pub fn follow(&self, user: String) {

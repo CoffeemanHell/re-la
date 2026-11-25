@@ -42,10 +42,11 @@ impl PlayerCore {
         }
         self.generation += 1; // cancels in-flight connects and pending retries
         self.persist_seq += 1; // a pending queue save must not go out with the next login's token
-        if self.downloading {
+        if self.downloading || self.caching {
             self.jobs.push(Job::CancelDownload);
         }
         self.online = false;
+        self.offline = false;
         self.playback_report = false;
         self.report = Default::default();
         let mut l = self.login.clone();
@@ -69,7 +70,9 @@ impl PlayerCore {
         let g = self.generation;
         self.connecting = true;
         self.login_failed = false;
-        self.set_status("Bağlanıyor…");
+        if !self.offline {
+            self.set_status("Bağlanıyor…");
+        }
         self.api("ping", vec![], false, move |c, r| {
             if g != c.generation {
                 return;
@@ -85,6 +88,7 @@ impl PlayerCore {
                 }
                 c.login_failed = true;
                 c.set_status(why);
+                c.enter_offline();
                 return c.retry(g); // network or server down: keep the saved login and try again
             }
             let l = c.login.clone();
@@ -92,6 +96,7 @@ impl PlayerCore {
                 c.settings.set(k, v.as_str().into()); // the settings file keeps itself 0600 once it holds a token
             }
             c.online = true;
+            c.offline = false;
             c.connecting = false;
             c.fresh = false;
             c.set_status(""); // connected: nothing to say
@@ -111,8 +116,10 @@ impl PlayerCore {
         if g != self.generation {
             return;
         }
-        let st = format!("{} · 5 sn sonra yeniden denenecek", self.status);
-        self.set_status(st);
+        if !self.offline {
+            let st = format!("{} · 5 sn sonra yeniden denenecek", self.status);
+            self.set_status(st);
+        }
         self.timer(5000, move |c| {
             if g == c.generation {
                 c.connect_server();
@@ -176,6 +183,8 @@ impl PlayerCore {
                 out.push(Job::Api { client, method: "savePlayQueue".into(), query: self.play_queue_query(), then: Box::new(|_, _| {}) });
             }
             self.save_local_queue();
+        } else if self.offline {
+            self.save_local_queue(); // where we got to; the server's is older
         }
         out
     }
@@ -289,7 +298,7 @@ impl PlayerCore {
             self.idx = i;
             if self.decks[k].loading {
                 self.decks[k].pending_seek = pos; // FILE_LOADED seeks there; a seek now would run the FLAC search twice
-            } else if (self.decks[k].pos - pos).abs() > 0.5 {
+            } else if (self.decks[k].pos - pos).abs() > if self.decks[k].live_transcode { 2.0 } else { 0.5 } {
                 self.seek_deck(k, pos);
             }
         }

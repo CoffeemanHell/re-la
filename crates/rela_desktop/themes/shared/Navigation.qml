@@ -47,9 +47,14 @@ QtObject {
         history[at].args = { query: q }
         loader.item.args = history[at].args // the page re-queries
     }
-    // online: open Home once; offline (logged out): drop the pages so nothing keeps calling the server
+    property bool offline: false // the pages were opened without the server
+    // online: open Home once; offline with songs on disk: the queue; logged out: drop the pages so nothing keeps calling
+    // the server
     function start() {
+        if (Player.offline && at < 0) go("nowplaying")
         if (Player.online && at < 0) go("home")
-        if (!Player.online && at >= 0) { loader.source = ""; at = -1; history = [] }
+        if (!Player.online && !Player.offline && at >= 0) { loader.source = ""; at = -1; history = [] }
+        if (Player.online && offline) reload() // what could not be loaded
+        offline = Player.offline
     }
 }

@@ -1,5 +1,6 @@
 // Around the theme: the engine loads this first. It makes the theme's window (App.load gives its
-// Main.qml), swaps it when Player.theme changes (the new one is up before the old one goes), keeps the tray, shows the
+// Main.qml), swaps it when Player.theme changes (the new one is up before the old one goes), keeps the tray (when it is
+// switched on), shows the
 // window for a second launch or MPRIS Raise, and quits or hides to the tray when the window closes.
 import QtQuick
 import Qt.labs.platform as Platform
@@ -41,7 +42,7 @@ QtObject {
                                        : Player.current.title + " · " + Player.current.artist
 
     property Platform.SystemTrayIcon tray: Platform.SystemTrayIcon {
-        visible: available
+        visible: available && Player.options.closeToTray === true
         icon.source: "qrc:/re-la.svg"
         tooltip: shell.nowPlaying
         menu: Platform.Menu {

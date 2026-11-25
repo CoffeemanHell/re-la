@@ -15,6 +15,9 @@ QtObject {
     property var options: ({ autoContinue: true, scrobble: true, nowPlaying: true })
     property bool playing: false
     property bool online: true
+    property bool offline: false
+    property double cacheBytes: 0
+    property var audioDevices: []
     property bool signedIn: true
     property bool loginFailed: false
     property bool dj: false
@@ -35,7 +38,7 @@ QtObject {
     property var waveform: []
     property var waveformRms: []
 
-    function reset() { calls = []; replies = {}; queue = []; index = -1; current = {}; station = {}; playing = false; hold = false; held = []; shuffle = false; repeat = 0; position = 0; duration = 0; bitrate = 0; streamInfo = ""; dj = false; connecting = false; loginFailed = false; online = true; signedIn = true; options = { autoContinue: true, scrobble: true, nowPlaying: true } }
+    function reset() { calls = []; replies = {}; queue = []; index = -1; current = {}; station = {}; playing = false; hold = false; held = []; shuffle = false; repeat = 0; position = 0; duration = 0; bitrate = 0; streamInfo = ""; dj = false; connecting = false; loginFailed = false; online = true; offline = false; cacheBytes = 0; audioDevices = []; signedIn = true; options = { autoContinue: true, scrobble: true, nowPlaying: true } }
     function rec(c) { calls = calls.concat([c]) }
     function called(name, method) { return calls.filter(c => c[0] === name && (method === undefined || c[1] === method)) }
     function answer(method, done) {
@@ -59,6 +62,8 @@ QtObject {
     function prev() { rec(["prev"]) }
     function seek(s) { rec(["seek", s]) }
     function copy(t) { rec(["copy", t]) }
+    function refreshAudioDevices() { rec(["refreshAudioDevices"]) }
+    function clearSongCache() { rec(["clearSongCache"]) }
     function setting(k) { return "" }
     function setOption(k, v) { rec(["setOption", k, v]); const o = Object.assign({}, options); o[k] = v; options = o }
     function shuffledJson(songs) { rec(["shuffledJson"]); return JSON.stringify(JSON.parse(songs).reverse()) } // reversed: a test can tell

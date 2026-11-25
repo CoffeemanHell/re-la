@@ -1,7 +1,7 @@
 //! The Navidrome (Subsonic API) client: token login, calls, and the guards for what QML may call.
 use crate::queue::{NO_SERVER, NOT_SUBSONIC, encode_query, failure_text, for_themes, login_error, normalize_server, readable, subsonic_query, writable};
 use md5::{Digest, Md5};
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 use std::time::Duration;
 
 /// A login: the password itself is never kept, only md5(password + salt) with a fresh random salt (token auth).
@@ -86,7 +86,29 @@ impl Subsonic {
 
     /// The `subsonic-response` object when its status is "ok".
     pub async fn call(&self, method: &str, params: &[(String, String)]) -> Result<Value, Failure> {
-        let resp = match self.http.get(self.url(method, params)).send().await {
+        self.answer(self.http.get(self.url(method, params))).await
+    }
+
+    /// The formats this server transcodes to, of those a phone plays and a bitrate makes smaller. The Subsonic API has no
+    /// list, so each is asked for (OpenSubsonic getTranscodeDecision, for any one song); none on a server without it.
+    pub async fn transcode_formats(&self) -> Vec<String> {
+        let one = self.call("getRandomSongs", &[("size".into(), "1".into())]).await.unwrap_or_default();
+        let Some(id) = one["randomSongs"]["song"][0]["id"].as_str() else { return vec![] };
+        let url = self.url("getTranscodeDecision", &[("mediaId".into(), id.into()), ("mediaType".into(), "song".into())]);
+        let mut out = vec![];
+        for f in ["opus", "mp3", "aac", "ogg"] {
+            let body = json!({"name": "re-la", "transcodingProfiles": [{"container": f, "audioCodec": f, "protocol": "http"}]});
+            match self.answer(self.http.post(url.clone()).json(&body)).await {
+                Ok(r) if r["transcodeDecision"]["canTranscode"] == true => out.push(f.into()),
+                Ok(_) => {}
+                Err(_) => break, // no such call here
+            }
+        }
+        out
+    }
+
+    async fn answer(&self, req: reqwest::RequestBuilder) -> Result<Value, Failure> {
+        let resp = match req.send().await {
             Ok(r) => r,
             Err(e) => return Err(Failure { code: NO_SERVER, message: String::new(), http: 0, net_error: e.to_string() }),
         };

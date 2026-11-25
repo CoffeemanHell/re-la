@@ -62,6 +62,11 @@ fn run(mpv: &Mpv, c: Cmd) {
     };
 }
 
+fn first_output(all: Vec<(String, String)>) -> Vec<(String, String)> {
+    let Some(ao) = all.iter().find_map(|(name, _)| Some(name.split_once('/')?.0.to_string())) else { return vec![] };
+    all.into_iter().filter(|(name, _)| name.split_once('/').is_some_and(|(a, _)| a == ao)).collect()
+}
+
 fn num(v: f64) -> String {
     format!("{v:.3}")
 }
@@ -98,6 +103,21 @@ impl Deck for MpvDeck {
     fn set_exclusive(&mut self, on: bool) {
         self.send(Cmd::Flag("audio-exclusive", on));
         self.command(&["ao-reload"]);
+    }
+    fn set_audio_device(&mut self, name: &str) {
+        self.command(&["set", "audio-device", name]);
+    }
+    /// mpv lists every audio output's devices, the best output first (PipeWire's, then the same ones again as PulseAudio
+    /// and ALSA): the first one's are enough.
+    fn audio_devices(&self) -> Vec<(String, String)> {
+        let n = self.mpv.get_property::<i64>("audio-device-list/count").unwrap_or(0);
+        let all: Vec<(String, String)> = (0..n)
+            .filter_map(|i| {
+                let get = |k: &str| self.mpv.get_property::<String>(&format!("audio-device-list/{i}/{k}")).ok();
+                Some((get("name")?, get("description")?))
+            })
+            .collect();
+        first_output(all)
     }
     /// Tells a silent mpv from a muted or missing PipeWire stream.
     fn audio_log(&self) -> String {
@@ -220,4 +240,15 @@ pub fn mpv_deck(index: usize, sink: DeckSink, ao: &str) -> Box<dyn Deck> {
         .expect("mpv command thread");
     // Drop joins the last one first: the command thread, before `quit`
     Box::new(MpvDeck { mpv, cmds: Some(tx), threads: vec![events, commands] })
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn one_outputs_devices() {
+        let d = |n: &str| (n.to_string(), format!("D {n}"));
+        let all = vec![d("auto"), d("pipewire"), d("pipewire/a"), d("pipewire/b"), d("pulse/a"), d("alsa/hw")];
+        assert_eq!(super::first_output(all), [d("pipewire/a"), d("pipewire/b")]);
+        assert_eq!(super::first_output(vec![d("auto"), d("null")]), []);
+    }
 }

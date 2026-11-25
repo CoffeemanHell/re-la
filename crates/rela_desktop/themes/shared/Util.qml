@@ -11,9 +11,12 @@ QtObject {
         "configure": "\ue713",
         "documentinfo": "\ue946",
         "download": "\ue896",
+        "drive-harddisk": "\ueda2",
         "edit-clear-all": "\ue74d",
         "edit-rename": "\ue8ac",
+        "edit-undo": "\ue7a7",
         "emblem-shared": "\ue72d",
+        "input-keyboard": "\ue765",
         "media-optical-audio": "\ue93c",
         "media-playlist-append": "\uecc8",
         "media-playlist-repeat-song": "\ue8ed",
@@ -27,6 +30,10 @@ QtObject {
     })
     // The name to give icon.name on this system.
     function icon(name) { return Qt.platform.os === "windows" && glyphs[name] || name }
+    readonly property var cacheSizes: [0, 1, 2, 5, 10, 20, 50] // song cache limits in GB; 0: off
+    function dataSize(bytes) { return Qt.locale().formattedDataSize(bytes, 1, Locale.DataSizeTraditionalFormat) }
+    // The output devices to pick from, as {name, description}.
+    function outputs() { return [{ name: "auto", description: "Sistem varsayılanı" }].concat(Player.audioDevices) }
     // A copy of the songs in random order.
     function shuffled(songs) { return JSON.parse(Player.shuffledJson(JSON.stringify(songs))) }
     // File name a download is saved under. kind: song (original file), album / playlist (zip).

@@ -1,7 +1,7 @@
 //! What the decks report and what the 50 ms tick does: positions, crossfade, gapless, drift, reports, the queue end.
 use super::deck::{DeckEvent, EndReason};
 use super::state::PlayerCore;
-use crate::queue::{Drift, drift_action, next_index, play_report, scrobble_due, similar_append, text};
+use crate::queue::{Drift, drift_action, play_report, scrobble_due, similar_append, text};
 use crate::radio::{RadioWeights, radio_pick, relaxed};
 use serde_json::Value;
 use std::collections::HashSet;
@@ -32,6 +32,7 @@ impl PlayerCore {
         let d = &mut self.decks[k];
         match e {
             DeckEvent::Position(Some(v)) => {
+                let v = v + d.base;
                 // not a stale time-pos of the previous file, or of the place before a seek
                 if !d.loading && (!d.seeking || (v - d.pos).abs() < 0.5 || now - d.seek_at > 3000.0) {
                     d.pos = v;
@@ -39,7 +40,8 @@ impl PlayerCore {
                 }
             }
             DeckEvent::Position(None) => d.pos = -1.0,
-            DeckEvent::Duration(v) => d.dur = v,
+            DeckEvent::Duration(v) if !d.live_transcode => d.dur = v,
+            DeckEvent::Duration(_) => {} // what is left of it, or a guess: the song's own is right
             DeckEvent::Bitrate(v) => d.bitrate = v.unwrap_or(0.0),
             DeckEvent::Prop(name, Some(v)) => {
                 d.props.insert(name, v);
@@ -54,6 +56,11 @@ impl PlayerCore {
                     d.loading = true;
                     d.seeking = false;
                     d.pos = -1.0;
+                    d.base = 0.0;
+                    d.live_transcode = d.appended_live;
+                    if d.live_transcode {
+                        d.dur = 0.0; // the last song's
+                    }
                     let (from_dur, i) = (d.appended_from_dur, d.appended_idx);
                     d.out.drop_first();
                     self.anchor += from_dur * 1000.0;
@@ -70,7 +77,8 @@ impl PlayerCore {
                 d.loading = false;
                 let pending = d.pending_seek;
                 d.pending_seek = 0.0;
-                if pending > 0.05 {
+                let there = if d.live_transcode { (pending - d.base).abs() < 2.0 } else { pending <= 0.05 };
+                if !there {
                     self.seek_deck(k, pending); // the timeline goes straight there, no 0:00 in between
                 }
                 self.failed = 0;
@@ -99,6 +107,10 @@ impl PlayerCore {
                 if !self.online {
                     // opened from disk before connecting: restore_queue loads it again once connected
                     self.decks[k].id.clear();
+                    let n = self.playable(self.idx + 1, 1);
+                    if self.offline && self.playing && self.valid(n) {
+                        self.load(n, 0.0);
+                    }
                     return;
                 }
                 let title = if self.valid(self.idx) { text(&self.queue[self.idx as usize]["title"]) } else { String::new() };
@@ -107,6 +119,10 @@ impl PlayerCore {
                 if self.failed >= 3 {
                     // three in a row (server down): stop here instead of running through the queue
                     self.failed = 0;
+                    self.held = self.songs.held();
+                    if let Some(i) = (self.idx + 1..self.queue.len() as i64).find(|i| self.holds(*i)) {
+                        return self.load(i, 0.0); // the network went away: what is on disk still plays
+                    }
                     self.decks[k].id.clear(); // play opens this song again (toggle)
                     self.set_playing(false);
                     return;
@@ -114,7 +130,7 @@ impl PlayerCore {
                 self.load(self.idx + 1, 0.0);
             }
             EndReason::Eof => {
-                if next_index(self.idx, self.queue.len() as i64, self.repeat as i32) >= 0 {
+                if self.upcoming() >= 0 {
                     self.advance();
                 } else {
                     self.set_playing(false);
@@ -158,7 +174,7 @@ impl PlayerCore {
     pub(super) fn advance(&mut self) {
         self.skips = 0; // listened to the end
         self.anchor += (self.duration() - self.xfade as f64) * 1000.0;
-        let n = next_index(self.idx, self.queue.len() as i64, self.repeat as i32);
+        let n = self.upcoming();
         self.cross_to(n);
         self.timer(((self.xfade + 3) * 1000) as u64, |c| c.publish());
     }
@@ -205,6 +221,7 @@ impl PlayerCore {
             return;
         }
         self.notify_position();
+        self.fill_cache();
 
         // The queue never runs dry, also while skipping or paused: DJ keeps radioBatch songs ahead, without DJ at least 2.
         let ahead = self.queue.len() as i64 - self.idx - 1;
@@ -246,18 +263,19 @@ impl PlayerCore {
             }
         }
 
-        let n = next_index(self.idx, self.queue.len() as i64, self.repeat as i32);
+        let n = self.upcoming();
         if n >= 0 && !self.fading && left < self.xfade as f64 + 15.0 {
             let next = self.song_id(n);
             if self.xfade == 0 {
                 // gapless: queue next inside the same deck
                 if !self.decks[k].appended {
-                    let url = self.stream_url(&next);
+                    let src = self.source(&next);
                     let d = &mut self.decks[k];
                     d.appended = true;
+                    d.appended_live = src.live_transcode;
                     d.appended_idx = n;
                     d.appended_from_dur = dur;
-                    d.out.append(&url);
+                    d.out.append(&src.url);
                 }
             } else {
                 // crossfade: preload next on the other deck, paused
@@ -274,7 +292,12 @@ impl PlayerCore {
         // follows us. shortcut: the speed nudge is not bit-perfect while active (drift > 150 ms); it snaps back under 30 ms.
         let expected = (self.server_now() - self.anchor) / 1000.0;
         let shared = self.following() || self.sync.has_listeners();
-        match drift_action(pos - expected, shared) {
+        let off = pos - expected;
+        // shortcut: a live transcode seeks by a new stream, in whole seconds and after the server's start: up to 5 s is
+        // made up by speed, or it would seek forever
+        let nudge = self.decks[k].live_transcode && off.abs() < 5.0;
+        match drift_action(off, shared) {
+            Drift::Seek if nudge => self.set_speed(k, if off > 0.0 { 0.98 } else { 1.02 }),
             Drift::Seek => self.seek_deck(k, expected), // the drift check waits until it landed (seeking)
             Drift::Slow => self.set_speed(k, 0.98),
             Drift::Fast => self.set_speed(k, 1.02),
