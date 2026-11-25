@@ -58,7 +58,7 @@ Dialog {
     }
 
     objectName: "settings"
-    onOpened: Player.refreshAudioDevices()
+    onAboutToShow: Player.refreshAudioDevices() // not opened: that waits for the style's opening animation
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(760, d.w.width - 40); height: Math.min(560, d.w.height - 40)
