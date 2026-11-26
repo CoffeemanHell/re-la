@@ -169,7 +169,8 @@ fn main() {
     // overrides it). QML gets it from i18n/qml_en.qm, the core's status lines from rela_core::i18n.
     let mut ae = rela_desktop::qtgui::app_engine(e.as_mut());
     let lang = std::env::var("RELA_LANG").ok().filter(|l| !l.is_empty()).unwrap_or_else(|| system_ui_language().unwrap_or_else(|| ae.ui_language().to_string()));
-    let lang = if rela_core::i18n::is_english(&lang) { "en" } else { "tr" };
+    // no English catalog in this build: the core follows the Turkish QML
+    let lang = if rela_core::i18n::is_english(&lang) && option_env!("RELA_TURKISH_ONLY").is_none() { "en" } else { "tr" };
     rela_core::i18n::set_language(lang);
     ae.as_mut().set_ui_language(&QString::from(lang));
 

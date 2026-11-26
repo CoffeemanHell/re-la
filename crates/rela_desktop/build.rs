@@ -44,7 +44,9 @@ fn translations(src: &Path) -> Vec<(String, std::path::PathBuf)> {
     let mut ts: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "ts")).collect();
     ts.sort();
     let Some(tool) = lrelease() else {
-        println!("cargo::warning=lrelease (Qt Linguist tools) not found: re-la is built without translations, in Turkish only");
+        println!("cargo::warning=lrelease (Qt Linguist tools) not found: re-la is built without translations, in Turkish only (after installing it: touch crates/rela_desktop/build.rs)");
+        println!("cargo::rerun-if-env-changed=PATH");
+        println!("cargo::rustc-env=RELA_TURKISH_ONLY=1"); // main.rs: the core then stays Turkish too
         return vec![];
     };
     let out = Path::new(&std::env::var("OUT_DIR").unwrap()).to_path_buf();
