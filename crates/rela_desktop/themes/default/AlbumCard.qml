@@ -15,7 +15,7 @@ Item {
     TapHandler { onTapped: card.w.go("album", { id: card.album.id }) }
     TapHandler { acceptedButtons: Qt.RightButton; onTapped: card.w.menu("album", card.album) }
     function play() {
-        Player.get(card, "getAlbum", { id: card.album.id }, r => r ? Player.play(r.album.song || [], 0) : card.w.notify("İşlem başarısız"))
+        Player.get(card, "getAlbum", { id: card.album.id }, r => r ? Player.play(r.album.song || [], 0) : card.w.notify(qsTr("İşlem başarısız")))
     }
     Rectangle {
         anchors.fill: parent; anchors.margins: -6
@@ -35,7 +35,7 @@ Item {
                 visible: hov.hovered && Sync.canControl
                 highlighted: true
                 icon.name: "media-playback-start"; icon.width: 24; icon.height: 24
-                ToolTip.visible: hovered; ToolTip.text: "Çal"; ToolTip.delay: 500
+                ToolTip.visible: hovered; ToolTip.text: qsTr("Çal"); ToolTip.delay: 500
                 onClicked: card.play()
             }
             Rectangle {

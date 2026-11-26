@@ -13,13 +13,13 @@ FavoritesData {
         anchors.fill: parent; anchors.margins: 24
         spacing: 12
         visible: root.res !== null && (root.songs.length || root.albums.length || root.artists.length)
-        PageTitle { text: "Favoriler" }
+        PageTitle { text: qsTr("Favoriler") }
         TabBar {
             id: tabs
             currentIndex: root.tab; onCurrentIndexChanged: root.tab = currentIndex
-            TabButton { text: "Şarkılar (" + root.songs.length + ")"; width: implicitWidth }
-            TabButton { text: "Albümler (" + root.albums.length + ")"; width: implicitWidth }
-            TabButton { text: "Sanatçılar (" + root.artists.length + ")"; width: implicitWidth }
+            TabButton { text: qsTr("Şarkılar (%1)").arg(root.songs.length); width: implicitWidth }
+            TabButton { text: qsTr("Albümler (%1)").arg(root.albums.length); width: implicitWidth }
+            TabButton { text: qsTr("Sanatçılar (%1)").arg(root.artists.length); width: implicitWidth }
         }
         StackLayout {
             currentIndex: tabs.currentIndex
@@ -52,6 +52,6 @@ FavoritesData {
             }
         }
     }
-    Empty { visible: root.res !== null && !root.songs.length && !root.albums.length && !root.artists.length; text: "Henüz favori yok" }
+    Empty { visible: root.res !== null && !root.songs.length && !root.albums.length && !root.artists.length; text: qsTr("Henüz favori yok") }
     Loading { loading: root.res === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

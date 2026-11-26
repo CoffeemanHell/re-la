@@ -31,7 +31,7 @@ AlbumData {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    Mono { text: "ALBÜM"; color: App.theme.muted }
+                    Mono { text: qsTr("ALBÜM"); color: App.theme.muted }
                     Dots {
                         Layout.fillWidth: true
                         text: root.album ? root.w.up(root.album.name) : ""
@@ -59,18 +59,18 @@ AlbumData {
                         }
                         Mono {
                             color: App.theme.muted
-                            text: !root.album ? "" : (parent.genres.length ? " ·  " : "") + root.songs.length + " ŞARKI  ·  " + root.w.up(root.length(root.album.duration || 0))
+                            text: !root.album ? "" : (parent.genres.length ? " ·  " : "") + qsTr("%n ŞARKI", "", root.songs.length) + "  ·  " + root.w.up(root.length(root.album.duration || 0))
                         }
                     }
                     RowLayout {
                         Layout.topMargin: 10
                         spacing: 8
-                        Pill { text: "ÇAL"; on: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
-                        Pill { text: "KARIŞTIR"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
-                        Pill { text: "SIRAYA EKLE"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.add(root.songs, 2) }
+                        Pill { text: qsTr("ÇAL"); on: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
+                        Pill { text: qsTr("KARIŞTIR"); enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
+                        Pill { text: qsTr("SIRAYA EKLE"); enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.add(root.songs, 2) }
                         Pill {
                             id: addAll
-                            text: "TÜMÜNÜ LİSTEYE"; enabled: root.songs.length > 0
+                            text: qsTr("TÜMÜNÜ LİSTEYE"); enabled: root.songs.length > 0
                             onClicked: albumMenu.popup(addAll, 0, addAll.height)
                             PlaylistMenu { id: albumMenu; songs: root.songs; w: root.w }
                         }
@@ -90,7 +90,7 @@ AlbumData {
             Mono {
                 visible: d.discStart
                 topPadding: 18; bottomPadding: 6
-                text: "DİSK " + String(d.modelData.discNumber || 1).padStart(2, "0")
+                text: qsTr("DİSK %1").arg(String(d.modelData.discNumber || 1).padStart(2, "0"))
                 color: App.theme.accent
             }
             TrackRow { song: d.modelData; index: d.index; list: root.songs; number: d.modelData.track || d.index + 1; hideAlbum: true }

@@ -23,7 +23,7 @@ Item {
         Mono {
             Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
             visible: (card.artist.albumCount || 0) > 0 // search3 sends 0 for unknown
-            text: card.artist.albumCount + " ALBÜM"
+            text: qsTr("%n ALBÜM", "", card.artist.albumCount)
             color: App.theme.muted; font.pixelSize: 9
         }
         Item { Layout.fillHeight: true }

@@ -9,7 +9,7 @@ Item {
     id: f
     readonly property var req: Subwave.request
     readonly property string st: req && req.state ? req.state : ""
-    readonly property var labels: ({ pending: "Bekliyor", done: "Çalınacak", rejected: "Reddedildi", failed: "Başarısız", unknown: "Bilinmiyor" })
+    readonly property var labels: ({ pending: qsTr("Bekliyor"), done: qsTr("Çalınacak"), rejected: qsTr("Reddedildi"), failed: qsTr("Başarısız"), unknown: qsTr("Bilinmiyor") })
 
     ColumnLayout {
         anchors.fill: parent
@@ -18,16 +18,16 @@ Item {
             id: text
             objectName: "reqText"
             Layout.fillWidth: true
-            placeholderText: "Ne çalsın? (ör. Radiohead'den bir şey)"
+            placeholderText: qsTr("Ne çalsın? (ör. Radiohead'den bir şey)")
             onAccepted: if (send.enabled) send.clicked()
         }
         RowLayout {
             Layout.fillWidth: true
-            TextField { id: name; objectName: "reqName"; Layout.fillWidth: true; placeholderText: "Adın"; text: Player.user }
+            TextField { id: name; objectName: "reqName"; Layout.fillWidth: true; placeholderText: qsTr("Adın"); text: Player.user }
             Button {
                 id: send
                 objectName: "reqSend"
-                text: "Gönder"
+                text: qsTr("Gönder")
                 enabled: text.text.trim() !== "" && f.st !== "pending"
                 onClicked: Subwave.sendRequest(text.text, name.text)
             }
@@ -38,9 +38,9 @@ Item {
             Layout.fillWidth: true; elide: Text.ElideRight
             text: [f.req.title, f.req.artist].filter(x => x).join(" — ")
         }
-        Plain { visible: f.req.queuePosition > 0; text: "Sırada: " + f.req.queuePosition; color: palette.placeholderText }
+        Plain { visible: f.req.queuePosition > 0; text: qsTr("Sırada: %1").arg(f.req.queuePosition); color: palette.placeholderText }
         Plain { visible: !!f.req.message; Layout.fillWidth: true; wrapMode: Text.Wrap; text: f.req.message || ""; color: palette.placeholderText }
-        Plain { text: "Sıradakiler"; color: palette.placeholderText; visible: upcoming.count > 0 }
+        Plain { text: qsTr("Sıradakiler"); color: palette.placeholderText; visible: upcoming.count > 0 }
         ListView {
             id: upcoming
             Layout.fillWidth: true; Layout.fillHeight: true

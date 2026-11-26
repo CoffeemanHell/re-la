@@ -49,7 +49,7 @@ LyricsData {
     }
     Empty {
         visible: !ly.loading && !ly.failed && ly.songId !== "" && ly.lines.length === 0 && (!ly.live || ly.lyState !== "")
-        text: ly.lyState === "auth" ? "PAROLA GEREKLİ" : ly.lyState === "off" ? "SÖZLER KAPALI" : "SÖZ BULUNAMADI"
+        text: ly.lyState === "auth" ? qsTr("PAROLA GEREKLİ") : ly.lyState === "off" ? qsTr("SÖZLER KAPALI") : qsTr("SÖZ BULUNAMADI")
     }
     Loading { loading: ly.loading; failed: ly.failed; onRetry: { ly.forId = ""; ly.load() } }
 }

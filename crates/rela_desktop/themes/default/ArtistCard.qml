@@ -31,7 +31,7 @@ Item {
         Plain {
             Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter
             visible: (card.artist.albumCount || 0) > 0 // search3 sends 0 for unknown
-            text: card.artist.albumCount + " albüm"
+            text: qsTr("%n albüm", "", card.artist.albumCount)
             color: palette.placeholderText
             font.pointSize: Qt.application.font.pointSize * 0.9
         }

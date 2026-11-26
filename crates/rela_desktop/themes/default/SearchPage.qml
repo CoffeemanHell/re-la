@@ -20,17 +20,17 @@ SearchData {
             id: col
             x: 24; y: 24; width: parent.width - 48
             spacing: 14
-            Header { text: "Sanatçılar"; visible: root.artists.length > 0 }
+            Header { text: qsTr("Sanatçılar"); visible: root.artists.length > 0 }
             Flow {
                 Layout.fillWidth: true; spacing: 20; visible: root.artists.length > 0
                 Repeater { model: root.artists; ArtistCard { required property var modelData; artist: modelData } }
             }
-            Header { text: "Albümler"; visible: root.albums.length > 0; Layout.topMargin: 10 }
+            Header { text: qsTr("Albümler"); visible: root.albums.length > 0; Layout.topMargin: 10 }
             Flow {
                 Layout.fillWidth: true; spacing: 20; visible: root.albums.length > 0
                 Repeater { model: root.albums; AlbumCard { required property var modelData; album: modelData } }
             }
-            Header { text: "Şarkılar"; visible: root.songs.length > 0; Layout.topMargin: 10 }
+            Header { text: qsTr("Şarkılar"); visible: root.songs.length > 0; Layout.topMargin: 10 }
             Column {
                 Layout.fillWidth: true; spacing: 2
                 Repeater { model: root.songs; SongRow { required property var modelData; song: modelData } }
@@ -40,7 +40,7 @@ SearchData {
     Plain {
         anchors.centerIn: parent
         visible: root.res !== null && !root.artists.length && !root.albums.length && !root.songs.length
-        text: "Sonuç yok"
+        text: qsTr("Sonuç yok")
         color: palette.placeholderText
     }
     Loading { loading: root.res === null && !root.failed; failed: root.failed; onRetry: root.load() }

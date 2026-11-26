@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -21,15 +22,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -38,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
@@ -50,6 +50,8 @@ import app.rela.R
 import app.rela.core.Rela
 import app.rela.core.Song
 import app.rela.core.text
+import app.rela.plural
+import app.rela.str
 import app.rela.ui.Cover
 import app.rela.ui.LocalLook
 import app.rela.ui.LocalNav
@@ -86,12 +88,12 @@ fun Page(
             // fixed when the page first shows (saved, as it leaves composition while covered): a tab's first page
             // shows no ← while another page opens over it or closes back to it
             val hasBack = rememberSaveable { nav.size > 1 }
-            val back = @Composable { if (hasBack) IconButton(goBack) { Icon(painterResource(R.drawable.ic_arrow_back), "Geri") } }
+            val back = @Composable { if (hasBack) IconButton(goBack) { Icon(painterResource(R.drawable.ic_arrow_back), str(R.string.back)) } }
             val icons: @Composable RowScope.() -> Unit = {
                 actions()
                 if (root) { // a tab: search and settings live here
-                    IconButton({ nav.open(Screen.Search) }) { Icon(painterResource(R.drawable.ic_search), "Ara") }
-                    IconButton({ nav.open(Screen.Settings) }) { Icon(painterResource(R.drawable.ic_settings_fill), "Ayarlar") }
+                    IconButton({ nav.open(Screen.Search) }) { Icon(painterResource(R.drawable.ic_search), str(R.string.search)) }
+                    IconButton({ nav.open(Screen.Settings) }) { Icon(painterResource(R.drawable.ic_settings_fill), str(R.string.settings)) }
                 }
             }
             // compact: a page with its own hero (album, artist, playlist) only needs back and the menu up here
@@ -121,8 +123,8 @@ fun BoxScope.Status(rows: Int, loading: Boolean, failed: Boolean, empty: String,
         when {
             loading -> LoadingIndicator()
             failed -> {
-                Text("Yüklenemedi", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Button(retry) { Text("Tekrar dene") }
+                Text(str(R.string.load_failed), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Button(retry) { Text(str(R.string.retry)) }
             }
             else -> Text(empty, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
@@ -183,7 +185,7 @@ fun ArtistRow(a: JsonObject) {
     val n = a["albumCount"].text()
     ListItem(
         headlineContent = { Text(a["name"].text(), maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        supportingContent = if (n.isEmpty()) null else ({ Text("$n albüm") }),
+        supportingContent = if (n.isEmpty()) null else ({ Text(plural(R.plurals.n_albums, n.toIntOrNull() ?: 0)) }),
         leadingContent = { Cover(a["coverArt"].text(), 48.dp, Modifier.size(48.dp).sharedCover(artistCover(a["id"].text())), CircleShape) },
         trailingContent = { ItemMenu("artist", a) },
         modifier = Modifier.clickable { peeks["artist:${a["id"].text()}"] = a; nav.open(Screen.Artist(a["id"].text())) },

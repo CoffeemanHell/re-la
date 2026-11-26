@@ -3,13 +3,14 @@ package app.rela.ui.library
 import android.content.Context
 import android.content.Intent
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -22,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.currentCompositeKeyHash
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -33,19 +35,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.clickable
+import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import app.rela.R
 import app.rela.core.Rela
 import app.rela.core.Song
 import app.rela.core.listOf
 import app.rela.core.obj
 import app.rela.core.text
+import app.rela.plural
+import app.rela.str
 import kotlinx.coroutines.CoroutineScope
-import androidx.compose.runtime.currentCompositeKeyHash
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonArray
@@ -181,7 +183,7 @@ suspend fun star(kind: String, id: String, on: Boolean): Boolean {
 /** createShare, then the system share sheet with the link (a public share link, no login in it). */
 suspend fun share(ctx: Context, id: String) {
     val url = Rela.set("createShare", mapOf("id" to id))?.get("shares").obj().listOf("share").firstOrNull()?.get("url").text()
-    if (url.isNullOrEmpty()) return ctx.say("İşlem başarısız")
+    if (url.isNullOrEmpty()) return ctx.say(str(R.string.action_failed))
     ctx.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url), null))
 }
 
@@ -196,8 +198,8 @@ class Fav(private val kind: String, private val id: String, initial: Boolean, pr
         scope.launch {
             if (!star(kind, id, !was)) {
                 on = was
-                ctx.say("İşlem başarısız")
-            } else if (!quiet) ctx.say(if (was) "Favorilerden çıkarıldı" else "Favorilere eklendi")
+                ctx.say(str(R.string.action_failed))
+            } else if (!quiet) ctx.say(str(if (was) R.string.removed_favorite else R.string.added_favorite))
         }
     }
 }
@@ -217,7 +219,7 @@ fun rememberFav(kind: String, item: JsonObject): Fav {
 @Composable
 fun ItemMenu(
     kind: String, item: JsonObject, remove: (() -> Unit)? = null, fav: Fav = rememberFav(kind, item),
-    trigger: @Composable (open: () -> Unit) -> Unit = { IconButton(it) { Icon(painterResource(R.drawable.ic_more_vert), "Diğer") } },
+    trigger: @Composable (open: () -> Unit) -> Unit = { IconButton(it) { Icon(painterResource(R.drawable.ic_more_vert), str(R.string.more)) } },
     extra: @Composable ColumnScope.(close: () -> Unit) -> Unit = {},
 ) {
     var open by remember { mutableStateOf(false) }
@@ -230,7 +232,7 @@ fun ItemMenu(
 
     fun withSongs(f: (List<Song>) -> Unit) = scope.launch {
         val s = songsOf(kind, item)
-        if (s == null) ctx.say("İşlem başarısız") else if (s.isNotEmpty()) f(s)
+        if (s == null) ctx.say(str(R.string.action_failed)) else if (s.isNotEmpty()) f(s)
     }
 
     @Composable
@@ -241,40 +243,40 @@ fun ItemMenu(
         trigger { open = true }
         DropdownMenu(open, { open = false }) {
             extra { open = false }
-            Act("Çal", R.drawable.ic_play_arrow_fill, ctl) {
+            Act(str(R.string.play_item), R.drawable.ic_play_arrow_fill, ctl) {
                 when (kind) {
                     "song" -> add(listOf(Song(item)), 0)
                     "artist" -> scope.launch { topSongs(item["name"].text())?.let { play(it) } }
                     else -> withSongs { play(it) }
                 }
             }
-            if (kind == "album" || kind == "playlist") Act("Karıştır", R.drawable.ic_shuffle, ctl) { withSongs { play(it, shuffle = true) } }
-            if (isSong || kind == "album") Act("Sıradaki yap", R.drawable.ic_subdirectory_arrow_right, ctl) { withSongs { add(it, 1) } }
-            if (kind != "artist") Act("Sıraya ekle", R.drawable.ic_queue_music, ctl) { withSongs { add(it, 2) } }
-            if (isSong) Act("Şarkı radyosu", R.drawable.ic_radio, ctl) {
+            if (kind == "album" || kind == "playlist") Act(str(R.string.shuffle), R.drawable.ic_shuffle, ctl) { withSongs { play(it, shuffle = true) } }
+            if (isSong || kind == "album") Act(str(R.string.play_next), R.drawable.ic_subdirectory_arrow_right, ctl) { withSongs { add(it, 1) } }
+            if (kind != "artist") Act(str(R.string.add_to_queue), R.drawable.ic_queue_music, ctl) { withSongs { add(it, 2) } }
+            if (isSong) Act(str(R.string.song_radio), R.drawable.ic_radio, ctl) {
                 scope.launch {
                     val r = Rela.get("getSimilarSongs", mapOf("id" to id, "count" to 50))
-                    if (r == null) ctx.say("İşlem başarısız") else play(listOf(Song(item)) + r["similarSongs"].obj().listOf("song").map(::Song))
+                    if (r == null) ctx.say(str(R.string.action_failed)) else play(listOf(Song(item)) + r["similarSongs"].obj().listOf("song").map(::Song))
                 }
             }
-            if (kind == "artist") Act("Sanatçı radyosu", R.drawable.ic_radio, ctl) { scope.launch { artistRadio(ctx, id) } }
+            if (kind == "artist") Act(str(R.string.artist_radio), R.drawable.ic_radio, ctl) { scope.launch { artistRadio(ctx, id) } }
             if (isSong || kind == "album") {
                 HorizontalDivider()
-                Act("Playlist'e ekle…", R.drawable.ic_playlist_add) { dialog = "playlist" }
-                Act("Paylaş…", R.drawable.ic_share_fill) { scope.launch { share(ctx, id) } }
+                Act(str(R.string.add_to_playlist_menu), R.drawable.ic_playlist_add) { dialog = "playlist" }
+                Act(str(R.string.share), R.drawable.ic_share_fill) { scope.launch { share(ctx, id) } }
             }
             if (kind != "playlist") {
                 HorizontalDivider()
-                Act(if (fav.on) "Favorilerden çıkar" else "Favorilere ekle", if (fav.on) R.drawable.ic_star_fill else R.drawable.ic_star) { fav.toggle() }
+                Act(str(if (fav.on) R.string.remove_favorite else R.string.add_favorite), if (fav.on) R.drawable.ic_star_fill else R.drawable.ic_star) { fav.toggle() }
             }
-            if (isSong) Act("Derecelendir…", R.drawable.ic_star) { dialog = "rating" }
-            if (remove != null) Act("Playlist'ten çıkar", R.drawable.ic_playlist_remove) { remove() }
+            if (isSong) Act(str(R.string.rate_menu), R.drawable.ic_star) { dialog = "rating" }
+            if (remove != null) Act(str(R.string.remove_from_playlist), R.drawable.ic_playlist_remove) { remove() }
         }
     }
     when (dialog) {
         "playlist" -> PlaylistPicker({ dialog = "" }) { pick -> withSongs { s -> scope.launch { pick(s) } } }
         "rating" -> RatingDialog(Song(item).rating, { dialog = "" }) { n ->
-            scope.launch { if (Rela.set("setRating", mapOf("id" to id, "rating" to n)) == null) ctx.say("İşlem başarısız") }
+            scope.launch { if (Rela.set("setRating", mapOf("id" to id, "rating" to n)) == null) ctx.say(str(R.string.action_failed)) }
         }
     }
 }
@@ -284,7 +286,7 @@ suspend fun topSongs(artist: String): List<Song>? =
 
 suspend fun artistRadio(ctx: Context, id: String) {
     val r = Rela.get("getSimilarSongs2", mapOf("id" to id, "count" to 50))
-    if (r == null) ctx.say("İşlem başarısız") else play(r["similarSongs2"].obj().listOf("song").map(::Song))
+    if (r == null) ctx.say(str(R.string.action_failed)) else play(r["similarSongs2"].obj().listOf("song").map(::Song))
 }
 
 /**
@@ -297,23 +299,23 @@ private fun PlaylistPicker(onDismiss: () -> Unit, onPick: (suspend (List<Song>) 
     val user = Rela.player.collectAsStateWithLifecycle().value?.user ?: ""
     val lists = load { getList("getPlaylists", emptyMap(), "playlists", "playlist")?.filter { it["owner"].text() == user } }
     var name by remember { mutableStateOf("") }
-    fun done(ok: Boolean, what: String) = ctx.say(if (ok) what else "İşlem başarısız")
+    fun done(ok: Boolean, what: String) = ctx.say(if (ok) what else str(R.string.action_failed))
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Playlist'e ekle") },
+        title = { Text(str(R.string.add_to_playlist)) },
         text = {
             Column {
                 Row {
-                    OutlinedTextField(name, { name = it }, Modifier.weight(1f), placeholder = { Text("Yeni playlist") }, singleLine = true)
+                    OutlinedTextField(name, { name = it }, Modifier.weight(1f), placeholder = { Text(str(R.string.new_playlist)) }, singleLine = true)
                     IconButton({
                         val n = name.trim()
                         onDismiss()
-                        onPick { s -> done(Rela.set("createPlaylist", mapOf("name" to n, "songId" to s.map { it.id })) != null, "Playlist oluşturuldu: $n") }
-                    }, enabled = name.isNotBlank()) { Icon(painterResource(R.drawable.ic_add), "Oluştur") }
+                        onPick { s -> done(Rela.set("createPlaylist", mapOf("name" to n, "songId" to s.map { it.id })) != null, str(R.string.playlist_created, n)) }
+                    }, enabled = name.isNotBlank()) { Icon(painterResource(R.drawable.ic_add), str(R.string.create)) }
                 }
                 when {
-                    lists.value == null && lists.loading -> Text("Yükleniyor…")
-                    lists.value == null -> Text("Yüklenemedi")
+                    lists.value == null && lists.loading -> Text(str(R.string.loading))
+                    lists.value == null -> Text(str(R.string.load_failed))
                 }
                 LazyColumn(Modifier.heightIn(max = 320.dp)) {
                     items(lists.value ?: emptyList()) { p ->
@@ -324,7 +326,7 @@ private fun PlaylistPicker(onDismiss: () -> Unit, onPick: (suspend (List<Song>) 
                                 onDismiss()
                                 onPick { s ->
                                     val ok = Rela.set("updatePlaylist", mapOf("playlistId" to p["id"].text(), "songIdToAdd" to s.map { it.id })) != null
-                                    done(ok, "$pn listesine eklendi")
+                                    done(ok, str(R.string.added_to_playlist, pn))
                                 }
                             },
                         )
@@ -333,7 +335,7 @@ private fun PlaylistPicker(onDismiss: () -> Unit, onPick: (suspend (List<Song>) 
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onDismiss) { Text("Vazgeç") } },
+        dismissButton = { TextButton(onDismiss) { Text(str(R.string.cancel)) } },
     )
 }
 
@@ -342,15 +344,15 @@ private fun PlaylistPicker(onDismiss: () -> Unit, onPick: (suspend (List<Song>) 
 private fun RatingDialog(current: Int, onDismiss: () -> Unit, onRate: (Int) -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Derecelendir") },
+        title = { Text(str(R.string.rate)) },
         text = {
             Row {
                 for (n in 1..5) IconButton({ onDismiss(); onRate(if (n == current) 0 else n) }) {
-                    Icon(painterResource(if (n <= current) R.drawable.ic_star_fill else R.drawable.ic_star), "$n yıldız")
+                    Icon(painterResource(if (n <= current) R.drawable.ic_star_fill else R.drawable.ic_star), plural(R.plurals.n_stars, n))
                 }
             }
         },
         confirmButton = {},
-        dismissButton = { TextButton(onDismiss) { Text("Vazgeç") } },
+        dismissButton = { TextButton(onDismiss) { Text(str(R.string.cancel)) } },
     )
 }

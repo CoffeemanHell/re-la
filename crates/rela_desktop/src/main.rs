@@ -32,6 +32,17 @@ fn set_env_for_qt(name: &std::ffi::CStr, value: &std::ffi::CStr) {
     // SAFETY: two nul-terminated strings; the C runtime copies them. Called before Qt starts, from the main thread
     unsafe { _putenv_s(name.as_ptr(), value.as_ptr()) };
 }
+/// Windows' display language: Qt's default follows the regional format, which can be Turkish under an English UI.
+#[cfg(windows)]
+fn system_ui_language() -> Option<String> {
+    // SAFETY: no arguments, no state; returns a LANGID
+    let id = unsafe { windows::Win32::Globalization::GetUserDefaultUILanguage() };
+    Some(if id & 0x3ff == 0x1f { "tr" } else { "en" }.into()) // 0x1f: LANG_TURKISH, the primary language bits
+}
+#[cfg(not(windows))]
+fn system_ui_language() -> Option<String> {
+    None // elsewhere: QLocale's language, as before
+}
 #[cfg(not(windows))]
 const LC_NUMERIC: c_int = 1; // glibc
 #[cfg(windows)]
@@ -152,17 +163,26 @@ fn main() {
     #[cfg(unix)]
     quit_on_signals();
 
+    let mut engine = QQmlApplicationEngine::new();
+    let Some(mut e) = engine.as_mut() else { std::process::exit(1) };
+    // The language, before anything shows text: Turkish on a Turkish system, English on any other (RELA_LANG=en / tr
+    // overrides it). QML gets it from i18n/qml_en.qm, the core's status lines from rela_core::i18n.
+    let mut ae = rela_desktop::qtgui::app_engine(e.as_mut());
+    let lang = std::env::var("RELA_LANG").ok().filter(|l| !l.is_empty()).unwrap_or_else(|| system_ui_language().unwrap_or_else(|| ae.ui_language().to_string()));
+    // no English catalog in this build: the core follows the Turkish QML
+    let lang = if rela_core::i18n::is_english(&lang) && option_env!("RELA_TURKISH_ONLY").is_none() { "en" } else { "tr" };
+    rela_core::i18n::set_language(lang);
+    ae.as_mut().set_ui_language(&QString::from(lang));
+
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--demo") {
         player().call(|c| c.demo());
     }
     if let Some(name) = args.iter().find_map(|a| a.strip_prefix("--theme=")) {
         let name = name.to_string();
-        player().call(move |c| c.set_theme(&name)); // before the engine: Player starts with it
+        player().call(move |c| c.set_theme(&name)); // before the engine loads: Player starts with it
     }
 
-    let mut engine = QQmlApplicationEngine::new();
-    let Some(mut e) = engine.as_mut() else { std::process::exit(1) };
     e.as_mut().add_import_path(&QString::from("qrc:/themes")); // `import shared`: the pages' data and actions
     e.as_mut().on_object_creation_failed(|_, _| std::process::exit(1)).release(); // Shell.qml itself broken
     e.as_mut().load(&QUrl::from("qrc:/qt/qml/Rela/qml/Shell.qml"));

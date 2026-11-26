@@ -25,7 +25,7 @@ Item {
             songs = r.album.song || []
         })
     }
-    function length(d) { return d >= 3600 ? Math.floor(d / 3600) + " sa " + Math.floor(d % 3600 / 60) + " dk" : Math.round(d / 60) + " dk" }
+    function length(d) { return d >= 3600 ? qsTr("%1 sa %2 dk").arg(Math.floor(d / 3600)).arg(Math.floor(d % 3600 / 60)) : qsTr("%1 dk").arg(Math.round(d / 60)) }
     function shuffled(a) { return Util.shuffled(a) }
     function saveState() { return { album: album, songs: songs, row: scroller.indexAt(30, scroller.contentY) } } // -1: header
     Component.onCompleted: {

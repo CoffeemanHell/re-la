@@ -27,7 +27,7 @@ zbus = { version = "6", default-features = false, features = ["tokio", "service"
 [target.'cfg(windows)'.dependencies]
 windows-registry = "0.100" # the C++ app's settings, read once
 # media keys and the media flyout (SMTC)
-windows = { version = "0.62", features = ["Foundation", "Media", "Media_Playback", "Storage", "Storage_Streams", "Win32_System_WinRT"] }
+windows = { version = "0.62", features = ["Foundation", "Media", "Media_Playback", "Storage", "Storage_Streams", "Win32_Globalization", "Win32_System_WinRT"] }
 
 [build-dependencies]
 cxx-qt-build = "0.10"

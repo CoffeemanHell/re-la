@@ -13,12 +13,12 @@ FavoritesData {
         anchors.fill: parent; anchors.margins: 36
         spacing: 18
         visible: root.res !== null && (root.songs.length || root.albums.length || root.artists.length)
-        PageTitle { text: "FAVORİLER" }
+        PageTitle { text: qsTr("FAVORİLER") }
         Row {
             spacing: 8
-            Pill { text: "ŞARKILAR " + root.songs.length; on: root.tab === 0; onClicked: root.tab = 0 }
-            Pill { text: "ALBÜMLER " + root.albums.length; on: root.tab === 1; onClicked: root.tab = 1 }
-            Pill { text: "SANATÇILAR " + root.artists.length; on: root.tab === 2; onClicked: root.tab = 2 }
+            Pill { text: qsTr("ŞARKILAR %1").arg(root.songs.length); on: root.tab === 0; onClicked: root.tab = 0 }
+            Pill { text: qsTr("ALBÜMLER %1").arg(root.albums.length); on: root.tab === 1; onClicked: root.tab = 1 }
+            Pill { text: qsTr("SANATÇILAR %1").arg(root.artists.length); on: root.tab === 2; onClicked: root.tab = 2 }
         }
         StackLayout {
             currentIndex: root.tab
@@ -51,6 +51,6 @@ FavoritesData {
             }
         }
     }
-    Empty { visible: root.res !== null && !root.songs.length && !root.albums.length && !root.artists.length; text: "HENÜZ FAVORİ YOK" }
+    Empty { visible: root.res !== null && !root.songs.length && !root.albums.length && !root.artists.length; text: qsTr("HENÜZ FAVORİ YOK") }
     Loading { loading: root.res === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

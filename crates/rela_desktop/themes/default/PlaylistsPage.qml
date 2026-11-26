@@ -13,8 +13,8 @@ PlaylistsData {
         anchors.fill: parent; anchors.margins: 24
         spacing: 12
         RowLayout {
-            PageTitle { text: "Playlist'ler"; Layout.fillWidth: true }
-            Button { text: "Yeni playlist"; icon.name: "list-add"; onClicked: root.create() }
+            PageTitle { text: qsTr("Playlist'ler"); Layout.fillWidth: true }
+            Button { text: qsTr("Yeni playlist"); icon.name: "list-add"; onClicked: root.create() }
         }
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -39,7 +39,7 @@ PlaylistsData {
                         Plain { Layout.fillWidth: true; elide: Text.ElideRight; text: row.modelData.name; font.weight: Font.Medium }
                         Plain {
                             Layout.fillWidth: true; elide: Text.ElideRight; color: palette.placeholderText
-                            text: row.modelData.songCount + " şarkı · " + root.w.fmt(row.modelData.duration) + (row.modelData.owner !== Player.user ? " · " + row.modelData.owner : "")
+                            text: qsTr("%n şarkı", "", row.modelData.songCount) + " · " + root.w.fmt(row.modelData.duration) + (row.modelData.owner !== Player.user ? " · " + row.modelData.owner : "")
                         }
                     }
                 }
@@ -47,6 +47,6 @@ PlaylistsData {
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.lists !== null && root.lists.length === 0; text: "Playlist yok" }
+    Empty { visible: root.lists !== null && root.lists.length === 0; text: qsTr("Playlist yok") }
     Loading { loading: root.lists === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

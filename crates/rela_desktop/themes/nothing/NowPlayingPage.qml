@@ -36,7 +36,7 @@ NowPlayingData {
             }
             Dots {
                 Layout.fillWidth: true
-                text: root.live && root.sw.title ? root.w.up(root.sw.title) : Player.station.id ? root.w.up(Player.station.name) : root.w.up(root.cur.title) || "SESSİZLİK"
+                text: root.live && root.sw.title ? root.w.up(root.sw.title) : Player.station.id ? root.w.up(Player.station.name) : root.w.up(root.cur.title) || qsTr("SESSİZLİK")
                 font.pixelSize: 46
                 lineHeight: 0.9
                 wrapMode: Text.WordWrap
@@ -57,15 +57,15 @@ NowPlayingData {
                 active: !!root.cur.albumId
                 onActivated: root.w.go("album", { id: root.cur.albumId })
             }
-            Mono { visible: !!Player.station.id; text: "● CANLI"; color: App.theme.accent }
+            Mono { visible: !!Player.station.id; text: qsTr("● CANLI"); color: App.theme.accent }
             Mono { Layout.maximumWidth: parent.width; visible: root.live; text: root.w.up(root.sw.artist); font.pixelSize: 14 }
             Mono { Layout.maximumWidth: parent.width; visible: root.live; text: root.w.up(root.sw.album); color: App.theme.muted }
             Mono {
                 Layout.maximumWidth: parent.width
                 visible: root.live && !!root.sw.dj; color: App.theme.muted
-                text: root.w.up("DJ " + root.sw.dj + (root.sw.show ? " · " + root.sw.show : "")) + " · " + (root.sw.listeners || 0) + " DİNLEYİCİ"
+                text: root.w.up(qsTr("DJ %1").arg(root.sw.dj) + (root.sw.show ? " · " + root.sw.show : "")) + " · " + qsTr("%n DİNLEYİCİ", "", root.sw.listeners || 0)
             }
-            Mono { visible: root.live && !Subwave.online; text: "BAĞLANTI YOK"; color: App.theme.accent }
+            Mono { visible: root.live && !Subwave.online; text: qsTr("BAĞLANTI YOK"); color: App.theme.accent }
             RowLayout {
                 visible: !Player.station.id && !!root.cur.id
                 spacing: 12
@@ -87,22 +87,22 @@ NowPlayingData {
                     property int current: 0
                     property int liveCurrent: 0 // SUB/WAVE: no queue and no similar songs, the DJ picks
                     spacing: 8
-                    Pill { visible: root.live; text: "SÖZLER"; on: tabs.liveCurrent === 0; onClicked: tabs.liveCurrent = 0 }
-                    Pill { visible: root.live; text: "İSTEK"; on: tabs.liveCurrent === 1; onClicked: tabs.liveCurrent = 1 }
-                    Pill { visible: !root.live; text: "SIRA " + String(Player.queueLength).padStart(2, "0"); on: tabs.current === 0; onClicked: tabs.current = 0 }
-                    Pill { visible: !root.live; text: "BENZER"; on: tabs.current === 1; onClicked: tabs.current = 1 }
-                    Pill { visible: !root.live; text: "SÖZLER"; on: tabs.current === 2; onClicked: tabs.current = 2 }
+                    Pill { visible: root.live; text: qsTr("SÖZLER"); on: tabs.liveCurrent === 0; onClicked: tabs.liveCurrent = 0 }
+                    Pill { visible: root.live; text: qsTr("İSTEK"); on: tabs.liveCurrent === 1; onClicked: tabs.liveCurrent = 1 }
+                    Pill { visible: !root.live; text: qsTr("SIRA %1").arg(String(Player.queueLength).padStart(2, "0")); on: tabs.current === 0; onClicked: tabs.current = 0 }
+                    Pill { visible: !root.live; text: qsTr("BENZER"); on: tabs.current === 1; onClicked: tabs.current = 1 }
+                    Pill { visible: !root.live; text: qsTr("SÖZLER"); on: tabs.current === 2; onClicked: tabs.current = 2 }
                     Item { Layout.fillWidth: true }
                     Pill {
                         text: "⤓"; visible: !root.live && tabs.current === 0 && Player.queueLength > 0
-                        ToolTip.visible: hovered; ToolTip.text: "Kuyruğu playlist olarak kaydet"; ToolTip.delay: 500
-                        onClicked: root.w.askName("Kuyruğu playlist olarak kaydet", "", name =>
+                        ToolTip.visible: hovered; ToolTip.text: qsTr("Kuyruğu playlist olarak kaydet"); ToolTip.delay: 500
+                        onClicked: root.w.askName(qsTr("Kuyruğu playlist olarak kaydet"), "", name =>
                             Player.set(root, "createPlaylist", { name: name, songId: Player.queue.map(s => s.id) },
-                                       r => root.w.notify(r ? "Playlist oluşturuldu: " + name : "İşlem başarısız")))
+                                       r => root.w.notify(r ? qsTr("Playlist oluşturuldu: %1").arg(name) : qsTr("İşlem başarısız"))))
                     }
                     Pill {
                         text: "⌫"; visible: !root.live && tabs.current === 0 && Player.index < Player.queueLength - 1; enabled: Sync.canControl; onClicked: Player.clearUpcoming()
-                        ToolTip.visible: hovered; ToolTip.text: "Sıradakileri temizle"; ToolTip.delay: 500
+                        ToolTip.visible: hovered; ToolTip.text: qsTr("Sıradakileri temizle"); ToolTip.delay: 500
                     }
                 }
                 StackLayout {
@@ -132,7 +132,7 @@ NowPlayingData {
                         Mono {
                             anchors.centerIn: parent; visible: Player.queueLength === 0
                             horizontalAlignment: Text.AlignHCenter; color: App.theme.muted
-                            text: "KUYRUK BOŞ\nALBÜMLERDEN YA DA ARAMADAN ŞARKI EKLE"
+                            text: qsTr("KUYRUK BOŞ\nALBÜMLERDEN YA DA ARAMADAN ŞARKI EKLE")
                         }
                     }
                     // songs like the current one (getSimilarSongs), fetched when the tab is shown or the song changes
@@ -150,7 +150,7 @@ NowPlayingData {
                         Mono {
                             anchors.centerIn: parent
                             visible: !similar.loading && !similar.failed && similar.songs.length === 0
-                            text: "BENZER ŞARKI BULUNAMADI"; color: App.theme.muted
+                            text: qsTr("BENZER ŞARKI BULUNAMADI"); color: App.theme.muted
                         }
                         Loading { loading: similar.loading; failed: similar.failed; onRetry: { similar.forId = ""; similar.load() } }
                     }

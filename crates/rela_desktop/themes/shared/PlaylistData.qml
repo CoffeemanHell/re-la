@@ -24,7 +24,7 @@ Item {
             songs = pl.entry || []
         })
     }
-    function fail() { w.notify("İşlem başarısız") }
+    function fail() { w.notify(qsTr("İşlem başarısız")) }
     function removeAt(i) {
         if (busy) return
         const before = songs
@@ -36,14 +36,14 @@ Item {
         })
     }
     function rename() {
-        w.askName("Yeniden adlandır", pl.name, name => {
+        w.askName(qsTr("Yeniden adlandır"), pl.name, name => {
             const before = pl.name
             pl = Object.assign({}, pl, { name: name })
             Player.set(root, "updatePlaylist", { playlistId: pl.id, name: name }, r => { if (!r) { pl = Object.assign({}, pl, { name: before }); fail() } })
         })
     }
     function remove() {
-        w.confirm("Playlist silinsin mi?", () => Player.set(root, "deletePlaylist", { id: pl.id }, r => r ? w.go("playlists") : fail()))
+        w.confirm(qsTr("Playlist silinsin mi?"), () => Player.set(root, "deletePlaylist", { id: pl.id }, r => r ? w.go("playlists") : fail()))
     }
     function shuffled(a) { return Util.shuffled(a) }
     function saveState() { return { pl: pl, songs: songs, row: scroller.indexAt(30, scroller.contentY + 30) } }

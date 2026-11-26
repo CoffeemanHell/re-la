@@ -1,46 +1,23 @@
 package app.rela.ui
 
 import android.os.SystemClock
-import androidx.compose.runtime.setValue
-import uniffi.rela.Wave
-import androidx.compose.runtime.getValue
-import androidx.compose.animation.core.animateDpAsState
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import kotlin.math.abs
-import kotlin.math.sign
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.material3.IconButtonShapes
-import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.ButtonGroup
 import androidx.compose.foundation.clickable
-import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.FilledTonalIconToggleButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearWavyProgressIndicator
-import androidx.compose.material3.Surface
-import androidx.compose.ui.draw.blur
-import app.rela.R
-import app.rela.ui.library.Fav
-import app.rela.ui.library.rememberFav
-import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,37 +30,53 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.FilledTonalIconToggleButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconButtonShapes
 import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Button
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderState
-import androidx.compose.runtime.SideEffect
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -92,29 +85,38 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.rela.R
 import app.rela.core.Lyrics
 import app.rela.core.Rela
 import app.rela.core.Song
 import app.rela.core.json
 import app.rela.core.listOf
 import app.rela.core.text
+import app.rela.playback.queueSong
+import app.rela.plural
+import app.rela.str
+import app.rela.ui.library.Fav
 import app.rela.ui.library.ItemMenu
 import app.rela.ui.library.Listing
 import app.rela.ui.library.SongRow
 import app.rela.ui.library.add
-import app.rela.playback.queueSong
 import app.rela.ui.library.canControl
 import app.rela.ui.library.getList
 import app.rela.ui.library.load
+import app.rela.ui.library.rememberFav
+import kotlin.math.abs
 import kotlin.math.roundToInt
+import kotlin.math.sign
+import kotlinx.coroutines.launch
 import uniffi.rela.PlayerState
 import uniffi.rela.SubwaveState
+import uniffi.rela.Wave
 
 /** m:ss (h:mm:ss past an hour). */
 fun clock(seconds: Double): String {
@@ -173,7 +175,7 @@ private fun Player() {
             Box(Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
                 if (live) LiveLyrics(sw!!) else LyricsView(song!!.id, s.position)
             }
-            FilledTonalIconButton({ lyrics = false }, Modifier.padding(12.dp)) { Icon(painterResource(R.drawable.ic_keyboard_arrow_down), "Sözleri kapat") }
+            FilledTonalIconButton({ lyrics = false }, Modifier.padding(12.dp)) { Icon(painterResource(R.drawable.ic_keyboard_arrow_down), str(R.string.close_lyrics)) }
         }
         return
     }
@@ -233,7 +235,7 @@ private fun Player() {
                     style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    if (live) now!!["artist"].text() else if (station.isNotEmpty()) "Radyo" else song?.artist ?: "",
+                    if (live) now!!["artist"].text() else if (station.isNotEmpty()) str(R.string.radio) else song?.artist ?: "",
                     Modifier.clickable(enabled = !song?.artistId.isNullOrEmpty()) {
                         nav.removeAt(nav.lastIndex)
                         nav.open(Screen.Artist(song!!.artistId))
@@ -246,7 +248,7 @@ private fun Player() {
                         listOf("DJ $dj", now["show"].text(), "${now["listeners"].text().ifEmpty { "0" }} dinleyici").filter { it.isNotEmpty() }.joinToString(" · "),
                         style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    if (!sw!!.online) Text("Bağlantı yok", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
+                    if (!sw!!.online) Text(str(R.string.no_connection), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.error)
                 }
             }
             // ☆: the song's favourite; on SUB/WAVE the station's heart
@@ -258,7 +260,7 @@ private fun Player() {
             } else if (songFav != null) {
                 val fav = songFav
                 FilledTonalIconToggleButton(fav.on, { fav.toggle(quiet = true) }) {
-                    Icon(painterResource(if (fav.on) R.drawable.ic_star_fill else R.drawable.ic_star), if (fav.on) "Favorilerden çıkar" else "Favorilere ekle")
+                    Icon(painterResource(if (fav.on) R.drawable.ic_star_fill else R.drawable.ic_star), str(if (fav.on) R.string.remove_favorite else R.string.add_favorite))
                 }
             }
             More(song.takeIf { station.isEmpty() }, songFav, live, s.dj, onFade = { fade = true }, onRequest = { request = true })
@@ -328,12 +330,12 @@ private fun Player() {
             }, {})
             item { src, m ->
                 IconToggleButton(s.shuffle, { core?.setShuffle(it) }, modifier = m, enabled = ctl, shapes = IconButtonDefaults.toggleableShapes(), interactionSource = src) {
-                    Icon(painterResource(if (s.shuffle) R.drawable.ic_shuffle_on_fill else R.drawable.ic_shuffle), "Karıştır")
+                    Icon(painterResource(if (s.shuffle) R.drawable.ic_shuffle_on_fill else R.drawable.ic_shuffle), str(R.string.shuffle))
                 }
             }
             item { src, m ->
                 FilledTonalIconButton({ core?.prev() }, modifier = m.size(64.dp, 56.dp), enabled = ctl && station.isEmpty(), shapes = IconButtonDefaults.shapes(), interactionSource = src) {
-                    Icon(painterResource(R.drawable.ic_skip_previous_fill), "Önceki", Modifier.size(32.dp))
+                    Icon(painterResource(R.drawable.ic_skip_previous_fill), str(R.string.previous), Modifier.size(32.dp))
                 }
             }
             item { src, m ->
@@ -342,12 +344,12 @@ private fun Player() {
                     { core?.toggle() }, modifier = m.size(96.dp), enabled = ctl, interactionSource = src,
                     shapes = IconButtonShapes(RoundedCornerShape(animateDpAsState(round).value), RoundedCornerShape(20.dp)),
                 ) {
-                    Icon(playPausePainter(!s.playing), if (s.playing) "Duraklat" else "Oynat", Modifier.size(44.dp))
+                    Icon(playPausePainter(!s.playing), str(if (s.playing) R.string.pause else R.string.play), Modifier.size(44.dp))
                 }
             }
             item { src, m ->
                 FilledTonalIconButton({ core?.next() }, modifier = m.size(64.dp, 56.dp), enabled = ctl && station.isEmpty(), shapes = IconButtonDefaults.shapes(), interactionSource = src) {
-                    Icon(painterResource(R.drawable.ic_skip_next_fill), "Sonraki", Modifier.size(32.dp))
+                    Icon(painterResource(R.drawable.ic_skip_next_fill), str(R.string.next), Modifier.size(32.dp))
                 }
             }
             item { src, m ->
@@ -358,16 +360,16 @@ private fun Player() {
                             2L -> R.drawable.ic_repeat_one_on_fill
                             else -> R.drawable.ic_repeat
                         }),
-                        "Tekrar",
+                        str(R.string.repeat),
                     )
                 }
             }
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilledTonalIconButton(rememberBack(), shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_keyboard_arrow_down), "Kapat") }
-            Text("Çalıyor", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-            FilledTonalIconButton({ lyrics = true }, enabled = hasLyrics, shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_lyrics), "Sözler") }
-            FilledTonalIconButton({ sheet = true }, enabled = station.isEmpty(), shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_queue_music), "Kuyruk") }
+            FilledTonalIconButton(rememberBack(), shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_keyboard_arrow_down), str(R.string.close)) }
+            Text(str(R.string.now_playing), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+            FilledTonalIconButton({ lyrics = true }, enabled = hasLyrics, shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_lyrics), str(R.string.lyrics)) }
+            FilledTonalIconButton({ sheet = true }, enabled = station.isEmpty(), shapes = IconButtonDefaults.shapes()) { Icon(painterResource(R.drawable.ic_queue_music), str(R.string.queue)) }
         }
     }
     if (sheet) QueueSheet(s, queue) { sheet = false }
@@ -378,13 +380,13 @@ private fun Player() {
 /** Now Playing's ⋯: crossfade and DJ (İstek on SUB/WAVE) first, then the song's own menu when a song plays. */
 @Composable
 private fun More(song: Song?, fav: Fav?, live: Boolean, dj: Boolean, onFade: () -> Unit, onRequest: () -> Unit) {
-    val trigger: @Composable (() -> Unit) -> Unit = { open -> FilledTonalIconButton(open) { Icon(painterResource(R.drawable.ic_more_horiz), "Diğer") } }
+    val trigger: @Composable (() -> Unit) -> Unit = { open -> FilledTonalIconButton(open) { Icon(painterResource(R.drawable.ic_more_horiz), str(R.string.more)) } }
     val extra: @Composable ColumnScope.(() -> Unit) -> Unit = { close ->
-        if (live) DropdownMenuItem({ Text("İstek gönder…") }, { close(); onRequest() }, leadingIcon = { Icon(painterResource(R.drawable.ic_send), null) })
+        if (live) DropdownMenuItem({ Text(str(R.string.send_request)) }, { close(); onRequest() }, leadingIcon = { Icon(painterResource(R.drawable.ic_send), null) })
         else {
-            DropdownMenuItem({ Text("Şarkı geçişi…") }, { close(); onFade() }, leadingIcon = { Icon(painterResource(R.drawable.ic_graphic_eq), null) })
+            DropdownMenuItem({ Text(str(R.string.crossfade_menu)) }, { close(); onFade() }, leadingIcon = { Icon(painterResource(R.drawable.ic_graphic_eq), null) })
             DropdownMenuItem(
-                { Text("DJ modu") }, { close(); Rela.core?.setDj(!dj) },
+                { Text(str(R.string.dj_mode)) }, { close(); Rela.core?.setDj(!dj) },
                 leadingIcon = { Text("DJ", fontWeight = FontWeight.Bold) }, trailingIcon = { if (dj) Icon(painterResource(R.drawable.ic_check), null) },
             )
         }
@@ -407,7 +409,7 @@ private fun LiveLyrics(sw: SubwaveState) {
     val ly = remember(sw.lyricsJson) { Lyrics.of(json(sw.lyricsJson)) }
     when {
         ly.lines.isEmpty() && (sw.lyricsState == "loading" || sw.lyricsState == "retry") -> LoadingIndicator()
-        ly.lines.isEmpty() -> Text("Bu şarkının sözleri yok", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ly.lines.isEmpty() -> Text(str(R.string.no_lyrics), color = MaterialTheme.colorScheme.onSurfaceVariant)
         else -> LyricLines(ly, sw.elapsedMs / 1000.0, seek = false)
     }
 }
@@ -421,20 +423,23 @@ private fun RequestSheet(sw: SubwaveState, user: String, onDismiss: () -> Unit) 
     val req = json(sw.requestJson)
     val state = req["state"].text()
     val upcoming = json(sw.nowJson).listOf("upcoming")
-    val labels = mapOf("pending" to "Bekliyor", "done" to "Çalınacak", "rejected" to "Reddedildi", "failed" to "Başarısız", "unknown" to "Bilinmiyor")
+    val labels = mapOf(
+            "pending" to str(R.string.request_pending), "done" to str(R.string.request_done), "rejected" to str(R.string.request_rejected),
+            "failed" to str(R.string.request_failed), "unknown" to str(R.string.request_unknown),
+        )
     ModalBottomSheet(onDismiss) {
         Column(Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth(), placeholder = { Text("Ne çalsın? (ör. Radiohead'den bir şey)") })
+            OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth(), placeholder = { Text(str(R.string.request_hint)) })
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(name, { name = it }, Modifier.weight(1f), placeholder = { Text("Adın") }, singleLine = true)
-                Button({ Rela.core?.subwaveRequest(text.trim(), name.trim()) }, enabled = text.isNotBlank() && state != "pending") { Text("Gönder") }
+                OutlinedTextField(name, { name = it }, Modifier.weight(1f), placeholder = { Text(str(R.string.your_name)) }, singleLine = true)
+                Button({ Rela.core?.subwaveRequest(text.trim(), name.trim()) }, enabled = text.isNotBlank() && state != "pending") { Text(str(R.string.send)) }
             }
             labels[state]?.let { Text(it, fontWeight = FontWeight.SemiBold) }
             val track = listOf(req["title"].text(), req["artist"].text()).filter { it.isNotEmpty() }.joinToString(" — ")
             if (track.isNotEmpty()) Text(track)
-            req["queuePosition"].text().toIntOrNull()?.takeIf { it > 0 }?.let { Text("Sırada: $it", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            req["queuePosition"].text().toIntOrNull()?.takeIf { it > 0 }?.let { Text(str(R.string.queue_position, it), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             req["message"].text().takeIf { it.isNotEmpty() }?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            if (upcoming.isNotEmpty()) Text("Sıradakiler", style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
+            if (upcoming.isNotEmpty()) Text(str(R.string.up_next), style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(top = 8.dp))
         }
         LazyColumn {
             items(upcoming) { u ->
@@ -453,9 +458,9 @@ private fun CrossfadeDialog(seconds: Long, onDismiss: () -> Unit) {
     var v by remember(seconds) { mutableFloatStateOf(seconds.toFloat()) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (v.roundToInt() == 0) "Geçiş kapalı (boşluksuz)" else "Geçiş: ${v.roundToInt()} sn") },
+        title = { Text(if (v.roundToInt() == 0) str(R.string.crossfade_off) else str(R.string.crossfade_length, plural(R.plurals.n_seconds, v.roundToInt()))) },
         text = { Slider(v, { v = it }, valueRange = 0f..12f, steps = 11, onValueChangeFinished = { Rela.core?.setCrossfade(v.roundToInt().toLong()) }) },
-        confirmButton = { TextButton(onDismiss) { Text("Tamam") } },
+        confirmButton = { TextButton(onDismiss) { Text(str(R.string.ok)) } },
     )
 }
 
@@ -467,8 +472,8 @@ private fun LyricsView(songId: String, position: Double) {
     val ly = l.value
     when {
         ly == null && l.loading -> LoadingIndicator()
-        ly == null -> Text("Sözler yüklenemedi", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ly.lines.isEmpty() -> Text("Bu şarkının sözleri yok", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ly == null -> Text(str(R.string.lyrics_failed), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ly.lines.isEmpty() -> Text(str(R.string.no_lyrics), color = MaterialTheme.colorScheme.onSurfaceVariant)
         else -> LyricLines(ly, position, seek = canControl())
     }
 }
@@ -525,8 +530,8 @@ private fun QueueSheet(s: PlayerState, queue: List<Song>, onDismiss: () -> Unit)
     // full height: near the queue's end the list can't put the current song on top, half a sheet would hide it
     ModalBottomSheet(onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         PrimaryTabRow(tab) {
-            Tab(tab == 0, { tab = 0 }, text = { Text("Kuyruk (${queue.size})") })
-            Tab(tab == 1, { tab = 1 }, text = { Text("Benzer") })
+            Tab(tab == 0, { tab = 0 }, text = { Text(str(R.string.queue_count, queue.size)) })
+            Tab(tab == 1, { tab = 1 }, text = { Text(str(R.string.similar)) })
         }
         if (tab == 0) QueueList(s, queue) else Similar(queue.getOrNull(s.index.toInt())?.id ?: "")
     }
@@ -542,8 +547,8 @@ private fun QueueList(s: PlayerState, queue: List<Song>) {
     var drag by remember { mutableIntStateOf(-1) }
     var dy by remember { mutableFloatStateOf(0f) }
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("Toplam ${clock(queue.sumOf { it.duration })}", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton({ core?.clearUpcoming() }, enabled = ctl && index < queue.size - 1) { Text("Sıradakileri temizle") }
+        Text(str(R.string.queue_total, clock(queue.sumOf { it.duration })), Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        TextButton({ core?.clearUpcoming() }, enabled = ctl && index < queue.size - 1) { Text(str(R.string.clear_upcoming)) }
     }
     LazyColumn(state = list) {
         itemsIndexed(queue) { i, song ->
@@ -557,9 +562,9 @@ private fun QueueList(s: PlayerState, queue: List<Song>) {
                 leadingContent = { Cover(song.coverArt, 40.dp, Modifier.size(40.dp)) },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton({ core?.remove(i.toLong()) }, enabled = ctl) { Icon(painterResource(R.drawable.ic_close), "Kuyruktan çıkar") }
+                        IconButton({ core?.remove(i.toLong()) }, enabled = ctl) { Icon(painterResource(R.drawable.ic_close), str(R.string.remove_from_queue)) }
                         Icon(
-                            painterResource(R.drawable.ic_drag_handle), "Taşı",
+                            painterResource(R.drawable.ic_drag_handle), str(R.string.move),
                             Modifier.padding(8.dp).pointerInput(i, ctl, queue.size) {
                                 if (!ctl) return@pointerInput
                                 detectDragGestures(
@@ -589,7 +594,7 @@ private fun QueueList(s: PlayerState, queue: List<Song>) {
 private fun Similar(songId: String) {
     val l = load(songId) { getList("getSimilarSongs", mapOf("id" to songId, "count" to 30), "similarSongs", "song")?.map(::Song) }
     val songs = l.value ?: emptyList()
-    Listing(songs.size, l.loading, l.failed, "Benzer şarkı bulunamadı", l.refresh) {
+    Listing(songs.size, l.loading, l.failed, str(R.string.no_similar), l.refresh) {
         LazyColumn { items(songs) { SongRow(it, { add(listOf(it), 0) }) } }
     }
 }

@@ -36,7 +36,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.rela.R
 import app.rela.core.Rela
+import app.rela.str
 import uniffi.rela.PlayerState
 
 /**
@@ -64,22 +66,22 @@ fun Login(s: PlayerState) {
     ) {
         Text("re-la", style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Bold)
         Text(
-            "Navidrome üzerinden birlikte, kayıpsız dinle.",
+            str(R.string.login_tagline),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         val field = Modifier.fillMaxWidth().widthIn(max = 480.dp)
         if (!s.signedIn) {
             OutlinedTextField(
-                url, { url = it }, field, label = { Text("Sunucu") }, placeholder = { Text("https://muzik.ornek.com") },
+                url, { url = it }, field, label = { Text(str(R.string.server)) }, placeholder = { Text(str(R.string.server_hint)) },
                 singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Next),
             )
             OutlinedTextField(
-                user, { user = it }, field.semantics { contentType = ContentType.Username }, label = { Text("Kullanıcı adı") }, singleLine = true,
+                user, { user = it }, field.semantics { contentType = ContentType.Username }, label = { Text(str(R.string.username)) }, singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             )
             OutlinedTextField(
-                pass, { pass = it }, field.semantics { contentType = ContentType.Password }, label = { Text("Şifre") }, singleLine = true,
+                pass, { pass = it }, field.semantics { contentType = ContentType.Password }, label = { Text(str(R.string.password)) }, singleLine = true,
                 visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Go),
                 keyboardActions = KeyboardActions(onGo = { go() }),
@@ -87,9 +89,9 @@ fun Login(s: PlayerState) {
         }
         if (s.connecting) LoadingIndicator()
         if (s.signedIn) {
-            OutlinedButton({ core?.logout() }, field) { Text("Vazgeç") } // a hanging connect can be abandoned
+            OutlinedButton({ core?.logout() }, field) { Text(str(R.string.cancel)) } // a hanging connect can be abandoned
         } else {
-            Button(go, field, enabled = url.isNotBlank() && user.isNotBlank()) { Text("Bağlan") }
+            Button(go, field, enabled = url.isNotBlank() && user.isNotBlank()) { Text(str(R.string.connect)) }
         }
         if (s.status.isNotEmpty()) {
             Text(

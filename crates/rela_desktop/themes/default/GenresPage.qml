@@ -13,7 +13,7 @@ GenresData {
         anchors.fill: parent; anchors.margins: 24
         spacing: 12
         visible: root.genres !== null && root.genres.length > 0
-        PageTitle { text: "Türler" }
+        PageTitle { text: qsTr("Türler") }
         ListView {
             id: list
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -30,12 +30,12 @@ GenresData {
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: 10; anchors.rightMargin: 10
                     Plain { Layout.fillWidth: true; elide: Text.ElideRight; text: row.modelData.value; font.weight: Font.Medium }
-                    Plain { text: row.modelData.albumCount + " albüm · " + row.modelData.songCount + " şarkı"; color: palette.placeholderText }
+                    Plain { text: qsTr("%n albüm", "", row.modelData.albumCount) + " · " + qsTr("%n şarkı", "", row.modelData.songCount); color: palette.placeholderText }
                 }
             }
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.genres !== null && root.genres.length === 0; text: "Tür yok" }
+    Empty { visible: root.genres !== null && root.genres.length === 0; text: qsTr("Tür yok") }
     Loading { loading: root.genres === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

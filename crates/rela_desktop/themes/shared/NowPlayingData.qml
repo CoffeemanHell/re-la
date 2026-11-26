@@ -24,8 +24,8 @@ Item {
         const kbps = Player.bitrate || cur.bitRate
         const fmt = !cur.suffix ? "" : " | " + cur.suffix.toUpperCase() + (cur.samplingRate ? " " + cur.samplingRate / 1000 + " kHz" : "")
                                        + (kbps ? ", " + kbps + " kbps" : "")
-        return (Player.playing ? "Çalıyor" : "Duraklatıldı") + " (" + (Player.index + 1) + "/" + Player.queueLength + ") "
+        return (Player.playing ? qsTr("Çalıyor") : qsTr("Duraklatıldı")) + " (" + (Player.index + 1) + "/" + Player.queueLength + ") "
              + clock(Player.position) + "/" + clock(Player.duration)
-             + " · Toplam süre: " + clockLong(root.total) + fmt
+             + " · " + qsTr("Toplam süre: %1").arg(clockLong(root.total)) + fmt
     }
 }

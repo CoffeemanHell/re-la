@@ -10,15 +10,15 @@ AlbumsData {
     id: root
     scroller: grid
 
-    readonly property var orders: [{ t: "newest", l: "Yeni eklenen" }, { t: "recent", l: "Son dinlenen" },
-                                   { t: "frequent", l: "Çok dinlenen" }, { t: "random", l: "Rastgele" },
-                                   { t: "alphabeticalByName", l: "Ada göre" }, { t: "alphabeticalByArtist", l: "Sanatçıya göre" }]
+    readonly property var orders: [{ t: "newest", l: qsTr("Yeni eklenen") }, { t: "recent", l: qsTr("Son dinlenen") },
+                                   { t: "frequent", l: qsTr("Çok dinlenen") }, { t: "random", l: qsTr("Rastgele") },
+                                   { t: "alphabeticalByName", l: qsTr("Ada göre") }, { t: "alphabeticalByArtist", l: qsTr("Sanatçıya göre") }]
 
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 24
         spacing: 12
         RowLayout {
-            Plain { text: "Albümler"; font.pointSize: Qt.application.font.pointSize * 1.6; font.weight: Font.Bold; Layout.fillWidth: true }
+            Plain { text: qsTr("Albümler"); font.pointSize: Qt.application.font.pointSize * 1.6; font.weight: Font.Bold; Layout.fillWidth: true }
             ComboBox {
                 model: root.orders
                 textRole: "l"; valueRole: "t"

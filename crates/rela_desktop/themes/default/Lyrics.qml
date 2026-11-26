@@ -50,7 +50,7 @@ LyricsData {
     }
     Empty {
         visible: !ly.loading && !ly.failed && ly.songId !== "" && ly.lines.length === 0 && (!ly.live || ly.lyState !== "")
-        text: ly.lyState === "auth" ? "Parola gerekli" : ly.lyState === "off" ? "Sözler kapalı" : "Söz bulunamadı"
+        text: ly.lyState === "auth" ? qsTr("Parola gerekli") : ly.lyState === "off" ? qsTr("Sözler kapalı") : qsTr("Söz bulunamadı")
     }
     Loading { loading: ly.loading; failed: ly.failed; onRetry: { ly.forId = ""; ly.load() } }
 }

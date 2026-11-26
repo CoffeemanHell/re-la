@@ -17,7 +17,7 @@ Item {
         anchors.fill: parent
         hideAlbum: h.hideAlbum
         Head { text: "#"; Layout.preferredWidth: 28; horizontalAlignment: Text.AlignHCenter }
-        Head { text: "Parça Adı"; Layout.fillWidth: true; Layout.preferredWidth: 300 }
+        Head { text: qsTr("Parça Adı"); Layout.fillWidth: true; Layout.preferredWidth: 300 }
         Repeater {
             model: cols.columns
             Head {

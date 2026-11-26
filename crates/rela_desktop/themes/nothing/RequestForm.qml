@@ -9,7 +9,7 @@ Item {
     id: f
     readonly property var req: Subwave.request
     readonly property string st: req && req.state ? req.state : ""
-    readonly property var labels: ({ pending: "BEKLİYOR", done: "ÇALINACAK", rejected: "REDDEDİLDİ", failed: "BAŞARISIZ", unknown: "BİLİNMİYOR" })
+    readonly property var labels: ({ pending: qsTr("BEKLİYOR"), done: qsTr("ÇALINACAK"), rejected: qsTr("REDDEDİLDİ"), failed: qsTr("BAŞARISIZ"), unknown: qsTr("BİLİNMİYOR") })
     function up(s) { return (s || "").toUpperCase() }
 
     ColumnLayout {
@@ -19,26 +19,26 @@ Item {
             id: text
             objectName: "reqText"
             Layout.fillWidth: true
-            placeholderText: "NE ÇALSIN?"
+            placeholderText: qsTr("NE ÇALSIN?")
             onAccepted: if (send.enabled) send.clicked()
         }
         RowLayout {
             Layout.fillWidth: true
             spacing: 12
-            Field { id: name; objectName: "reqName"; Layout.fillWidth: true; placeholderText: "ADIN"; text: Player.user }
+            Field { id: name; objectName: "reqName"; Layout.fillWidth: true; placeholderText: qsTr("ADIN"); text: Player.user }
             Pill {
                 id: send
                 objectName: "reqSend"
-                text: "GÖNDER"; on: enabled
+                text: qsTr("GÖNDER"); on: enabled
                 enabled: text.text.trim() !== "" && f.st !== "pending"
                 onClicked: Subwave.sendRequest(text.text, name.text)
             }
         }
         Mono { visible: f.st !== ""; text: f.labels[f.st] || ""; color: App.theme.accent }
         Mono { visible: !!f.req.title; Layout.fillWidth: true; text: f.up([f.req.title, f.req.artist].filter(x => x).join(" — ")) }
-        Mono { visible: f.req.queuePosition > 0; text: "SIRADA: " + f.req.queuePosition; color: App.theme.muted }
+        Mono { visible: f.req.queuePosition > 0; text: qsTr("SIRADA: %1").arg(f.req.queuePosition); color: App.theme.muted }
         Mono { visible: !!f.req.message; Layout.fillWidth: true; wrapMode: Text.Wrap; elide: Text.ElideNone; text: f.up(f.req.message); color: App.theme.muted }
-        Mono { visible: upcoming.count > 0; Layout.topMargin: 8; text: "SIRADAKİLER"; color: App.theme.muted }
+        Mono { visible: upcoming.count > 0; Layout.topMargin: 8; text: qsTr("SIRADAKİLER"); color: App.theme.muted }
         ListView {
             id: upcoming
             Layout.fillWidth: true; Layout.fillHeight: true

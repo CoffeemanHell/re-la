@@ -251,7 +251,11 @@ impl ffi::App {
         let t = resolve(&name, &roots(), BUILTIN);
         if t.outdated {
             eprintln!("{name}: no `import Rela` in Main.qml, see docs/themes.md; loading the default theme");
-            let msg = format!("“{name}” teması eski bir sürüm için yazılmış (import Rela yok); varsayılan tema açıldı.");
+            let msg = if rela_core::i18n::english() {
+                format!("The “{name}” theme was written for an older version (no import Rela); the default theme is open.")
+            } else {
+                format!("“{name}” teması eski bir sürüm için yazılmış (import Rela yok); varsayılan tema açıldı.")
+            };
             player().call(move |c| c.set_status(msg));
         }
         {

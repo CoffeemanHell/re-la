@@ -1,58 +1,58 @@
 package app.rela.ui
 
-import androidx.compose.runtime.getValue
-import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SharedTransitionLayout
-import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.IntOffset
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import androidx.navigationevent.DirectNavigationEventInput
 import androidx.navigationevent.NavigationEvent
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.withFrameNanos
-import kotlinx.coroutines.launch
-import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import app.rela.R
 import app.rela.core.Rela
 import app.rela.playback.queueSong
+import app.rela.str
 import app.rela.ui.library.Album
 import app.rela.ui.library.Albums
 import app.rela.ui.library.Artist
@@ -63,12 +63,13 @@ import app.rela.ui.library.Genres
 import app.rela.ui.library.Library
 import app.rela.ui.library.Playlist
 import app.rela.ui.library.Playlists
-import app.rela.ui.library.Tracks
 import app.rela.ui.library.Radio
 import app.rela.ui.library.Search
 import app.rela.ui.library.Settings
 import app.rela.ui.library.SettingsPage
 import app.rela.ui.library.Together
+import app.rela.ui.library.Tracks
+import kotlinx.coroutines.launch
 
 /** Where the app is; the back stack is a list of these. */
 sealed interface Screen {
@@ -97,13 +98,13 @@ sealed interface Screen {
 data class Tab(val id: String, val screen: Screen, val label: String, val icon: Int)
 
 /** All bottom bar tabs, in [tabIds] order; Settings → Alt çubuk picks which show. */
-val tabs = listOf(
-    Tab("library", Screen.Library, "Kitaplık", R.drawable.ic_library_music_fill),
-    Tab("albums", Screen.Albums(), "Albümler", R.drawable.ic_album_fill),
-    Tab("playlists", Screen.Playlists, "Playlistler", R.drawable.ic_playlist_play),
-    Tab("artists", Screen.Artists, "Sanatçılar", R.drawable.ic_artist_fill),
-    Tab("radio", Screen.Radio, "Radyo", R.drawable.ic_radio_fill),
-    Tab("together", Screen.Together, "Birlikte", R.drawable.ic_headphones_fill),
+val tabs get() = listOf( // a getter: the labels follow the language
+    Tab("library", Screen.Library, str(R.string.tab_library), R.drawable.ic_library_music_fill),
+    Tab("albums", Screen.Albums(), str(R.string.albums), R.drawable.ic_album_fill),
+    Tab("playlists", Screen.Playlists, str(R.string.playlists), R.drawable.ic_playlist_play),
+    Tab("artists", Screen.Artists, str(R.string.artists), R.drawable.ic_artist_fill),
+    Tab("radio", Screen.Radio, str(R.string.radio), R.drawable.ic_radio_fill),
+    Tab("together", Screen.Together, str(R.string.together), R.drawable.ic_headphones_fill),
 )
 
 val LocalNav = staticCompositionLocalOf<SnapshotStateList<Screen>> { error("no nav") }

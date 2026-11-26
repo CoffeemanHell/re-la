@@ -10,8 +10,8 @@ HomeData {
     id: root
     scroller: flick
 
-    strips: [["recent", "SON DİNLENENLER"], ["newest", "YENİ EKLENENLER"],
-             ["frequent", "ÇOK DİNLENENLER"], ["random", "RASTGELE"]]
+    strips: [["recent", qsTr("SON DİNLENENLER")], ["newest", qsTr("YENİ EKLENENLER")],
+             ["frequent", qsTr("ÇOK DİNLENENLER")], ["random", qsTr("RASTGELE")]]
 
     Flickable {
         id: flick
@@ -40,7 +40,7 @@ HomeData {
                         // the strip doesn't take the wheel (the page scrolls); these move it a page at a time
                         Pill { text: "←"; enabled: list.contentX > 0; onClicked: list.page(-1) }
                         Pill { text: "→"; enabled: list.contentX < list.contentWidth - list.width - 1; onClicked: list.page(1) }
-                        Pill { text: "TÜMÜ"; onClicked: root.w.go("albums", { type: strip.modelData[0] }) }
+                        Pill { text: qsTr("TÜMÜ"); onClicked: root.w.go("albums", { type: strip.modelData[0] }) }
                     }
                     ListView {
                         id: list
@@ -66,5 +66,5 @@ HomeData {
         }
     }
     Loading { loading: root.pending > 0 && root.empty; failed: root.failed && root.empty; onRetry: root.load() }
-    Empty { visible: root.pending === 0 && !root.failed && root.empty; text: "KÜTÜPHANE BOŞ" }
+    Empty { visible: root.pending === 0 && !root.failed && root.empty; text: qsTr("KÜTÜPHANE BOŞ") }
 }

@@ -18,7 +18,51 @@ fn builtin_themes(themes: &Path) {
     println!("cargo::rerun-if-changed={}", themes.display());
 }
 
-/// The built-in themes at :/themes/<folder>/ (loaded by path, as user themes are) and the tray icon at :/re-la.svg.
+/// Qt's lrelease: next to the qmake cxx-qt builds with (QMAKE, else qmake6 / qmake on PATH), else on PATH.
+fn lrelease() -> Option<std::path::PathBuf> {
+    use std::process::Command;
+    let qmakes = std::env::var("QMAKE").ok().into_iter().chain(["qmake6".to_string(), "qmake".to_string()]);
+    for q in qmakes {
+        for var in ["QT_HOST_BINS", "QT_HOST_LIBEXECS", "QT_INSTALL_BINS"] {
+            let Ok(o) = Command::new(&q).args(["-query", var]).output() else { continue };
+            let exe = Path::new(String::from_utf8_lossy(&o.stdout).trim()).join("lrelease").with_extension(std::env::consts::EXE_EXTENSION);
+            // a qtchooser wrapper with no Qt behind it exists but fails: probe it as the PATH ones are
+            if o.status.success() && exe.is_file() && Command::new(&exe).arg("-version").output().is_ok_and(|o| o.status.success()) {
+                return Some(exe);
+            }
+        }
+    }
+    ["lrelease-qt6", "lrelease"].into_iter().map(Into::into).find(|p: &std::path::PathBuf| Command::new(p).arg("-version").output().is_ok_and(|o| o.status.success()))
+}
+
+/// i18n/qml_<lang>.ts -> OUT_DIR/qml_<lang>.qm. QQmlApplicationEngine loads them from i18n/ next to Shell.qml for
+/// Qt.uiLanguage (main.rs sets it). Without lrelease the app builds, in Turkish only.
+fn translations(src: &Path) -> Vec<(String, std::path::PathBuf)> {
+    println!("cargo::rerun-if-env-changed=QMAKE");
+    let dir = src.join("i18n");
+    println!("cargo::rerun-if-changed={}", dir.display());
+    let mut ts: Vec<_> = std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "ts")).collect();
+    ts.sort();
+    let Some(tool) = lrelease() else {
+        println!("cargo::warning=lrelease (Qt Linguist tools) not found: re-la is built without translations, in Turkish only (after installing it: touch crates/rela_desktop/build.rs)");
+        println!("cargo::rerun-if-env-changed=PATH");
+        println!("cargo::rustc-env=RELA_TURKISH_ONLY=1"); // main.rs: the core then stays Turkish too
+        return vec![];
+    };
+    let out = Path::new(&std::env::var("OUT_DIR").unwrap()).to_path_buf();
+    ts.iter()
+        .map(|t| {
+            let name = t.with_extension("qm").file_name().unwrap().to_string_lossy().into_owned();
+            let qm = out.join(&name);
+            let ok = std::process::Command::new(&tool).arg("-silent").arg(t).arg("-qm").arg(&qm).status().is_ok_and(|s| s.success());
+            assert!(ok, "{} failed on {}", tool.display(), t.display());
+            (name, qm)
+        })
+        .collect()
+}
+
+/// The built-in themes at :/themes/<folder>/ (loaded by path, as user themes are), the tray icon at :/re-la.svg and the
+/// translations at :/qt/qml/Rela/qml/i18n/.
 fn resources(src: &Path) -> std::path::PathBuf {
     fn walk(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
         for e in std::fs::read_dir(dir).unwrap().flatten() {
@@ -37,7 +81,11 @@ fn resources(src: &Path) -> std::path::PathBuf {
         println!("cargo::rerun-if-changed={}", f.display());
     }
     let icon = src.join("extras/linux/re-la.svg");
-    qrc += &format!("</qresource>\n<qresource prefix=\"/\">\n<file alias=\"re-la.svg\">{}</file>\n</qresource>\n", esc(&icon));
+    qrc += &format!("</qresource>\n<qresource prefix=\"/\">\n<file alias=\"re-la.svg\">{}</file>\n", esc(&icon));
+    for (name, qm) in translations(src) {
+        qrc += &format!("<file alias=\"qt/qml/Rela/qml/i18n/{name}\">{}</file>\n", esc(&qm));
+    }
+    qrc += "</qresource>\n";
     qrc += "</RCC>\n";
     let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("rela.qrc"); // a C++ name: Q_INIT_RESOURCE(rela_qrc)
     std::fs::write(&out, qrc).unwrap();

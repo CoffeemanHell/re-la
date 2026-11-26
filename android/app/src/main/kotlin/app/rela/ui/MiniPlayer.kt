@@ -7,9 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -19,17 +19,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.rela.R
 import app.rela.core.Rela
 import app.rela.core.Song
 import app.rela.core.json
 import app.rela.core.text
+import app.rela.str
 import app.rela.ui.library.canControl
 import uniffi.rela.PlayerState
 
@@ -42,7 +43,7 @@ fun MiniPlayer(s: PlayerState, song: Song?, onOpen: () -> Unit) {
     val title = song?.title ?: now?.get("title").text().ifEmpty { station["name"].text() }
     if (title.isEmpty()) return
     val ctl = canControl() // following without control: the host decides
-    val sub = if (station.isNotEmpty()) now?.get("artist").text().ifEmpty { "Radyo" } else song?.artist ?: ""
+    val sub = if (station.isNotEmpty()) now?.get("artist").text().ifEmpty { str(R.string.radio) } else song?.artist ?: ""
     // a card floating over the nav bar, its progress a thin line along the bottom edge
     Surface(
         Modifier.padding(horizontal = 8.dp, vertical = 4.dp).clickable(onClick = onOpen),
@@ -62,11 +63,11 @@ fun MiniPlayer(s: PlayerState, song: Song?, onOpen: () -> Unit) {
                 }
                 Box {
                     IconButton({ Rela.core?.toggle() }, enabled = ctl, colors = IconButtonDefaults.iconButtonVibrantColors()) {
-                        Icon(playPausePainter(!s.playing), if (s.playing) "Duraklat" else "Oynat", Modifier.size(32.dp))
+                        Icon(playPausePainter(!s.playing), str(if (s.playing) R.string.pause else R.string.play), Modifier.size(32.dp))
                     }
                 }
                 if (station.isEmpty()) {
-                    IconButton({ Rela.core?.next() }, enabled = ctl) { Icon(painterResource(R.drawable.ic_skip_next_fill), "Sonraki", Modifier.size(32.dp)) }
+                    IconButton({ Rela.core?.next() }, enabled = ctl) { Icon(painterResource(R.drawable.ic_skip_next_fill), str(R.string.next), Modifier.size(32.dp)) }
                 }
             }
             LinearProgressIndicator(

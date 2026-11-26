@@ -13,7 +13,7 @@ ArtistsData {
         anchors.fill: parent; anchors.margins: 24
         spacing: 12
         visible: root.artists !== null && root.artists.length > 0
-        PageTitle { text: "Sanatçılar" }
+        PageTitle { text: qsTr("Sanatçılar") }
         ListView {
             id: list
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -40,12 +40,12 @@ ArtistsData {
                     spacing: 12
                     Cover { Layout.preferredWidth: 38; Layout.preferredHeight: 38; art: row.modelData.coverArt || ""; radius: 19 }
                     Plain { Layout.fillWidth: true; elide: Text.ElideRight; text: row.modelData.name || ""; font.weight: Font.Medium }
-                    Plain { text: (row.modelData.albumCount || 0) + " albüm"; color: palette.placeholderText }
+                    Plain { text: qsTr("%n albüm", "", row.modelData.albumCount || 0); color: palette.placeholderText }
                 }
             }
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.artists !== null && root.artists.length === 0; text: "Sanatçı yok" }
+    Empty { visible: root.artists !== null && root.artists.length === 0; text: qsTr("Sanatçı yok") }
     Loading { loading: root.artists === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

@@ -19,6 +19,12 @@ int_enum!(EventType, "QEvent::Type");
 int_enum!(DeviceType, "QInputDevice::DeviceType");
 int_enum!(ScrollPhase, "Qt::ScrollPhase");
 
+/// cxx-qt-lib's engine as ffi::AppEngine: no methods can be added to another crate's type.
+pub fn app_engine(e: std::pin::Pin<&mut cxx_qt_lib::QQmlApplicationEngine>) -> std::pin::Pin<&mut ffi::AppEngine> {
+    // SAFETY: both Rust types are the C++ class QQmlApplicationEngine, opaque here: the same object, pinned as it was
+    unsafe { e.map_unchecked_mut(|e| &mut *std::ptr::from_mut(e).cast::<ffi::AppEngine>()) }
+}
+
 pub const WHEEL: EventType = EventType(31); // QEvent::Wheel
 pub const TOUCHPAD: DeviceType = DeviceType(0x4); // QInputDevice::DeviceType::TouchPad
 
@@ -59,6 +65,16 @@ pub mod ffi {
         type QString = cxx_qt_lib::QString;
         include!("cxx-qt-lib/qqmlengine.h");
         type QQmlEngine = cxx_qt_lib::QQmlEngine;
+        include!(<QtQml/QQmlApplicationEngine>);
+        /// ::QQmlApplicationEngine under its own Rust name, for what cxx-qt-lib's lacks (see app_engine)
+        #[cxx_name = "QQmlApplicationEngine"]
+        type AppEngine;
+        /// The language the QML translations follow: QLocale's at first ("tr-TR", "en-US").
+        #[cxx_name = "uiLanguage"]
+        fn ui_language(self: &AppEngine) -> QString;
+        /// Before load(): the engine then loads i18n/qml_<language>.qm next to the first QML file.
+        #[cxx_name = "setUiLanguage"]
+        fn set_ui_language(self: Pin<&mut AppEngine>, language: &QString);
         include!(<QtQml/QQmlEngine>);
         /// The engine that made this object (null for one made outside QML).
         #[cxx_name = "qmlEngine"]

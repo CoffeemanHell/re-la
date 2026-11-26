@@ -16,7 +16,7 @@ Item {
         Player.get(root, "getPlaylists", {}, r => { if (!r) return failed = true; lists = r.playlists.playlist || [] })
     }
     function create() {
-        w.askName("Yeni playlist", "", name => Player.set(root, "createPlaylist", { name: name }, r => r ? load() : w.notify("İşlem başarısız")))
+        w.askName(qsTr("Yeni playlist"), "", name => Player.set(root, "createPlaylist", { name: name }, r => r ? load() : w.notify(qsTr("İşlem başarısız"))))
     }
     Component.onCompleted: load()
 }

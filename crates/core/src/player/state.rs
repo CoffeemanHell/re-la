@@ -888,7 +888,7 @@ impl PlayerCore {
     fn refused_offline(&mut self, id: &str) -> bool {
         let no = self.offline && !SongCache::holds(&self.held, &self.login.server, id);
         if no {
-            self.set_status("Çevrimdışı: bu şarkı inmemiş");
+            self.set_status(crate::i18n::tr("Çevrimdışı: bu şarkı inmemiş", "Offline: this song is not saved"));
         }
         no
     }
@@ -1188,7 +1188,7 @@ impl PlayerCore {
             let st = find_station(&list, &id);
             if st.as_object().is_none_or(Map::is_empty) {
                 c.want_station.clear();
-                return c.set_status("Yayın açılamadı");
+                return c.set_status(crate::i18n::tr("Yayın açılamadı", "Could not open the stream"));
             }
             c.start_station(&st);
         });

@@ -20,6 +20,7 @@ import uniffi.rela.PlayerState
 import uniffi.rela.SubwaveState
 import uniffi.rela.SyncNote
 import uniffi.rela.SyncState
+import uniffi.rela.setLanguage
 
 /**
  * The Rust core of this process and what it last said. RelaService starts it and stops it; screens read the flows
@@ -52,6 +53,7 @@ object Rela {
     fun start(context: Context, decks: DeckFactory): Core = running ?: run {
         System.loadLibrary("rela") // for initTls: JNA, which makes the other calls, loads it for itself only
         initTls(context.applicationContext)
+        setLanguage(context.resources.configuration.locales[0].language) // the app's language (per-app or the system's)
         Core(context.filesDir.path, context.cacheDir.path, decks, Listener).also { running = it; it.refresh() }
     }
 

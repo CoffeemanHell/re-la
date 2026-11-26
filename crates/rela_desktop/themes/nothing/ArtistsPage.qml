@@ -14,7 +14,7 @@ ArtistsData {
         anchors.fill: parent; anchors.margins: 36
         spacing: 18
         visible: root.artists !== null && root.artists.length > 0
-        PageTitle { text: "SANATÇILAR" }
+        PageTitle { text: qsTr("SANATÇILAR") }
         ListView {
             id: list
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -25,7 +25,7 @@ ArtistsData {
             delegate: ListRow {
                 required property var modelData
                 showArt: true; art: modelData.coverArt || ""
-                title: modelData.name || ""; detail: (modelData.albumCount || 0) + " ALBÜM"
+                title: modelData.name || ""; detail: qsTr("%n ALBÜM", "", modelData.albumCount || 0)
                 onClicked: root.w.go("artist", { id: modelData.id })
                 onMenuRequested: root.w.menu("artist", modelData)
 
@@ -33,6 +33,6 @@ ArtistsData {
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.artists !== null && root.artists.length === 0; text: "SANATÇI YOK" }
+    Empty { visible: root.artists !== null && root.artists.length === 0; text: qsTr("SANATÇI YOK") }
     Loading { loading: root.artists === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

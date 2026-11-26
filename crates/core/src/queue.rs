@@ -1,5 +1,6 @@
 //! Queue and API helpers: pure functions over songs as Subsonic JSON objects.
 pub use rela_proto::MAX_QUEUE;
+use crate::i18n::tr;
 use serde_json::{Map, Value, json};
 use std::collections::{HashMap, HashSet};
 
@@ -402,14 +403,14 @@ pub fn normalize_server(input: &str) -> String {
     }
 }
 
-/// Turkish text for a failed login (code: Subsonic error code or one of NO_SERVER / NOT_SUBSONIC).
+/// The text for a failed login (code: Subsonic error code or one of NO_SERVER / NOT_SUBSONIC).
 pub fn login_error(code: i64, server_msg: &str) -> String {
     match code {
-        NO_SERVER => "Sunucuya ulaşılamıyor.".into(),
-        NOT_SUBSONIC => "Bu adres bir Navidrome/Subsonic sunucusu değil.".into(),
-        40 | 41 => "Kullanıcı adı ya da şifre yanlış.".into(),
-        20 | 30 => "Sunucu sürümü uyumsuz.".into(),
-        _ if server_msg.is_empty() => "Bağlanılamadı.".into(),
+        NO_SERVER => tr("Sunucuya ulaşılamıyor.", "Can't reach the server.").into(),
+        NOT_SUBSONIC => tr("Bu adres bir Navidrome/Subsonic sunucusu değil.", "This address is not a Navidrome/Subsonic server.").into(),
+        40 | 41 => tr("Kullanıcı adı ya da şifre yanlış.", "Wrong username or password.").into(),
+        20 | 30 => tr("Sunucu sürümü uyumsuz.", "Incompatible server version.").into(),
+        _ if server_msg.is_empty() => tr("Bağlanılamadı.", "Could not connect.").into(),
         _ => server_msg.into(),
     }
 }

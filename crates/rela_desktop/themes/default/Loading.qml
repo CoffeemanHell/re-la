@@ -14,7 +14,7 @@ Item {
     ColumnLayout {
         anchors.centerIn: parent
         visible: l.failed && !l.loading
-        Plain { Layout.alignment: Qt.AlignHCenter; text: "Yüklenemedi"; color: palette.placeholderText }
-        Button { Layout.alignment: Qt.AlignHCenter; text: "Tekrar dene"; icon.name: "view-refresh"; onClicked: l.retry() }
+        Plain { Layout.alignment: Qt.AlignHCenter; text: qsTr("Yüklenemedi"); color: palette.placeholderText }
+        Button { Layout.alignment: Qt.AlignHCenter; text: qsTr("Tekrar dene"); icon.name: "view-refresh"; onClicked: l.retry() }
     }
 }

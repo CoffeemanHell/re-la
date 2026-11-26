@@ -16,6 +16,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // a language change recreates the activity but not the service: the core follows it from here
+        uniffi.rela.setLanguage(resources.configuration.locales[0].language)
         enableEdgeToEdge()
         setContent { App() }
     }

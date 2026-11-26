@@ -15,7 +15,7 @@ Item {
         const keys = Shortcuts.written(e.key, e.modifiers)
         if (!keys) return
         const other = Shortcuts.clash(action, keys)
-        if (other) { problem = keys + " zaten kullanılıyor: " + other; return }
+        if (other) { problem = qsTr("%1 zaten kullanılıyor: %2").arg(keys).arg(other); return }
         problem = ""
         const a = Shortcuts.byKey(action)
         Player.setOption(action, keys === (a.text || a.std) ? "" : keys)
