@@ -32,6 +32,17 @@ fn set_env_for_qt(name: &std::ffi::CStr, value: &std::ffi::CStr) {
     // SAFETY: two nul-terminated strings; the C runtime copies them. Called before Qt starts, from the main thread
     unsafe { _putenv_s(name.as_ptr(), value.as_ptr()) };
 }
+/// Windows' display language: Qt's default follows the regional format, which can be Turkish under an English UI.
+#[cfg(windows)]
+fn system_ui_language() -> Option<String> {
+    // SAFETY: no arguments, no state; returns a LANGID
+    let id = unsafe { windows::Win32::Globalization::GetUserDefaultUILanguage() };
+    Some(if id & 0x3ff == 0x1f { "tr" } else { "en" }.into()) // 0x1f: LANG_TURKISH, the primary language bits
+}
+#[cfg(not(windows))]
+fn system_ui_language() -> Option<String> {
+    None // elsewhere: QLocale's language, as before
+}
 #[cfg(not(windows))]
 const LC_NUMERIC: c_int = 1; // glibc
 #[cfg(windows)]
@@ -157,7 +168,7 @@ fn main() {
     // The language, before anything shows text: Turkish on a Turkish system, English on any other (RELA_LANG=en / tr
     // overrides it). QML gets it from i18n/qml_en.qm, the core's status lines from rela_core::i18n.
     let mut ae = rela_desktop::qtgui::app_engine(e.as_mut());
-    let lang = std::env::var("RELA_LANG").ok().filter(|l| !l.is_empty()).unwrap_or_else(|| ae.ui_language().to_string());
+    let lang = std::env::var("RELA_LANG").ok().filter(|l| !l.is_empty()).unwrap_or_else(|| system_ui_language().unwrap_or_else(|| ae.ui_language().to_string()));
     let lang = if rela_core::i18n::is_english(&lang) { "en" } else { "tr" };
     rela_core::i18n::set_language(lang);
     ae.as_mut().set_ui_language(&QString::from(lang));

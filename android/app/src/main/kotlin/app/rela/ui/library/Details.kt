@@ -161,7 +161,7 @@ fun Artist(id: String, from: String = "") {
                 contentPadding = PaddingValues(top = pad.calculateTopPadding(), bottom = pad.calculateBottomPadding() + 8.dp),
             ) {
                 full {
-                    Hero(a["coverArt"].text(), coverShape(look.artistShape), a["name"].text(), "${a["albumCount"].text().ifEmpty { "${albums.size}" }} albüm", share = artistCover(id, from)) {
+                    Hero(a["coverArt"].text(), coverShape(look.artistShape), a["name"].text(), plural(R.plurals.n_albums, a["albumCount"].text().toIntOrNull() ?: albums.size), share = artistCover(id, from)) {
                         Round({ scope.launch { artistRadio(ctx, id) } }, canControl()) { Icon(painterResource(R.drawable.ic_radio), str(R.string.artist_radio)) }
                         Wide({ play(top) }, canControl() && top.isNotEmpty())
                         FavButton(fav!!)

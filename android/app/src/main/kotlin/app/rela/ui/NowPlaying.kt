@@ -547,7 +547,7 @@ private fun QueueList(s: PlayerState, queue: List<Song>) {
     var drag by remember { mutableIntStateOf(-1) }
     var dy by remember { mutableFloatStateOf(0f) }
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("Toplam ${clock(queue.sumOf { it.duration })}", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(str(R.string.queue_total, clock(queue.sumOf { it.duration })), Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
         TextButton({ core?.clearUpcoming() }, enabled = ctl && index < queue.size - 1) { Text(str(R.string.clear_upcoming)) }
     }
     LazyColumn(state = list) {

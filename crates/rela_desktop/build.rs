@@ -26,12 +26,13 @@ fn lrelease() -> Option<std::path::PathBuf> {
         for var in ["QT_HOST_BINS", "QT_HOST_LIBEXECS", "QT_INSTALL_BINS"] {
             let Ok(o) = Command::new(&q).args(["-query", var]).output() else { continue };
             let exe = Path::new(String::from_utf8_lossy(&o.stdout).trim()).join("lrelease").with_extension(std::env::consts::EXE_EXTENSION);
-            if o.status.success() && exe.is_file() {
+            // a qtchooser wrapper with no Qt behind it exists but fails: probe it as the PATH ones are
+            if o.status.success() && exe.is_file() && Command::new(&exe).arg("-version").output().is_ok_and(|o| o.status.success()) {
                 return Some(exe);
             }
         }
     }
-    ["lrelease-qt6", "lrelease"].into_iter().map(Into::into).find(|p: &std::path::PathBuf| Command::new(p).arg("-version").output().is_ok())
+    ["lrelease-qt6", "lrelease"].into_iter().map(Into::into).find(|p: &std::path::PathBuf| Command::new(p).arg("-version").output().is_ok_and(|o| o.status.success()))
 }
 
 /// i18n/qml_<lang>.ts -> OUT_DIR/qml_<lang>.qm. QQmlApplicationEngine loads them from i18n/ next to Shell.qml for

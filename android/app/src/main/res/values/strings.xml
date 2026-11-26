@@ -161,6 +161,8 @@
     <string name="genre_affinity">Genre affinity</string>
     <string name="percent">%1$d%%</string>
     <string name="batch">Added each time</string>
+    <string name="audio_experimental">Audio (experimental)</string>
+    <string name="queue_total">Total %1$s</string>
     <string name="float_output">Float output precision</string>
     <string name="float_output_hint">Audio goes out as 32-bit floating point. Needs a restart.</string>
     <string name="offload_hint">Leaves decoding to the audio hardware and saves battery; on some devices it can clash with crossfade. Doesn\'t work for FLAC. Needs a restart.</string>

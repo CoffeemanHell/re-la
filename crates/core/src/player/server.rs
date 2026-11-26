@@ -127,7 +127,7 @@ impl PlayerCore {
             return;
         }
         if !self.offline {
-            let st = format!("{} · 5 sn sonra yeniden denenecek", self.status);
+            let st = format!("{} · {}", self.status, tr("5 sn sonra yeniden denenecek", "retrying in 5 s"));
             self.set_status(st);
         }
         self.timer(5000, move |c| {

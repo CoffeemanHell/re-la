@@ -243,7 +243,7 @@ fun SettingsPage(page: String) {
                     item { SliderRow(str(R.string.language_affinity), num("radioLanguage", 0), 0..100, 10, s.dj, text = { str(R.string.percent, it) }) { set("radioLanguage", it) } }
                     item { SliderRow(str(R.string.genre_affinity), num("radioGenre", 0), 0..100, 10, s.dj, text = { str(R.string.percent, it) }) { set("radioGenre", it) } }
                     item { SliderRow(str(R.string.batch), num("radioBatch", 10), 5..30, 5, s.dj, text = { plural(R.plurals.n_songs, it) }) { set("radioBatch", it) } }
-                    item { Header("Ses (Deneysel)") }
+                    item { Header(str(R.string.audio_experimental)) }
                     item { AudioSwitch(str(R.string.float_output), str(R.string.float_output_hint), "floatOutput") }
                     item {
                         val offload = remember { AudioPrefs.offloadSupported() }

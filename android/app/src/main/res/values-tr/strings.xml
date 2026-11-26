@@ -160,6 +160,8 @@
     <string name="genre_affinity">Tür bağlılığı</string>
     <string name="percent">%%%1$d</string>
     <string name="batch">Her seferde eklenen</string>
+    <string name="audio_experimental">Ses (Deneysel)</string>
+    <string name="queue_total">Toplam %1$s</string>
     <string name="float_output">Float çıkış hassasiyeti</string>
     <string name="float_output_hint">Ses 32 bit kayan noktalı olarak çıkar. Yeniden başlatma gerekir.</string>
     <string name="offload_hint">Çözme işini ses donanımına bırakır, pil tasarrufu sağlar; bazı cihazlarda şarkı geçişiyle çakışabilir. FLAC için çalışmaz. Yeniden başlatma gerekir.</string>
