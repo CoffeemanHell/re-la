@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: tr-TR
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_instructions:
+    - path: "crates/rela_desktop/**/*.qml"
+      instructions: |
+        Every user-visible string must go through qsTr(). Counts use %n, values use %1/%2;
+        flag sentences built by gluing strings with +. Turkish is the source language.
+    - path: "crates/rela_desktop/i18n/*.ts"
+      instructions: |
+        Check that every source string has an English translation and that %n/%1 placeholders match.
+    - path: "android/app/src/main/res/values*/strings.xml"
+      instructions: |
+        values/ (English) and values-tr/ (Turkish) must have the same keys and plurals,
+        with matching format arguments (%1$s, %d).
+    - path: "crates/**/*.rs"
+      instructions: |
+        User-facing status lines and login errors must go through rela_core::i18n::tr.
