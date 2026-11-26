@@ -15,7 +15,7 @@ Item {
     TapHandler { onTapped: card.w.go("album", { id: card.album.id }) }
     TapHandler { acceptedButtons: Qt.RightButton; onTapped: card.w.menu("album", card.album) }
     function play() {
-        Player.get(card, "getAlbum", { id: card.album.id }, r => r ? Player.play(r.album.song || [], 0) : card.w.notify("İşlem başarısız"))
+        Player.get(card, "getAlbum", { id: card.album.id }, r => r ? Player.play(r.album.song || [], 0) : card.w.notify(qsTr("İşlem başarısız")))
     }
     ColumnLayout {
         anchors.fill: parent

@@ -100,7 +100,7 @@ impl PlayerCore {
         if !self.station.is_empty() {
             // a stream never advances the queue
             if reason == EndReason::Error {
-                self.set_status("Yayın açılamadı");
+                self.set_status(crate::i18n::tr("Yayın açılamadı", "Could not open the stream"));
             }
             if matches!(reason, EndReason::Error | EndReason::Eof) {
                 self.stop_station();

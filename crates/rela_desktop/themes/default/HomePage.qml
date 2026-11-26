@@ -9,8 +9,8 @@ HomeData {
     id: root
     scroller: flick
 
-    strips: [["recent", "Son dinlenenler"], ["newest", "Yeni eklenenler"],
-             ["frequent", "Çok dinlenenler"], ["random", "Rastgele"]]
+    strips: [["recent", qsTr("Son dinlenenler")], ["newest", qsTr("Yeni eklenenler")],
+             ["frequent", qsTr("Çok dinlenenler")], ["random", qsTr("Rastgele")]]
 
     Flickable {
         id: flick
@@ -37,7 +37,7 @@ HomeData {
                         // the strip doesn't take the wheel (the page scrolls); these move it a page at a time
                         ToolButton { icon.name: "go-previous"; enabled: list.contentX > 0; onClicked: list.page(-1) }
                         ToolButton { icon.name: "go-next"; enabled: list.contentX < list.contentWidth - list.width - 1; onClicked: list.page(1) }
-                        Button { text: "Tümü"; flat: true; onClicked: root.w.go("albums", { type: strip.modelData[0] }) }
+                        Button { text: qsTr("Tümü"); flat: true; onClicked: root.w.go("albums", { type: strip.modelData[0] }) }
                     }
                     ListView {
                         id: list
@@ -64,5 +64,5 @@ HomeData {
         }
     }
     Loading { loading: root.pending > 0 && root.empty; failed: root.failed && root.empty; onRetry: root.load() }
-    Empty { visible: root.pending === 0 && !root.failed && root.empty; text: "Kütüphane boş" }
+    Empty { visible: root.pending === 0 && !root.failed && root.empty; text: qsTr("Kütüphane boş") }
 }

@@ -18,7 +18,7 @@ QtObject {
         const w = c.status === Component.Ready ? c.createObject(null) : null
         if (!w) {
             console.warn(c.errorString())
-            Player.setStatus("Tema yüklenemedi: " + url)
+            Player.setStatus(qsTr("Tema yüklenemedi: %1").arg(url))
             if (!win)
                 Qt.exit(1)
             return
@@ -48,12 +48,12 @@ QtObject {
         menu: Platform.Menu {
             Platform.MenuItem { text: shell.nowPlaying; enabled: false }
             Platform.MenuSeparator {}
-            Platform.MenuItem { text: Player.playing ? "Duraklat" : "Oynat"; onTriggered: Player.toggle() }
-            Platform.MenuItem { text: "Sonraki"; onTriggered: Player.next() }
-            Platform.MenuItem { text: "Önceki"; onTriggered: Player.prev() }
+            Platform.MenuItem { text: Player.playing ? qsTr("Duraklat") : qsTr("Oynat"); onTriggered: Player.toggle() }
+            Platform.MenuItem { text: qsTr("Sonraki"); onTriggered: Player.next() }
+            Platform.MenuItem { text: qsTr("Önceki"); onTriggered: Player.prev() }
             Platform.MenuSeparator {}
-            Platform.MenuItem { text: "Pencereyi göster"; onTriggered: shell.show() }
-            Platform.MenuItem { text: "Çıkış"; onTriggered: Qt.quit() }
+            Platform.MenuItem { text: qsTr("Pencereyi göster"); onTriggered: shell.show() }
+            Platform.MenuItem { text: qsTr("Çıkış"); onTriggered: Qt.quit() }
         }
         onActivated: reason => {
             if (reason !== Platform.SystemTrayIcon.Trigger && reason !== Platform.SystemTrayIcon.DoubleClick)
@@ -78,7 +78,7 @@ QtObject {
             if (!shell.tray.available || !Player.options.closeToTray)
                 Qt.quit()
             else if (Player.trayHint())
-                shell.tray.showMessage("re-la", "Arka planda çalmaya devam ediyor. Çıkmak için tepsi simgesine sağ tıkla → Çıkış.")
+                shell.tray.showMessage("re-la", qsTr("Arka planda çalmaya devam ediyor. Çıkmak için tepsi simgesine sağ tıkla → Çıkış."))
         }
     }
 

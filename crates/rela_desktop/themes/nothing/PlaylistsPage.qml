@@ -13,8 +13,8 @@ PlaylistsData {
         anchors.fill: parent; anchors.margins: 36
         spacing: 18
         RowLayout {
-            PageTitle { text: "PLAYLIST'LER"; Layout.fillWidth: true }
-            Pill { text: "YENİ PLAYLIST"; onClicked: root.create() }
+            PageTitle { text: qsTr("PLAYLIST'LER"); Layout.fillWidth: true }
+            Pill { text: qsTr("YENİ PLAYLIST"); onClicked: root.create() }
         }
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -24,7 +24,7 @@ PlaylistsData {
                 required property var modelData
                 showArt: true; art: modelData.coverArt || ""
                 title: modelData.name
-                detail: modelData.songCount + " ŞARKI · " + root.w.fmt(modelData.duration) + (modelData.owner !== Player.user ? " · " + modelData.owner.toUpperCase() : "")
+                detail: qsTr("%n ŞARKI", "", modelData.songCount) + " · " + root.w.fmt(modelData.duration) + (modelData.owner !== Player.user ? " · " + modelData.owner.toUpperCase() : "")
                 onClicked: root.w.go("playlist", { id: modelData.id })
                 onMenuRequested: root.w.menu("playlist", modelData)
 
@@ -32,6 +32,6 @@ PlaylistsData {
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.lists !== null && root.lists.length === 0; text: "PLAYLIST YOK" }
+    Empty { visible: root.lists !== null && root.lists.length === 0; text: qsTr("PLAYLIST YOK") }
     Loading { loading: root.lists === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

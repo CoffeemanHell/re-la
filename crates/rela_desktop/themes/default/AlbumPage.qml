@@ -31,7 +31,7 @@ AlbumData {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
-                    Plain { text: "ALBÜM"; color: palette.placeholderText; font.letterSpacing: 1.1; font.pointSize: Qt.application.font.pointSize * 0.85 }
+                    Plain { text: qsTr("ALBÜM"); color: palette.placeholderText; font.letterSpacing: 1.1; font.pointSize: Qt.application.font.pointSize * 0.85 }
                     Plain {
                         Layout.fillWidth: true; elide: Text.ElideRight
                         text: root.album ? root.album.name : ""
@@ -59,24 +59,24 @@ AlbumData {
                         }
                         Plain {
                             color: palette.placeholderText
-                            text: !root.album ? "" : (parent.genres.length ? " ·  " : "") + root.songs.length + " şarkı  ·  " + root.length(root.album.duration || 0)
+                            text: !root.album ? "" : (parent.genres.length ? " ·  " : "") + qsTr("%n şarkı", "", root.songs.length) + "  ·  " + root.length(root.album.duration || 0)
                         }
                     }
                     RowLayout {
                         Layout.topMargin: 12
                         spacing: 8
-                        Button { text: "Çal"; icon.name: "media-playback-start"; highlighted: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
-                        Button { text: "Karıştır"; icon.name: "media-playlist-shuffle"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
-                        Button { text: "Sıraya ekle"; icon.name: "list-add"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.add(root.songs, 2) }
+                        Button { text: qsTr("Çal"); icon.name: "media-playback-start"; highlighted: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
+                        Button { text: qsTr("Karıştır"); icon.name: "media-playlist-shuffle"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
+                        Button { text: qsTr("Sıraya ekle"); icon.name: "list-add"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.add(root.songs, 2) }
                         Button {
                             id: addAll
-                            text: "Tümünü playlist'e ekle"; icon.name: Util.icon("view-media-playlist"); enabled: root.songs.length > 0
+                            text: qsTr("Tümünü playlist'e ekle"); icon.name: Util.icon("view-media-playlist"); enabled: root.songs.length > 0
                             onClicked: albumMenu.popup(addAll, 0, addAll.height)
                             PlaylistMenu { id: albumMenu; songs: root.songs; w: root.w }
                         }
                         Heart { item: root.album; kind: "album" }
                         Button {
-                            text: "⋯"; implicitWidth: implicitHeight; ToolTip.visible: hovered; ToolTip.text: "Diğer"; ToolTip.delay: 500
+                            text: "⋯"; implicitWidth: implicitHeight; ToolTip.visible: hovered; ToolTip.text: qsTr("Diğer"); ToolTip.delay: 500
                             onClicked: root.w.menu("album", root.album)
                         }
                     }
@@ -93,7 +93,7 @@ AlbumData {
             Plain {
                 visible: d.discStart
                 topPadding: 16; bottomPadding: 4
-                text: "Disk " + (d.modelData.discNumber || 1)
+                text: qsTr("Disk %1").arg(d.modelData.discNumber || 1)
                 color: palette.placeholderText; font.weight: Font.DemiBold
             }
             TrackRow { song: d.modelData; index: d.index; list: root.songs; number: d.modelData.track || d.index + 1; hideAlbum: true }

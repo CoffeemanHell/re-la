@@ -20,6 +20,13 @@ pub fn init_tls<'a>(mut env: jni::EnvUnowned<'a>, _this: jni::objects::JObject<'
     env.with_env(|env| rustls_platform_verifier::android::init_with_env(env, context)).resolve::<jni::errors::ThrowRuntimeExAndDefault>();
 }
 
+/// The language of the core's own text (status line, login errors): "tr" Turkish, any other English, as the app's
+/// string resources fall back. Before Core::new.
+#[uniffi::export]
+pub fn set_language(lang: String) {
+    rela_core::i18n::set_language(&lang);
+}
+
 /// One ExoPlayer: Kotlin runs each call on the player's looper. Calls come from the core's thread.
 #[uniffi::export(with_foreign)]
 pub trait DeckOut: Send + Sync {

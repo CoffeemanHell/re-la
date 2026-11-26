@@ -42,6 +42,26 @@ Debug switches: `RELA_AUDIO_LOG=1` prints what the audio output says about itsel
 plays to no sound device (mpv's audio outputs to try instead of `pipewire,pulse,alsa,`), for a run without one;
 `RELA_WHEEL_LOG=1` prints every wheel event the button-scroll filter sees.
 
+### Translations
+
+The interface is Turkish on a Turkish system and English on any other. Turkish is the source language everywhere.
+
+- **Desktop (QML):** every text is `qsTr("Türkçe")` (`qsTr("%n şarkı", "", n)` for counts, `qsTr("… %1").arg(x)` for
+  values, never a sentence glued with `+`). The English is `crates/rela_desktop/i18n/qml_en.ts`, one context per QML
+  file name; edit it with Qt Linguist, or refresh it after QML changes with
+  `lupdate crates/rela_desktop/themes crates/rela_desktop/qml -ts crates/rela_desktop/i18n/qml_en.ts`. The build runs
+  `lrelease` (Qt Linguist tools: Fedora `qt6-linguist`, MSYS2 `qt6-tools`) and puts the `.qm` in the binary; without
+  it re-la builds Turkish only, with a warning. `main.rs` picks the language and sets the engine's `uiLanguage`, which
+  loads `i18n/qml_en.qm`. Settings category names stay Turkish as keys (`d.cat`, `cat_…` object names): only what is
+  shown goes through `qsTr`. A theme of your own gets the same translation for texts it shares with a built-in theme
+  in a file of the same name.
+- **Rust core** (status line, login errors): `rela_core::i18n::tr("Türkçe", "English")`, set by each front end at start.
+- **Android:** `res/values/strings.xml` is English (the fallback), `res/values-tr/strings.xml` Turkish; Kotlin reads
+  them with `str(R.string.…)` and `plural(R.plurals.…, n)` (`RelaApp.kt`). Android 13+ also offers a per-app language
+  (Settings → Apps → re-la → Language).
+
+`RELA_LANG=en` (or `tr`) starts the desktop app in that language whatever the system's.
+
 ### Android
 
 Needs the Android SDK (platform 37) with an NDK, JDK 21, and `cargo install cargo-ndk` plus

@@ -14,11 +14,11 @@ pub struct Login {
 }
 
 impl Login {
-    /// Err: the Turkish status text for an unusable address.
+    /// Err: the status text for an unusable address.
     pub fn from_password(server: &str, user: &str, password: &str) -> Result<Login, String> {
         let server = normalize_server(server);
         if server.is_empty() {
-            return Err("Sunucu adresi geçersiz.".into());
+            return Err(crate::i18n::tr("Sunucu adresi geçersiz.", "Invalid server address.").into());
         }
         let salt = format!("{:x}", fastrand::u64(..));
         let token = Md5::digest(format!("{password}{salt}").as_bytes()).iter().map(|b| format!("{b:02x}")).collect();

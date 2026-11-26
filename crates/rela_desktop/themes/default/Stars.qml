@@ -27,7 +27,7 @@ Row {
                 horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
             }
             ToolTip.visible: hovered; ToolTip.delay: 500
-            ToolTip.text: index + 1 === st.rating ? "Puanı kaldır" : (index + 1) + " yıldız"
+            ToolTip.text: index + 1 === st.rating ? qsTr("Puanı kaldır") : qsTr("%n yıldız", "", index + 1)
             onClicked: st.rate(index + 1)
         }
     }

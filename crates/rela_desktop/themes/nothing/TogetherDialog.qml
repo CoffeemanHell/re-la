@@ -21,8 +21,8 @@ Dialog {
         spacing: 16
         RowLayout {
             spacing: 8
-            Pill { text: "KİŞİLER"; on: d.tab === 0; onClicked: d.tab = 0 }
-            Pill { text: "AYARLAR"; on: d.tab === 1; onClicked: d.tab = 1 }
+            Pill { text: qsTr("KİŞİLER"); on: d.tab === 0; onClicked: d.tab = 0 }
+            Pill { text: qsTr("AYARLAR"); on: d.tab === 1; onClicked: d.tab = 1 }
             Item { Layout.fillWidth: true }
             Pill { text: "×"; onClicked: d.close() }
         }
@@ -39,12 +39,12 @@ Dialog {
                 RowLayout {
                     visible: Sync.following !== ""
                     Layout.fillWidth: true
-                    Mono { text: d.w.up(Sync.following) + " İLE DİNLİYORSUN"; Layout.fillWidth: true }
-                    Pill { text: "AYRIL"; onClicked: Sync.unfollow() }
+                    Mono { text: qsTr("%1 İLE DİNLİYORSUN").arg(d.w.up(Sync.following)); Layout.fillWidth: true }
+                    Pill { text: qsTr("AYRIL"); onClicked: Sync.unfollow() }
                 }
-                Hint { visible: Sync.following !== ""; text: "AYRILINCA AYNI KUYRUKLA KENDİ BAŞINA DEVAM EDERSİN." }
-                Hint { text: "BİRİNİ DİNLEMEYE BAŞLAYINCA ONUN ÇALDIĞINI AYNI SANİYEDE DUYARSIN." }
-                Mono { visible: Sync.users.length === 0; text: "ŞU AN ÇEVRİMİÇİ KİMSE YOK"; color: App.theme.muted }
+                Hint { visible: Sync.following !== ""; text: qsTr("AYRILINCA AYNI KUYRUKLA KENDİ BAŞINA DEVAM EDERSİN.") }
+                Hint { text: qsTr("BİRİNİ DİNLEMEYE BAŞLAYINCA ONUN ÇALDIĞINI AYNI SANİYEDE DUYARSIN.") }
+                Mono { visible: Sync.users.length === 0; text: qsTr("ŞU AN ÇEVRİMİÇİ KİMSE YOK"); color: App.theme.muted }
                 Repeater {
                     // those listening to me first, then the rest in the relay's order
                     model: Sync.users.filter(u => Sync.listeners.indexOf(u.user) >= 0).concat(Sync.users.filter(u => Sync.listeners.indexOf(u.user) < 0))
@@ -59,21 +59,21 @@ Dialog {
                             Layout.fillWidth: true; spacing: 2
                             Mono {
                                 Layout.fillWidth: true
-                                text: d.w.up(userRow.modelData.user) + (userRow.mine ? "  →  SENİ DİNLİYOR" : userRow.modelData.following ? "  →  " + d.w.up(userRow.modelData.following) : "")
+                                text: d.w.up(userRow.modelData.user) + (userRow.mine ? qsTr("  →  SENİ DİNLİYOR") : userRow.modelData.following ? "  →  " + d.w.up(userRow.modelData.following) : "")
                                 color: userRow.mine ? App.theme.accent : App.theme.fg
                             }
                             Mono {
                                 visible: !!userRow.modelData.station || !!userRow.modelData.title
                                 // a station: its name, then what it plays; a song: playing or paused
                                 text: d.w.up(userRow.modelData.station
-                                      ? ["RADYO " + userRow.modelData.station, userRow.modelData.title, userRow.modelData.artist].filter(x => x).join(" · ")
+                                      ? [qsTr("RADYO %1").arg(userRow.modelData.station), userRow.modelData.title, userRow.modelData.artist].filter(x => x).join(" · ")
                                       : (userRow.modelData.playing ? "▶  " : "❚❚  ") + (userRow.modelData.title || "") + "  ·  " + (userRow.modelData.artist || ""))
                                 color: App.theme.muted; font.pixelSize: 9; Layout.fillWidth: true
                             }
                         }
                         Pill {
                             visible: !userRow.mine
-                            text: Sync.following === userRow.root ? "DİNLİYORSUN" : "DİNLE"
+                            text: Sync.following === userRow.root ? qsTr("DİNLİYORSUN") : qsTr("DİNLE")
                             on: Sync.following === userRow.root
                             enabled: Sync.following !== userRow.root
                             onClicked: Sync.follow(userRow.modelData.user)
@@ -87,14 +87,14 @@ Dialog {
             Layout.fillWidth: true; Layout.fillHeight: true
             spacing: 16
             SwitchRow {
-                label: "KATILANLAR KONTROL EDEBİLİR"
-                hint: "SENİ DİNLEYENLER ŞARKI DEĞİŞTİREBİLİR, DURAKLATABİLİR, KUYRUĞU DÜZENLEYEBİLİR."
+                label: qsTr("KATILANLAR KONTROL EDEBİLİR")
+                hint: qsTr("SENİ DİNLEYENLER ŞARKI DEĞİŞTİREBİLİR, DURAKLATABİLİR, KUYRUĞU DÜZENLEYEBİLİR.")
                 checked: Sync.allowControl
                 onToggled: on => Sync.allowControl = on
             }
             SwitchRow {
-                label: "GİZLİ"
-                hint: "ÇEVRİMİÇİ LİSTESİNDE GÖRÜNMEZSİN, KİMSE SENİ DİNLEMEYE BAŞLAYAMAZ."
+                label: qsTr("GİZLİ")
+                hint: qsTr("ÇEVRİMİÇİ LİSTESİNDE GÖRÜNMEZSİN, KİMSE SENİ DİNLEMEYE BAŞLAYAMAZ.")
                 checked: Sync.hidden
                 onToggled: on => Sync.hidden = on
             }

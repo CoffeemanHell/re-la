@@ -12,7 +12,7 @@ RadioData {
         anchors.fill: parent; anchors.margins: 36
         spacing: 18
         visible: root.stations !== null && root.stations.length > 0
-        PageTitle { text: "RADYO" }
+        PageTitle { text: qsTr("RADYO") }
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true
             clip: true
@@ -34,6 +34,6 @@ RadioData {
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.stations !== null && root.stations.length === 0; text: "İSTASYON YOK" }
+    Empty { visible: root.stations !== null && root.stations.length === 0; text: qsTr("İSTASYON YOK") }
     Loading { loading: root.stations === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

@@ -21,7 +21,7 @@ QtObject {
         Player.set(owner, was ? "unstar" : "star", { [key]: item.id }, r => {
             if (r) return
             on = was
-            w.notify("İşlem başarısız")
+            w.notify(qsTr("İşlem başarısız"))
         })
     }
 }

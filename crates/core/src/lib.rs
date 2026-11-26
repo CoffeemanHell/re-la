@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 pub mod covers;
 mod disk;
+pub mod i18n;
 pub mod player;
 pub mod queue;
 pub mod radio;

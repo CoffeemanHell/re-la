@@ -22,14 +22,14 @@ PlaylistData {
                 PageTitle { Layout.fillWidth: true; elide: Text.ElideRight; text: root.pl ? root.pl.name : "" }
                 Plain {
                     color: palette.placeholderText
-                    text: root.pl ? root.songs.length + " şarkı · " + root.w.fmt(root.pl.duration) + " · " + root.pl.owner : ""
+                    text: root.pl ? qsTr("%n şarkı", "", root.songs.length) + " · " + root.w.fmt(root.pl.duration) + " · " + root.pl.owner : ""
                 }
                 RowLayout {
                     Layout.topMargin: 8; spacing: 8
-                    Button { text: "Çal"; icon.name: "media-playback-start"; highlighted: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
-                    Button { text: "Karıştır"; icon.name: "media-playlist-shuffle"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
-                    Button { text: "Yeniden adlandır"; icon.name: Util.icon("edit-rename"); visible: root.editable; onClicked: root.rename() }
-                    Button { text: "Sil"; icon.name: "edit-delete"; visible: root.editable; onClicked: root.remove() }
+                    Button { text: qsTr("Çal"); icon.name: "media-playback-start"; highlighted: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
+                    Button { text: qsTr("Karıştır"); icon.name: "media-playlist-shuffle"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
+                    Button { text: qsTr("Yeniden adlandır"); icon.name: Util.icon("edit-rename"); visible: root.editable; onClicked: root.rename() }
+                    Button { text: qsTr("Sil"); icon.name: "edit-delete"; visible: root.editable; onClicked: root.remove() }
                 }
             }
         }
@@ -50,6 +50,6 @@ PlaylistData {
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.pl !== null && root.songs.length === 0; text: "Bu playlist boş" }
+    Empty { visible: root.pl !== null && root.songs.length === 0; text: qsTr("Bu playlist boş") }
     Loading { loading: root.pl === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

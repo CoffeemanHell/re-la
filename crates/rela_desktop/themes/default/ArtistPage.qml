@@ -58,7 +58,7 @@ ArtistData {
                         Layout.fillWidth: true
                         visible: root.similar.length > 0
                         spacing: 14
-                        Plain { text: "Benzer sanatçılar:"; color: palette.placeholderText }
+                        Plain { text: qsTr("Benzer sanatçılar:"); color: palette.placeholderText }
                         Repeater {
                             model: root.similar.slice(0, 8)
                             Link { required property var modelData; text: modelData.name; onActivated: root.w.go("artist", { id: modelData.id }) }
@@ -68,9 +68,9 @@ ArtistData {
                         Layout.topMargin: 8
                         spacing: 8
                         Heart { item: root.artist; kind: "artist" }
-                        Button { text: "Diskografiyi çal"; icon.name: "media-playback-start"; highlighted: true; enabled: Sync.canControl && root.artist !== null; onClicked: artistMenu.act.playAll(false) }
-                        Button { text: "Sanatçı radyosu"; icon.name: "media-playlist-shuffle"; enabled: Sync.canControl; onClicked: root.radio() }
-                        Button { text: "⋯"; implicitWidth: implicitHeight; enabled: root.artist !== null; onClicked: artistMenu.popup(); ToolTip.visible: hovered; ToolTip.text: "Diğer"; ToolTip.delay: 500 }
+                        Button { text: qsTr("Diskografiyi çal"); icon.name: "media-playback-start"; highlighted: true; enabled: Sync.canControl && root.artist !== null; onClicked: artistMenu.act.playAll(false) }
+                        Button { text: qsTr("Sanatçı radyosu"); icon.name: "media-playlist-shuffle"; enabled: Sync.canControl; onClicked: root.radio() }
+                        Button { text: "⋯"; implicitWidth: implicitHeight; enabled: root.artist !== null; onClicked: artistMenu.popup(); ToolTip.visible: hovered; ToolTip.text: qsTr("Diğer"); ToolTip.delay: 500 }
                     }
                 }
             }
@@ -79,13 +79,13 @@ ArtistData {
                 Layout.topMargin: 16
                 font.pointSize: Qt.application.font.pointSize * 1.35; font.weight: Font.Bold
             }
-            Heading { text: "Popüler"; visible: root.topSongs.length > 0 }
+            Heading { text: qsTr("Popüler"); visible: root.topSongs.length > 0 }
             Repeater {
                 model: root.topSongs.slice(0, 5)
                 SongRow { required property var modelData; song: modelData; list: root.topSongs; Layout.fillWidth: true }
             }
 
-            Heading { text: "Albümler"; visible: !!(root.artist && root.artist.album) }
+            Heading { text: qsTr("Albümler"); visible: !!(root.artist && root.artist.album) }
             Flow {
                 Layout.fillWidth: true
                 spacing: 24
@@ -95,7 +95,7 @@ ArtistData {
                 }
             }
 
-            Heading { text: "Benzer sanatçılar"; visible: root.similar.length > 0 }
+            Heading { text: qsTr("Benzer sanatçılar"); visible: root.similar.length > 0 }
             Flow {
                 Layout.fillWidth: true
                 spacing: 8

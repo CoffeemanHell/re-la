@@ -18,7 +18,7 @@ QtObject {
         Player.set(owner, "setRating", { id: id, rating: rating }, r => {
             if (r) return
             rating = was
-            w.notify("İşlem başarısız")
+            w.notify(qsTr("İşlem başarısız"))
         })
     }
 }

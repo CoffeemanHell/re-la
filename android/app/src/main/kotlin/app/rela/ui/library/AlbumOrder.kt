@@ -4,17 +4,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
+import app.rela.R
 
-/** The Albümler sort sheet's rows: getAlbumList2 type → label. */
+/** The Albümler sort sheet's rows: getAlbumList2 type → label (a string resource). */
 val albumOrders = listOf(
-    "alphabeticalByArtist" to "Sanatçıya göre",
-    "alphabeticalByName" to "Ada göre",
-    "frequent" to "Çok dinlenen",
-    "recent" to "Son dinlenen",
-    "newest" to "Yeni eklenen",
-    "highest" to "En yüksek puanlı",
-    "random" to "Rastgele",
-    "byYear" to "Yıl",
+    "alphabeticalByArtist" to R.string.order_by_artist,
+    "alphabeticalByName" to R.string.order_by_name,
+    "frequent" to R.string.order_frequent,
+    "recent" to R.string.order_recent,
+    "newest" to R.string.order_newest,
+    "highest" to R.string.order_highest,
+    "random" to R.string.random,
+    "byYear" to R.string.year,
 )
 
 /** getAlbumList2 parameters (no paging): the starred filter wins; only byYear has a direction in Subsonic. */

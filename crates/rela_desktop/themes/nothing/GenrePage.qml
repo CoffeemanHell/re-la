@@ -15,7 +15,7 @@ GenreData {
         spacing: 18
         RowLayout {
             PageTitle { text: (root.args.name || "").toUpperCase(); Layout.fillWidth: true }
-            Pill { text: "KARIŞIK ÇAL"; on: true; enabled: Sync.canControl; onClicked: root.shuffle() }
+            Pill { text: qsTr("KARIŞIK ÇAL"); on: true; enabled: Sync.canControl; onClicked: root.shuffle() }
         }
         GridView {
             id: grid
@@ -33,6 +33,6 @@ GenreData {
             onContentHeightChanged: if (contentHeight > 0 && contentHeight < height) root.load() // tall window: fill it
         }
     }
-    Empty { visible: !root.loading && !root.failed && root.albums.count === 0; text: "BU TÜRDE ALBÜM YOK" }
+    Empty { visible: !root.loading && !root.failed && root.albums.count === 0; text: qsTr("BU TÜRDE ALBÜM YOK") }
     Loading { loading: root.loading && root.albums.count === 0; failed: root.failed && root.albums.count === 0; onRetry: root.load() }
 }

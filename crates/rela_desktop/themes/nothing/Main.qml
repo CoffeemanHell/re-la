@@ -58,8 +58,8 @@ ApplicationWindow {
     Timer { id: noticeTimer; interval: 3000; onTriggered: win.notice = "" }
     Connections {
         target: Sync
-        function onListenerJoined(name) { win.notify(name + " seni dinliyor") }
-        function onListenerLeft(name) { win.notify(name + " ayrıldı") }
+        function onListenerJoined(name) { win.notify(qsTr("%1 seni dinliyor").arg(name)) }
+        function onListenerLeft(name) { win.notify(qsTr("%1 ayrıldı").arg(name)) }
     }
     // a name from the user (new / renamed playlist); cb(name) runs only for a non-empty name
     function askName(title, text, cb) { nameDialog.title = title; nameField.text = text; nameDialog.cb = cb; nameDialog.open() }
@@ -82,8 +82,8 @@ ApplicationWindow {
             Field { id: nameField; Layout.fillWidth: true; onAccepted: nameDialog.accept() }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
-                Pill { text: "VAZGEÇ"; onClicked: nameDialog.reject() }
-                Pill { text: "TAMAM"; on: true; onClicked: nameDialog.accept() }
+                Pill { text: qsTr("VAZGEÇ"); onClicked: nameDialog.reject() }
+                Pill { text: qsTr("TAMAM"); on: true; onClicked: nameDialog.accept() }
             }
         }
     }
@@ -96,8 +96,8 @@ ApplicationWindow {
             Mono { text: win.up(confirmDialog.text) }
             RowLayout {
                 Layout.alignment: Qt.AlignRight
-                Pill { text: "HAYIR"; onClicked: confirmDialog.reject() }
-                Pill { text: "EVET"; on: true; danger: true; onClicked: confirmDialog.accept() }
+                Pill { text: qsTr("HAYIR"); onClicked: confirmDialog.reject() }
+                Pill { text: qsTr("EVET"); on: true; danger: true; onClicked: confirmDialog.accept() }
             }
         }
         onAccepted: cb()
@@ -123,7 +123,7 @@ ApplicationWindow {
     FileDialog {
         id: saveDialog
         property var item: null
-        title: "İndir"
+        title: qsTr("İndir")
         fileMode: FileDialog.SaveFile
         currentFolder: StandardPaths.writableLocation(StandardPaths.DownloadLocation)
         onAccepted: Player.download(item.id, selectedFile)
@@ -139,30 +139,30 @@ ApplicationWindow {
             anchors.left: parent.left; anchors.right: parent.right; y: 14
             anchors.leftMargin: 36; anchors.rightMargin: 36
             spacing: 8
-            Pill { text: "ANA SAYFA"; onClicked: win.go("home") }
-            Pill { text: "← GERİ"; enabled: win.canBack; onClicked: win.back() }
-            Pill { text: "İLERİ →"; enabled: win.canForward; onClicked: win.forward() }
-            Pill { text: "YENİLE"; onClicked: win.reload() }
+            Pill { text: qsTr("ANA SAYFA"); onClicked: win.go("home") }
+            Pill { text: qsTr("← GERİ"); enabled: win.canBack; onClicked: win.back() }
+            Pill { text: qsTr("İLERİ →"); enabled: win.canForward; onClicked: win.forward() }
+            Pill { text: qsTr("YENİLE"); onClicked: win.reload() }
             Item { Layout.fillWidth: true }
             Field {
                 id: q
                 Layout.preferredWidth: 200
-                placeholderText: "ARA"
+                placeholderText: qsTr("ARA")
                 onTextEdited: searchTimer.restart()
                 onAccepted: { searchTimer.stop(); win.search(text) }
             }
             Timer { id: searchTimer; interval: 300; onTriggered: win.search(q.text) }
             Mono {
                 visible: Sync.available
-                text: Sync.following ? win.up(Sync.following) + " İLE"
-                    : Sync.listeners.length ? Sync.listeners.length + " KİŞİ SENİ DİNLİYOR"
-                    : Sync.users.length ? Sync.users.length + " ÇEVRİMİÇİ" : "YALNIZ"
+                text: Sync.following ? qsTr("%1 İLE").arg(win.up(Sync.following))
+                    : Sync.listeners.length ? qsTr("%n KİŞİ SENİ DİNLİYOR", "", Sync.listeners.length)
+                    : Sync.users.length ? qsTr("%n ÇEVRİMİÇİ", "", Sync.users.length) : qsTr("YALNIZ")
                 color: Sync.following || Sync.listeners.length ? App.theme.fg : App.theme.muted
                 TapHandler { onTapped: win.openTogether() }
                 HoverHandler { cursorShape: Qt.PointingHandCursor }
             }
-            Pill { visible: Sync.following !== ""; text: "AYRIL"; onClicked: Sync.unfollow() }
-            Pill { text: "AYARLAR"; onClicked: win.openSettings("Genel") }
+            Pill { visible: Sync.following !== ""; text: qsTr("AYRIL"); onClicked: Sync.unfollow() }
+            Pill { text: qsTr("AYARLAR"); onClicked: win.openSettings("Genel") }
         }
         // the pages, on their own row so every label fits at the minimum width
         Row {
@@ -170,8 +170,8 @@ ApplicationWindow {
             anchors.horizontalCenter: parent.horizontalCenter; y: 58
             spacing: 8
             Repeater {
-                model: [["nowplaying", "ŞİMDİ ÇALAN"], ["favorites", "FAVORİLER"], ["albums", "ALBÜMLER"], ["artists", "SANATÇILAR"],
-                        ["genres", "TÜRLER"], ["playlists", "PLAYLIST'LER"], ["tracks", "TÜM PARÇALAR"], ["radio", "RADYO"]]
+                model: [["nowplaying", qsTr("ŞİMDİ ÇALAN")], ["favorites", qsTr("FAVORİLER")], ["albums", qsTr("ALBÜMLER")], ["artists", qsTr("SANATÇILAR")],
+                        ["genres", qsTr("TÜRLER")], ["playlists", qsTr("PLAYLIST'LER")], ["tracks", qsTr("TÜM PARÇALAR")], ["radio", qsTr("RADYO")]]
                 Pill { required property var modelData; text: modelData[1]; on: win.page === modelData[0]; onClicked: win.go(modelData[0]) }
             }
         }
@@ -216,7 +216,7 @@ ApplicationWindow {
                         spacing: 6
                         Mono {
                             Layout.fillWidth: true; Layout.maximumWidth: Math.ceil(implicitWidth); font.bold: true
-                            text: win.live && Subwave.now.title ? win.up(Subwave.now.title) : Player.station.id ? win.up(Player.station.name) : win.up(Player.current.title) || "SESSİZLİK"
+                            text: win.live && Subwave.now.title ? win.up(Subwave.now.title) : Player.station.id ? win.up(Player.station.name) : win.up(Player.current.title) || qsTr("SESSİZLİK")
                         }
                         Mono {
                             objectName: "songMenu"
@@ -227,7 +227,7 @@ ApplicationWindow {
                         }
                         Item { Layout.fillWidth: true }
                     }
-                    Mono { visible: !!Player.station.id; text: "● CANLI"; color: App.theme.accent }
+                    Mono { visible: !!Player.station.id; text: qsTr("● CANLI"); color: App.theme.accent }
                     Mono { Layout.fillWidth: true; visible: win.live; text: win.up(Subwave.now.artist) }
                     Link {
                         Layout.fillWidth: true
@@ -252,11 +252,11 @@ ApplicationWindow {
                 RowLayout {
                     Layout.alignment: Qt.AlignHCenter
                     spacing: 12
-                    Pill { objectName: "shuffle"; text: "KARIŞIK"; on: Player.shuffle; enabled: Sync.canControl && !Player.station.id; onClicked: Player.shuffle = !Player.shuffle }
+                    Pill { objectName: "shuffle"; text: qsTr("KARIŞIK"); on: Player.shuffle; enabled: Sync.canControl && !Player.station.id; onClicked: Player.shuffle = !Player.shuffle }
                     Circle { size: 36; text: "⏮"; enabled: Sync.canControl && !Player.station.id; onClicked: Player.prev() }
                     Circle { size: 44; filled: true; text: Player.playing ? "⏸" : "▶"; enabled: Sync.canControl; onClicked: Player.toggle() }
                     Circle { size: 36; text: "⏭"; enabled: Sync.canControl && !Player.station.id; onClicked: Player.next() }
-                    Pill { objectName: "repeat"; text: Player.repeat === 2 ? "TEK" : "TEKRAR"; on: Player.repeat > 0; enabled: Sync.canControl && !Player.station.id; onClicked: Player.repeat = (Player.repeat + 1) % 3 }
+                    Pill { objectName: "repeat"; text: Player.repeat === 2 ? qsTr("TEK") : qsTr("TEKRAR"); on: Player.repeat > 0; enabled: Sync.canControl && !Player.station.id; onClicked: Player.repeat = (Player.repeat + 1) % 3 }
                 }
                 RowLayout { // SUB/WAVE: how far into the track the station is (read only, there is no seek in a stream)
                     readonly property real total: Subwave.now.duration || 0
@@ -312,7 +312,7 @@ ApplicationWindow {
                     Mono { // click mutes, as the default theme's speaker button
                         id: mute
                         property real last: 100
-                        text: Player.volume > 0 ? "SES" : "SESSİZ"; color: App.theme.muted
+                        text: Player.volume > 0 ? qsTr("SES") : qsTr("SESSİZ"); color: App.theme.muted
                         TapHandler { onTapped: if (Player.volume > 0) { mute.last = Player.volume; Player.volume = 0 } else Player.volume = mute.last }
                         HoverHandler { cursorShape: Qt.PointingHandCursor }
                     }
@@ -376,12 +376,12 @@ ApplicationWindow {
         width: 380
         spacing: 18
         Dots { text: "NSYNC"; font.pixelSize: 64; Layout.alignment: Qt.AlignHCenter }
-        Mono { text: "KAYIPSIZ · BİRLİKTE"; color: App.theme.muted; Layout.alignment: Qt.AlignHCenter }
+        Mono { text: qsTr("KAYIPSIZ · BİRLİKTE"); color: App.theme.muted; Layout.alignment: Qt.AlignHCenter }
         Item { Layout.preferredHeight: 12 }
         // saved login: no form, just the connection status (with retries) and a way out
-        Field { id: url; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: "SUNUCU (HTTPS://MUZIK.ORNEK.COM)"; text: Player.setting("url") }
-        Field { id: user; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: "KULLANICI ADI"; text: Player.setting("user") }
-        Field { id: pass; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: "ŞİFRE"; echoMode: TextInput.Password; onAccepted: connectBtn.clicked() }
+        Field { id: url; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: qsTr("SUNUCU (HTTPS://MUZIK.ORNEK.COM)"); text: Player.setting("url") }
+        Field { id: user; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: qsTr("KULLANICI ADI"); text: Player.setting("user") }
+        Field { id: pass; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: qsTr("ŞİFRE"); echoMode: TextInput.Password; onAccepted: connectBtn.clicked() }
         Item { Layout.preferredHeight: 8 }
         Mono {
             visible: Player.connecting
@@ -396,7 +396,7 @@ ApplicationWindow {
         Pill {
             id: connectBtn
             Layout.alignment: Qt.AlignHCenter
-            text: Player.signedIn ? "VAZGEÇ" : "BAĞLAN" // while connecting: "VAZGEÇ", a hanging connect can be abandoned
+            text: Player.signedIn ? qsTr("VAZGEÇ") : qsTr("BAĞLAN") // while connecting: "VAZGEÇ", a hanging connect can be abandoned
             on: !Player.signedIn
             onClicked: Player.signedIn ? Player.logout() : Player.login(url.text, user.text, pass.text)
         }

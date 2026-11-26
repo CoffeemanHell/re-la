@@ -152,17 +152,25 @@ fn main() {
     #[cfg(unix)]
     quit_on_signals();
 
+    let mut engine = QQmlApplicationEngine::new();
+    let Some(mut e) = engine.as_mut() else { std::process::exit(1) };
+    // The language, before anything shows text: Turkish on a Turkish system, English on any other (RELA_LANG=en / tr
+    // overrides it). QML gets it from i18n/qml_en.qm, the core's status lines from rela_core::i18n.
+    let mut ae = rela_desktop::qtgui::app_engine(e.as_mut());
+    let lang = std::env::var("RELA_LANG").ok().filter(|l| !l.is_empty()).unwrap_or_else(|| ae.ui_language().to_string());
+    let lang = if rela_core::i18n::is_english(&lang) { "en" } else { "tr" };
+    rela_core::i18n::set_language(lang);
+    ae.as_mut().set_ui_language(&QString::from(lang));
+
     let args: Vec<String> = std::env::args().collect();
     if args.iter().any(|a| a == "--demo") {
         player().call(|c| c.demo());
     }
     if let Some(name) = args.iter().find_map(|a| a.strip_prefix("--theme=")) {
         let name = name.to_string();
-        player().call(move |c| c.set_theme(&name)); // before the engine: Player starts with it
+        player().call(move |c| c.set_theme(&name)); // before the engine loads: Player starts with it
     }
 
-    let mut engine = QQmlApplicationEngine::new();
-    let Some(mut e) = engine.as_mut() else { std::process::exit(1) };
     e.as_mut().add_import_path(&QString::from("qrc:/themes")); // `import shared`: the pages' data and actions
     e.as_mut().on_object_creation_failed(|_, _| std::process::exit(1)).release(); // Shell.qml itself broken
     e.as_mut().load(&QUrl::from("qrc:/qt/qml/Rela/qml/Shell.qml"));

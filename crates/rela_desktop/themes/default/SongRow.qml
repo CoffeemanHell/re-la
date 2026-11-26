@@ -67,10 +67,10 @@ Item {
             }
             Heart { item: row.song }
 
-            Act { visible: row.inQueue; enabled: Sync.canControl && row.index > 0; icon.name: "go-up"; tip: "Yukarı"; onClicked: Player.move(row.index, row.index - 1) }
-            Act { visible: row.inQueue; enabled: Sync.canControl && row.index < Player.queueLength - 1; icon.name: "go-down"; tip: "Aşağı"; onClicked: Player.move(row.index, row.index + 1) }
-            Act { visible: row.inQueue; enabled: Sync.canControl; icon.name: "list-remove"; tip: "Kuyruktan çıkar"; onClicked: Player.remove(row.index) }
-            Act { text: "⋮"; tip: "Diğer"; display: AbstractButton.TextOnly; onClicked: row.openMenu() }
+            Act { visible: row.inQueue; enabled: Sync.canControl && row.index > 0; icon.name: "go-up"; tip: qsTr("Yukarı"); onClicked: Player.move(row.index, row.index - 1) }
+            Act { visible: row.inQueue; enabled: Sync.canControl && row.index < Player.queueLength - 1; icon.name: "go-down"; tip: qsTr("Aşağı"); onClicked: Player.move(row.index, row.index + 1) }
+            Act { visible: row.inQueue; enabled: Sync.canControl; icon.name: "list-remove"; tip: qsTr("Kuyruktan çıkar"); onClicked: Player.remove(row.index) }
+            Act { text: "⋮"; tip: qsTr("Diğer"); display: AbstractButton.TextOnly; onClicked: row.openMenu() }
 
         }
     }

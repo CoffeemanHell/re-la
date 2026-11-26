@@ -59,7 +59,7 @@ ArtistData {
                         Layout.fillWidth: true
                         visible: root.similar.length > 0
                         spacing: 14
-                        Mono { text: "BENZER SANATÇILAR:"; color: App.theme.muted }
+                        Mono { text: qsTr("BENZER SANATÇILAR:"); color: App.theme.muted }
                         Repeater {
                             model: root.similar.slice(0, 8)
                             Link { required property var modelData; text: root.w.up(modelData.name); onActivated: root.w.go("artist", { id: modelData.id }) }
@@ -69,21 +69,21 @@ ArtistData {
                         Layout.topMargin: 10
                         spacing: 8
                         Heart { item: root.artist; kind: "artist" }
-                        Pill { text: "DİSKOGRAFİYİ ÇAL"; on: true; enabled: Sync.canControl && root.artist !== null; onClicked: artistMenu.act.playAll(false) }
-                        Pill { text: "SANATÇI RADYOSU"; enabled: Sync.canControl; onClicked: root.radio() }
+                        Pill { text: qsTr("DİSKOGRAFİYİ ÇAL"); on: true; enabled: Sync.canControl && root.artist !== null; onClicked: artistMenu.act.playAll(false) }
+                        Pill { text: qsTr("SANATÇI RADYOSU"); enabled: Sync.canControl; onClicked: root.radio() }
                         Pill { text: "⋯"; enabled: root.artist !== null; onClicked: artistMenu.popup() }
                     }
                 }
             }
 
             component Heading: Mono { Layout.topMargin: 20; color: App.theme.muted }
-            Heading { text: "01 · POPÜLER"; visible: root.topSongs.length > 0 }
+            Heading { text: qsTr("01 · POPÜLER"); visible: root.topSongs.length > 0 }
             Repeater {
                 model: root.topSongs.slice(0, 5)
                 SongRow { required property var modelData; song: modelData; list: root.topSongs; Layout.fillWidth: true }
             }
 
-            Heading { text: "02 · ALBÜMLER"; visible: !!(root.artist && root.artist.album) }
+            Heading { text: qsTr("02 · ALBÜMLER"); visible: !!(root.artist && root.artist.album) }
             Flow {
                 Layout.fillWidth: true
                 spacing: 24
@@ -93,7 +93,7 @@ ArtistData {
                 }
             }
 
-            Heading { text: "03 · BENZER SANATÇILAR"; visible: root.similar.length > 0 }
+            Heading { text: qsTr("03 · BENZER SANATÇILAR"); visible: root.similar.length > 0 }
             Flow {
                 Layout.fillWidth: true
                 spacing: 8

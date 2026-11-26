@@ -64,10 +64,10 @@ NowPlayingData {
             Plain {
                 Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.preferredWidth: left.side; Layout.maximumWidth: left.side
                 elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft
-                text: root.live && root.sw.title ? root.sw.title : Player.station.id ? Player.station.name : root.cur.title || "Çalan bir şey yok"
+                text: root.live && root.sw.title ? root.sw.title : Player.station.id ? Player.station.name : root.cur.title || qsTr("Çalan bir şey yok")
                 font.pointSize: Qt.application.font.pointSize * 1.6; font.weight: Font.Bold
             }
-            Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; visible: !!Player.station.id; text: "● Canlı"; color: "#e5484d" }
+            Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; visible: !!Player.station.id; text: qsTr("● Canlı"); color: "#e5484d" }
             Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight; visible: root.live; text: root.sw.artist || "" }
             Plain {
                 Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight
@@ -76,9 +76,9 @@ NowPlayingData {
             Plain {
                 Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight
                 visible: root.live && !!root.sw.dj; color: palette.placeholderText
-                text: "DJ " + root.sw.dj + (root.sw.show ? " · " + root.sw.show : "") + " · " + (root.sw.listeners || 0) + " dinleyici"
+                text: qsTr("DJ %1").arg(root.sw.dj) + (root.sw.show ? " · " + root.sw.show : "") + " · " + qsTr("%n dinleyici", "", root.sw.listeners || 0)
             }
-            Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; visible: root.live && !Subwave.online; text: "Bağlantı yok"; color: "#e5484d" }
+            Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; visible: root.live && !Subwave.online; text: qsTr("Bağlantı yok"); color: "#e5484d" }
             Link {
                 Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side
                 visible: !Player.station.id
@@ -114,34 +114,34 @@ NowPlayingData {
                     TabBar {
                         id: liveTabs // SUB/WAVE: no queue and no similar songs, the DJ picks
                         visible: root.live
-                        TabButton { text: "Sözler"; width: implicitWidth }
-                        TabButton { text: "İstek"; width: implicitWidth }
+                        TabButton { text: qsTr("Sözler"); width: implicitWidth }
+                        TabButton { text: qsTr("İstek"); width: implicitWidth }
                     }
                     TabBar {
                         id: tabs
                         visible: !root.live
-                        TabButton { text: "Sıra  " + Player.queueLength; width: implicitWidth }
-                        TabButton { text: "Benzer"; width: implicitWidth }
-                        TabButton { text: "Sözler"; width: implicitWidth }
+                        TabButton { text: qsTr("Sıra  %1").arg(Player.queueLength); width: implicitWidth }
+                        TabButton { text: qsTr("Benzer"); width: implicitWidth }
+                        TabButton { text: qsTr("Sözler"); width: implicitWidth }
                     }
                     Item { Layout.fillWidth: true }
                     Button {
                         visible: !root.live && tabs.currentIndex === 0 && Player.queueLength > 0
                         flat: true
                         icon.name: "document-save"
-                        text: "Kuyruğu playlist olarak kaydet"
+                        text: qsTr("Kuyruğu playlist olarak kaydet")
                         display: AbstractButton.IconOnly
                         ToolTip.visible: hovered; ToolTip.text: text; ToolTip.delay: 500
-                        onClicked: root.w.askName("Kuyruğu playlist olarak kaydet", "", name =>
+                        onClicked: root.w.askName(qsTr("Kuyruğu playlist olarak kaydet"), "", name =>
                             Player.set(root, "createPlaylist", { name: name, songId: Player.queue.map(s => s.id) },
-                                       r => root.w.notify(r ? "Playlist oluşturuldu: " + name : "İşlem başarısız")))
+                                       r => root.w.notify(r ? qsTr("Playlist oluşturuldu: %1").arg(name) : qsTr("İşlem başarısız"))))
                     }
                     Button {
                         visible: !root.live && tabs.currentIndex === 0 && Player.index < Player.queueLength - 1
                         enabled: Sync.canControl
                         flat: true
                         icon.name: Util.icon("edit-clear-all")
-                        text: "Sıradakileri temizle"
+                        text: qsTr("Sıradakileri temizle")
                         display: AbstractButton.IconOnly
                         ToolTip.visible: hovered; ToolTip.text: text; ToolTip.delay: 500
 
@@ -174,7 +174,7 @@ NowPlayingData {
                         }
                         Plain {
                             anchors.centerIn: parent; visible: Player.queueLength === 0
-                            text: "Kuyruk boş.\nAlbümlerden ya da aramadan şarkı ekle; Radyo açıksa gerisi kendiliğinden gelir."
+                            text: qsTr("Kuyruk boş.\nAlbümlerden ya da aramadan şarkı ekle; Radyo açıksa gerisi kendiliğinden gelir.")
                             color: palette.placeholderText; horizontalAlignment: Text.AlignHCenter
                         }
                     }
@@ -193,7 +193,7 @@ NowPlayingData {
                         Plain {
                             anchors.centerIn: parent
                             visible: !similar.loading && !similar.failed && similar.songs.length === 0
-                            text: "Benzer şarkı bulunamadı."
+                            text: qsTr("Benzer şarkı bulunamadı.")
                             color: palette.placeholderText
                         }
                         Loading { loading: similar.loading; failed: similar.failed; onRetry: { similar.forId = ""; similar.load() } }

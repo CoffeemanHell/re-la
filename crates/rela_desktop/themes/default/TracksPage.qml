@@ -12,7 +12,7 @@ TracksData {
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 24
         spacing: 12
-        PageTitle { text: "Tüm parçalar" }
+        PageTitle { text: qsTr("Tüm parçalar") }
         TrackHeader { Layout.fillWidth: true }
         ListView {
             id: list
@@ -27,6 +27,6 @@ TracksData {
             onContentHeightChanged: if (contentHeight > 0 && contentHeight < height) root.load()
         }
     }
-    Empty { visible: !root.loading && !root.failed && root.rows.count === 0; text: "Şarkı yok" }
+    Empty { visible: !root.loading && !root.failed && root.rows.count === 0; text: qsTr("Şarkı yok") }
     Loading { loading: root.loading && root.rows.count === 0; failed: root.failed && root.rows.count === 0; onRetry: root.load() }
 }

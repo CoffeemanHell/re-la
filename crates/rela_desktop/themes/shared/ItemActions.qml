@@ -9,7 +9,7 @@ QtObject {
     property var w     // the window: notify()
     property var owner // the menu or page asking: a reply after it is gone is dropped
 
-    function fail(r) { if (!r) w.notify("İşlem başarısız"); return !r }
+    function fail(r) { if (!r) w.notify(qsTr("İşlem başarısız")); return !r }
     // The songs behind the item. Artist: the discography, albums by year, songs by disc and track.
     function songs(cb) {
         const it = item
@@ -33,14 +33,14 @@ QtObject {
     function share() {
         Player.set(owner, "createShare", { id: item.id }, r => {
             const url = r && r.shares && r.shares.share && r.shares.share[0] ? r.shares.share[0].url : ""
-            if (!url) return w.notify("İşlem başarısız")
+            if (!url) return w.notify(qsTr("İşlem başarısız"))
             Player.copy(url)
-            w.notify("Link kopyalandı")
+            w.notify(qsTr("Link kopyalandı"))
         })
     }
     function star() {
         const on = !!item.starred
         const key = kind === "album" ? "albumId" : kind === "artist" ? "artistId" : "id"
-        Player.set(owner, on ? "unstar" : "star", { [key]: item.id }, r => { if (!fail(r)) w.notify(on ? "Favorilerden çıkarıldı" : "Favorilere eklendi") })
+        Player.set(owner, on ? "unstar" : "star", { [key]: item.id }, r => { if (!fail(r)) w.notify(on ? qsTr("Favorilerden çıkarıldı") : qsTr("Favorilere eklendi")) })
     }
 }

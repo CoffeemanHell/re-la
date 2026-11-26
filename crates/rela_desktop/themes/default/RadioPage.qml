@@ -12,7 +12,7 @@ RadioData {
         anchors.fill: parent; anchors.margins: 24
         spacing: 12
         visible: root.stations !== null && root.stations.length > 0
-        PageTitle { text: "Radyo" }
+        PageTitle { text: qsTr("Radyo") }
         ListView {
             Layout.fillWidth: true; Layout.fillHeight: true
             Layout.rightMargin: -24; rightMargin: 24 // the list runs to the window edge so the scroll bar sits there; rows keep the 24 px gutter
@@ -51,6 +51,6 @@ RadioData {
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.stations !== null && root.stations.length === 0; text: "İstasyon yok" }
+    Empty { visible: root.stations !== null && root.stations.length === 0; text: qsTr("İstasyon yok") }
     Loading { loading: root.stations === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

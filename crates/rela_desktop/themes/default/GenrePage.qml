@@ -15,7 +15,7 @@ GenreData {
         spacing: 12
         RowLayout {
             PageTitle { text: root.args.name; Layout.fillWidth: true; elide: Text.ElideRight }
-            Button { text: "Karışık çal"; icon.name: "media-playlist-shuffle"; enabled: Sync.canControl; onClicked: root.shuffle() }
+            Button { text: qsTr("Karışık çal"); icon.name: "media-playlist-shuffle"; enabled: Sync.canControl; onClicked: root.shuffle() }
         }
         GridView {
             id: grid
@@ -33,6 +33,6 @@ GenreData {
             onContentHeightChanged: if (contentHeight > 0 && contentHeight < height) root.load() // tall window: fill it
         }
     }
-    Empty { visible: !root.loading && !root.failed && root.albums.count === 0; text: "Bu türde albüm yok" }
+    Empty { visible: !root.loading && !root.failed && root.albums.count === 0; text: qsTr("Bu türde albüm yok") }
     Loading { loading: root.loading && root.albums.count === 0; failed: root.failed && root.albums.count === 0; onRetry: root.load() }
 }

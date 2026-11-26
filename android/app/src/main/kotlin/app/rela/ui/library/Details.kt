@@ -1,11 +1,11 @@
 package app.rela.ui.library
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -22,11 +22,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.OutlinedIconButton
-import androidx.compose.material3.OutlinedIconToggleButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.OutlinedIconToggleButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -52,6 +52,8 @@ import app.rela.core.length
 import app.rela.core.listOf
 import app.rela.core.songs
 import app.rela.core.text
+import app.rela.plural
+import app.rela.str
 import app.rela.ui.Cover
 import app.rela.ui.CoverTheme
 import app.rela.ui.LocalLook
@@ -90,21 +92,21 @@ private fun Round(onClick: () -> Unit, enabled: Boolean = true, content: @Compos
 private fun RowScope.Wide(onClick: () -> Unit, enabled: Boolean) =
     Button(onClick, Modifier.weight(1f).height(56.dp), enabled = enabled) {
         Icon(painterResource(R.drawable.ic_play_arrow_fill), null, Modifier.size(20.dp))
-        Text("Oynat", Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleMedium)
+        Text(str(R.string.play), Modifier.padding(start = 8.dp), style = MaterialTheme.typography.titleMedium)
     }
 
 /** Karıştır, Oynat and, for an album, the favourite star. */
 @Composable
 private fun RowScope.PlayButtons(songs: List<Song>, fav: Fav? = null) {
     val ctl = canControl() && songs.isNotEmpty()
-    Round({ play(songs, shuffle = true) }, ctl) { Icon(painterResource(R.drawable.ic_shuffle), "Karıştır") }
+    Round({ play(songs, shuffle = true) }, ctl) { Icon(painterResource(R.drawable.ic_shuffle), str(R.string.shuffle)) }
     Wide({ play(songs) }, ctl)
     if (fav != null) FavButton(fav)
 }
 
 @Composable
 private fun FavButton(fav: Fav) = OutlinedIconToggleButton(fav.on, { fav.toggle(quiet = true) }, Modifier.size(56.dp)) {
-    Icon(painterResource(if (fav.on) R.drawable.ic_star_fill else R.drawable.ic_star), if (fav.on) "Favorilerden çıkar" else "Favorilere ekle")
+    Icon(painterResource(if (fav.on) R.drawable.ic_star_fill else R.drawable.ic_star), str(if (fav.on) R.string.remove_favorite else R.string.add_favorite))
 }
 
 /** getAlbum: cover, play / shuffle / favorite, songs with disc headers on multi-disc albums. */
@@ -160,16 +162,16 @@ fun Artist(id: String, from: String = "") {
             ) {
                 full {
                     Hero(a["coverArt"].text(), coverShape(look.artistShape), a["name"].text(), "${a["albumCount"].text().ifEmpty { "${albums.size}" }} albüm", share = artistCover(id, from)) {
-                        Round({ scope.launch { artistRadio(ctx, id) } }, canControl()) { Icon(painterResource(R.drawable.ic_radio), "Sanatçı radyosu") }
+                        Round({ scope.launch { artistRadio(ctx, id) } }, canControl()) { Icon(painterResource(R.drawable.ic_radio), str(R.string.artist_radio)) }
                         Wide({ play(top) }, canControl() && top.isNotEmpty())
                         FavButton(fav!!)
                     }
                 }
                 if (top.isNotEmpty()) {
-                    full { Header("Popüler") }
+                    full { Header(str(R.string.popular)) }
                     top.take(5).forEachIndexed { i, s -> full { SongRow(s, { play(top, i) }, card = true) } }
                 }
-                if (albums.isNotEmpty()) full { Header("Albümler") }
+                if (albums.isNotEmpty()) full { Header(str(R.string.albums)) }
                 items(albums) { AlbumCard(it, Modifier.padding(horizontal = 4.dp)) }
             }
         }
@@ -188,9 +190,9 @@ fun Genre(name: String) {
     val scope = rememberCoroutineScope()
     Page(name, onRefresh = p::reset, actions = {
         IconButton({ scope.launch { getList("getRandomSongs", mapOf("genre" to name, "size" to 50), "randomSongs", "song")?.let { play(it.map(::Song)) } } }, enabled = ctl) {
-            Icon(painterResource(R.drawable.ic_shuffle), "Karışık çal")
+            Icon(painterResource(R.drawable.ic_shuffle), str(R.string.shuffle_play))
         }
-    }) { pad -> AlbumGrid(p, pad, "Bu türde albüm yok") }
+    }) { pad -> AlbumGrid(p, pad, str(R.string.no_albums_in_genre)) }
 }
 
 /** getPlaylist: play, shuffle; its owner can remove songs and delete it. */
@@ -216,20 +218,20 @@ fun Playlist(id: String) {
             busy = false
             if (!ok) {
                 songs.add(i, s)
-                ctx.say("İşlem başarısız")
+                ctx.say(str(R.string.action_failed))
             }
         }
     }
 
     Page("", refreshing = l.loading && pl != null, onRefresh = l.refresh, compact = true, actions = {
-        if (mine) IconButton({ confirm = true }) { Icon(painterResource(R.drawable.ic_delete), "Sil") }
+        if (mine) IconButton({ confirm = true }) { Icon(painterResource(R.drawable.ic_delete), str(R.string.delete)) }
     }) { pad ->
         Listing(if (pl == null) 0 else 1, l.loading, l.failed, "", l.refresh) {
             if (pl != null) LazyColumn(contentPadding = pad) {
                 item {
                     Hero(
                         pl["coverArt"].text(), coverShape(LocalLook.current.coverShape), pl["name"].text(), pl["comment"].text(),
-                        sub = "${songs.size} şarkı · ${length(songs.sumOf { it.duration })}",
+                        sub = plural(R.plurals.n_songs, songs.size) + " · " + length(songs.sumOf { it.duration }),
                     ) { PlayButtons(songs.toList()) }
                 }
                 itemsIndexed(songs) { i, s -> SongRow(s, { play(songs.toList(), i) }, remove = if (mine) ({ removeAt(i) }) else null, card = true) }
@@ -238,15 +240,15 @@ fun Playlist(id: String) {
     }
     if (confirm) AlertDialog(
         onDismissRequest = { confirm = false },
-        title = { Text("Playlist silinsin mi?") },
+        title = { Text(str(R.string.delete_playlist)) },
         confirmButton = {
             TextButton({
                 confirm = false
                 scope.launch {
-                    if (Rela.set("deletePlaylist", mapOf("id" to id)) != null) nav.removeAt(nav.lastIndex) else ctx.say("İşlem başarısız")
+                    if (Rela.set("deletePlaylist", mapOf("id" to id)) != null) nav.removeAt(nav.lastIndex) else ctx.say(str(R.string.action_failed))
                 }
-            }) { Text("Sil") }
+            }) { Text(str(R.string.delete)) }
         },
-        dismissButton = { TextButton({ confirm = false }) { Text("Vazgeç") } },
+        dismissButton = { TextButton({ confirm = false }) { Text(str(R.string.cancel)) } },
     )
 }

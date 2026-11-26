@@ -29,6 +29,7 @@ import app.rela.core.json
 import app.rela.core.listOf
 import app.rela.core.songs
 import app.rela.core.text
+import app.rela.str
 import kotlinx.coroutines.delay
 
 /** search3 as you type (a short pause first): artists, albums, songs. A tapped song plays now. */
@@ -45,35 +46,35 @@ fun Search() {
     val artists = r?.listOf("artist") ?: emptyList()
     val albums = r?.listOf("album") ?: emptyList()
     val songs = r?.songs("song") ?: emptyList()
-    Page("Ara") { pad ->
+    Page(str(R.string.search)) { pad ->
         LazyColumn(contentPadding = pad) {
             item {
                 OutlinedTextField(
                     q, { q = it },
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Şarkı, albüm, sanatçı") },
+                    placeholder = { Text(str(R.string.search_hint)) },
                     leadingIcon = { Icon(painterResource(R.drawable.ic_search), null) },
-                    trailingIcon = { if (q.isNotEmpty()) IconButton({ q = "" }) { Icon(painterResource(R.drawable.ic_close), "Temizle") } },
+                    trailingIcon = { if (q.isNotEmpty()) IconButton({ q = "" }) { Icon(painterResource(R.drawable.ic_close), str(R.string.clear)) } },
                     singleLine = true,
                 )
             }
             when {
                 query.isEmpty() -> {}
-                r == null && l.loading -> item { Text("Aranıyor…", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                r == null -> item { Text("Arama başarısız", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                r == null && l.loading -> item { Text(str(R.string.searching), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                r == null -> item { Text(str(R.string.search_failed), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 artists.isEmpty() && albums.isEmpty() && songs.isEmpty() ->
-                    item { Text("Sonuç yok", Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    item { Text(str(R.string.no_results), Modifier.padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             if (artists.isNotEmpty()) {
-                item { Header("Sanatçılar") }
+                item { Header(str(R.string.artists)) }
                 items(artists) { ArtistRow(it) }
             }
             if (albums.isNotEmpty()) {
-                item { Header("Albümler") }
+                item { Header(str(R.string.albums)) }
                 item { LazyRow(contentPadding = PaddingValues(horizontal = 10.dp)) { items(albums) { StripCard(it) } } }
             }
             if (songs.isNotEmpty()) {
-                item { Header("Şarkılar") }
+                item { Header(str(R.string.songs)) }
                 items(songs) { s -> SongRow(s, { add(listOf(s), 0) }) }
             }
         }
@@ -88,8 +89,8 @@ fun Radio() {
     val ctl = canControl()
     val l = load { getList("getInternetRadioStations", emptyMap(), "internetRadioStations", "internetRadioStation") }
     val stations = l.value ?: emptyList()
-    Page("Radyo", refreshing = l.loading && l.value != null, onRefresh = l.refresh, root = true) { pad ->
-        Listing(stations.size, l.loading, l.failed, "İstasyon yok", l.refresh) {
+    Page(str(R.string.radio), refreshing = l.loading && l.value != null, onRefresh = l.refresh, root = true) { pad ->
+        Listing(stations.size, l.loading, l.failed, str(R.string.no_stations), l.refresh) {
             LazyColumn(contentPadding = pad) {
                 items(stations) { s ->
                     val id = s["id"].text()

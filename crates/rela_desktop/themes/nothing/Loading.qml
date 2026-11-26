@@ -13,7 +13,7 @@ Item {
     Mono {
         anchors.centerIn: parent
         visible: l.loading
-        text: "YÜKLENİYOR"
+        text: qsTr("YÜKLENİYOR")
         color: App.theme.muted
         SequentialAnimation on opacity {
             running: l.loading; loops: Animation.Infinite
@@ -25,7 +25,7 @@ Item {
         anchors.centerIn: parent
         visible: l.failed && !l.loading
         spacing: 14
-        Mono { Layout.alignment: Qt.AlignHCenter; text: "YÜKLENEMEDİ"; color: App.theme.accent }
-        Pill { Layout.alignment: Qt.AlignHCenter; text: "TEKRAR DENE"; onClicked: l.retry() }
+        Mono { Layout.alignment: Qt.AlignHCenter; text: qsTr("YÜKLENEMEDİ"); color: App.theme.accent }
+        Pill { Layout.alignment: Qt.AlignHCenter; text: qsTr("TEKRAR DENE"); onClicked: l.retry() }
     }
 }

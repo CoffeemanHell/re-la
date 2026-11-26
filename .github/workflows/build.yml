@@ -53,7 +53,7 @@ jobs:
       - name: Install Rust, Qt 6 and libmpv
         run: >
           dnf install -y --setopt=install_weak_deps=False git gcc-c++ lld rpm-build cargo rust clippy
-          qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtbase-gui mpv-devel dejavu-sans-fonts
+          qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtbase-gui qt6-linguist mpv-devel dejavu-sans-fonts
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

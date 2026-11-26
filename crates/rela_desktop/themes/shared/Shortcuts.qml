@@ -7,12 +7,12 @@ import Rela
 QtObject {
     id: sc
     readonly property var all: [
-        { key: "keyToggle", title: "Çal / duraklat", std: "Space" },
-        { key: "keyNext", title: "Sonraki", std: "Ctrl+Right" },
-        { key: "keyPrev", title: "Önceki", std: "Ctrl+Left" },
-        { key: "keySearch", title: "Ara", std: "Ctrl+F" },
-        { key: "keyBack", title: "Geri", std: StandardKey.Back, text: "Alt+Left" },
-        { key: "keyForward", title: "İleri", std: StandardKey.Forward, text: "Alt+Right" },
+        { key: "keyToggle", title: qsTr("Çal / duraklat"), std: "Space" },
+        { key: "keyNext", title: qsTr("Sonraki"), std: "Ctrl+Right" },
+        { key: "keyPrev", title: qsTr("Önceki"), std: "Ctrl+Left" },
+        { key: "keySearch", title: qsTr("Ara"), std: "Ctrl+F" },
+        { key: "keyBack", title: qsTr("Geri"), std: StandardKey.Back, text: "Alt+Left" },
+        { key: "keyForward", title: qsTr("İleri"), std: StandardKey.Forward, text: "Alt+Right" },
     ]
     function byKey(k) { return all.find(a => a.key === k) }
     // For Shortcut.sequences.

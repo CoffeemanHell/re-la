@@ -160,7 +160,7 @@ impl PlayerCore {
         self.held = self.songs.held();
         self.offline = (0..self.queue.len() as i64).any(|i| self.holds(i));
         if self.offline {
-            self.set_status("Çevrimdışı · inen şarkılar çalar");
+            self.set_status(crate::i18n::tr("Çevrimdışı · inen şarkılar çalar", "Offline · playing saved songs"));
         }
     }
 

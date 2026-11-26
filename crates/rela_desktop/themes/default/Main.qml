@@ -59,8 +59,8 @@ ApplicationWindow {
     Timer { id: noticeTimer; interval: 3000; onTriggered: win.notice = "" }
     Connections {
         target: Sync
-        function onListenerJoined(name) { win.notify(name + " seni dinliyor") }
-        function onListenerLeft(name) { win.notify(name + " ayrıldı") }
+        function onListenerJoined(name) { win.notify(qsTr("%1 seni dinliyor").arg(name)) }
+        function onListenerLeft(name) { win.notify(qsTr("%1 ayrıldı").arg(name)) }
     }
     // a name from the user (new / renamed playlist); cb(name) runs only for a non-empty name
     function askName(title, text, cb) { nameDialog.title = title; nameField.text = text; nameDialog.cb = cb; nameDialog.open() }
@@ -106,7 +106,7 @@ ApplicationWindow {
     FileDialog {
         id: saveDialog
         property var item: null
-        title: "İndir"
+        title: qsTr("İndir")
         fileMode: FileDialog.SaveFile
         currentFolder: StandardPaths.writableLocation(StandardPaths.DownloadLocation)
         onAccepted: Player.download(item.id, selectedFile)
@@ -134,24 +134,24 @@ ApplicationWindow {
             anchors.left: parent.left; anchors.leftMargin: 6
             anchors.verticalCenter: parent.verticalCenter
             spacing: 2
-            Tool { icon.name: "go-home"; tip: "Ana sayfa"; onClicked: win.go("home") }
-            Tool { icon.name: "go-previous"; tip: "Geri"; enabled: win.canBack; onClicked: win.back() }
-            Tool { icon.name: "go-next"; tip: "İleri"; enabled: win.canForward; onClicked: win.forward() }
-            Tool { icon.name: "view-refresh"; tip: "Yenile"; onClicked: win.reload() }
+            Tool { icon.name: "go-home"; tip: qsTr("Ana sayfa"); onClicked: win.go("home") }
+            Tool { icon.name: "go-previous"; tip: qsTr("Geri"); enabled: win.canBack; onClicked: win.back() }
+            Tool { icon.name: "go-next"; tip: qsTr("İleri"); enabled: win.canForward; onClicked: win.forward() }
+            Tool { icon.name: "view-refresh"; tip: qsTr("Yenile"); onClicked: win.reload() }
         }
         Row {
             id: nav
             objectName: "nav"
             anchors.centerIn: parent
             spacing: 2
-            Nav { target: "nowplaying"; icon.name: Util.icon("audio-headphones"); text: "Şimdi çalan" }
-            Nav { target: "favorites"; icon.name: "emblem-favorite"; text: "Favoriler" }
-            Nav { target: "albums"; icon.name: Util.icon("media-optical-audio"); text: "Albümler" }
-            Nav { target: "artists"; icon.name: Util.icon("view-media-artist"); text: "Sanatçılar" }
-            Nav { target: "genres"; icon.name: Util.icon("view-media-genre"); text: "Türler" }
-            Nav { target: "playlists"; icon.name: Util.icon("view-media-playlist"); text: "Playlist'ler" }
-            Nav { target: "tracks"; icon.name: Util.icon("view-media-track"); text: "Tüm parçalar" }
-            Nav { target: "radio"; icon.name: Util.icon("radio"); text: "Radyo" }
+            Nav { target: "nowplaying"; icon.name: Util.icon("audio-headphones"); text: qsTr("Şimdi çalan") }
+            Nav { target: "favorites"; icon.name: "emblem-favorite"; text: qsTr("Favoriler") }
+            Nav { target: "albums"; icon.name: Util.icon("media-optical-audio"); text: qsTr("Albümler") }
+            Nav { target: "artists"; icon.name: Util.icon("view-media-artist"); text: qsTr("Sanatçılar") }
+            Nav { target: "genres"; icon.name: Util.icon("view-media-genre"); text: qsTr("Türler") }
+            Nav { target: "playlists"; icon.name: Util.icon("view-media-playlist"); text: qsTr("Playlist'ler") }
+            Nav { target: "tracks"; icon.name: Util.icon("view-media-track"); text: qsTr("Tüm parçalar") }
+            Nav { target: "radio"; icon.name: Util.icon("radio"); text: qsTr("Radyo") }
         }
         RowLayout {
             anchors.right: parent.right; anchors.rightMargin: 6
@@ -162,7 +162,7 @@ ApplicationWindow {
             TextField {
                 id: q
                 Layout.fillWidth: true; Layout.preferredWidth: 240; Layout.minimumWidth: 80
-                placeholderText: "Şarkı, sanatçı, albüm ara…"
+                placeholderText: qsTr("Şarkı, sanatçı, albüm ara…")
                 onTextEdited: searchTimer.restart()
                 onAccepted: { searchTimer.stop(); win.search(text) }
             }
@@ -171,13 +171,13 @@ ApplicationWindow {
             ToolButton {
                 visible: Sync.available
                 Layout.maximumWidth: 220
-                text: Sync.following ? Sync.following + " ile dinliyorsun"
-                    : Sync.listeners.length ? Sync.listeners.length + " kişi seni dinliyor"
-                    : Sync.users.length ? Sync.users.length + " kişi çevrimiçi" : "Yalnız"
+                text: Sync.following ? qsTr("%1 ile dinliyorsun").arg(Sync.following)
+                    : Sync.listeners.length ? qsTr("%n kişi seni dinliyor", "", Sync.listeners.length)
+                    : Sync.users.length ? qsTr("%n kişi çevrimiçi", "", Sync.users.length) : qsTr("Yalnız")
                 font.weight: Sync.listeners.length ? Font.DemiBold : Font.Normal
                 onClicked: win.openTogether()
             }
-            Tool { icon.name: Util.icon("configure"); tip: "Ayarlar"; onClicked: win.openSettings("Genel") }
+            Tool { icon.name: Util.icon("configure"); tip: qsTr("Ayarlar"); onClicked: win.openSettings("Genel") }
         }
     }
 
@@ -208,7 +208,7 @@ ApplicationWindow {
                         Plain {
                             Layout.fillWidth: true; Layout.maximumWidth: Math.ceil(implicitWidth) // layouts round down; a fractional width would elide the last letter
                             elide: Text.ElideRight; font.weight: Font.DemiBold
-                            text: win.live && Subwave.now.title ? Subwave.now.title : Player.station.id ? Player.station.name : Player.current.title || "Çalan bir şey yok"
+                            text: win.live && Subwave.now.title ? Subwave.now.title : Player.station.id ? Player.station.name : Player.current.title || qsTr("Çalan bir şey yok")
                         }
                         ToolButton {
                             objectName: "songMenu"
@@ -218,7 +218,7 @@ ApplicationWindow {
                         }
                         Item { Layout.fillWidth: true }
                     }
-                    Plain { visible: !!Player.station.id; text: "● Canlı"; color: "#e5484d" }
+                    Plain { visible: !!Player.station.id; text: qsTr("● Canlı"); color: "#e5484d" }
                     Plain { Layout.fillWidth: true; elide: Text.ElideRight; visible: win.live; text: Subwave.now.artist || "" }
                     Link {
                         Layout.fillWidth: true
@@ -253,7 +253,7 @@ ApplicationWindow {
                         checkable: true; checked: Player.shuffle
                         enabled: Sync.canControl && !Player.station.id
                         onClicked: Player.shuffle = !Player.shuffle
-                        ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: "Karıştır"
+                        ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: qsTr("Karıştır")
                     }
                     ToolButton { icon.name: "media-skip-backward"; enabled: Sync.canControl && !Player.station.id; onClicked: Player.prev() }
                     ToolButton {
@@ -269,7 +269,7 @@ ApplicationWindow {
                         checkable: true; checked: Player.repeat > 0
                         enabled: Sync.canControl && !Player.station.id
                         onClicked: Player.repeat = (Player.repeat + 1) % 3
-                        ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: Player.repeat === 2 ? "Tekrar (tek şarkı)" : "Tekrar"
+                        ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: Player.repeat === 2 ? qsTr("Tekrar (tek şarkı)") : qsTr("Tekrar")
                     }
                 }
                 RowLayout { // SUB/WAVE: how far into the track the station is (read only, there is no seek in a stream)
@@ -313,7 +313,7 @@ ApplicationWindow {
                         text: "DJ"; checkable: true; checked: Player.dj
                         onToggled: Player.dj = checked
                         ToolTip.visible: hovered; ToolTip.delay: 500
-                        ToolTip.text: "Açıkken dil ve tür ağırlıklarıyla seçer; kapalıyken Navidrome'un benzer şarkıları"
+                        ToolTip.text: qsTr("Açıkken dil ve tür ağırlıklarıyla seçer; kapalıyken Navidrome'un benzer şarkıları")
                     }
                     ToolButton { // SUB/WAVE: heart the track on air
                         objectName: "swHeart"
@@ -321,7 +321,7 @@ ApplicationWindow {
                         enabled: !Subwave.liked && Subwave.likeBlockedMs === 0
                         text: Subwave.liked ? "♥" : "♡"
                         font.pointSize: Qt.application.font.pointSize * 1.3
-                        ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: Subwave.liked ? "Beğendin" : "Beğen"
+                        ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: Subwave.liked ? qsTr("Beğendin") : qsTr("Beğen")
                         onClicked: Subwave.like()
                     }
                     ToolButton {
@@ -366,18 +366,18 @@ ApplicationWindow {
             anchors.fill: parent
             spacing: 12
             Plain { text: "re-la"; font.pointSize: Qt.application.font.pointSize * 2.2; font.weight: Font.Bold }
-            Plain { text: "Navidrome üzerinden birlikte, kayıpsız dinle."; color: palette.placeholderText; Layout.bottomMargin: 10 }
+            Plain { text: qsTr("Navidrome üzerinden birlikte, kayıpsız dinle."); color: palette.placeholderText; Layout.bottomMargin: 10 }
             // saved login: no form, just the connection status (with retries) and a way out
-            TextField { id: url; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: "Sunucu (https://muzik.ornek.com)"; text: Player.setting("url") }
-            TextField { id: user; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: "Kullanıcı adı"; text: Player.setting("user") }
-            TextField { id: pass; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: "Şifre"; echoMode: TextInput.Password; onAccepted: connectBtn.clicked() }
+            TextField { id: url; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: qsTr("Sunucu (https://muzik.ornek.com)"); text: Player.setting("url") }
+            TextField { id: user; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: qsTr("Kullanıcı adı"); text: Player.setting("user") }
+            TextField { id: pass; visible: !Player.signedIn; Layout.fillWidth: true; placeholderText: qsTr("Şifre"); echoMode: TextInput.Password; onAccepted: connectBtn.clicked() }
             BusyIndicator { Layout.alignment: Qt.AlignHCenter; running: Player.connecting; visible: running }
             Button {
                 id: connectBtn
                 Layout.fillWidth: true; Layout.topMargin: 6
                 highlighted: !Player.signedIn // while connecting this is "Vazgeç": a hanging connect can be abandoned
 
-                text: Player.signedIn ? "Vazgeç" : "Bağlan"
+                text: Player.signedIn ? qsTr("Vazgeç") : qsTr("Bağlan")
                 onClicked: Player.signedIn ? Player.logout() : Player.login(url.text, user.text, pass.text)
             }
             Plain {

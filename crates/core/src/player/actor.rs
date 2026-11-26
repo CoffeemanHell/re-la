@@ -415,6 +415,10 @@ fn part_of(path: &std::path::Path) -> PathBuf {
     part.into()
 }
 
+fn cant_write() -> String {
+    crate::i18n::tr("dosya yazılamıyor", "can't write the file").into()
+}
+
 /// Streams url to part, then renames it to path: the file appears only when complete; a failure leaves nothing behind.
 /// Ok(file name).
 async fn fetch_to(
@@ -452,10 +456,10 @@ async fn fetch_part(
         return Err(failure_text(&msg.unwrap_or_default(), if status == 200 { 0 } else { status }, "", &secrets));
     }
     let total = resp.content_length();
-    let mut f = tokio::fs::File::create(part).await.map_err(|_| "dosya yazılamıyor".to_string())?;
+    let mut f = tokio::fs::File::create(part).await.map_err(|_| cant_write())?;
     let (mut got, mut shown) = (0u64, std::time::Instant::now());
     while let Some(chunk) = resp.chunk().await.map_err(|e| failure_text("", 0, &e.to_string(), &secrets))? {
-        f.write_all(&chunk).await.map_err(|_| "dosya yazılamıyor".to_string())?;
+        f.write_all(&chunk).await.map_err(|_| cant_write())?;
         got += chunk.len() as u64;
         if let Some(tx) = progress
             && shown.elapsed() > Duration::from_millis(250)
@@ -464,8 +468,8 @@ async fn fetch_part(
             let _ = tx.send(Msg::Run(Box::new(move |c| c.download_progress(got, total))));
         }
     }
-    f.flush().await.map_err(|_| "dosya yazılamıyor".to_string())?;
+    f.flush().await.map_err(|_| cant_write())?;
     drop(f);
-    tokio::fs::rename(part, path).await.map_err(|_| "dosya yazılamıyor".to_string())?;
+    tokio::fs::rename(part, path).await.map_err(|_| cant_write())?;
     Ok(path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default())
 }

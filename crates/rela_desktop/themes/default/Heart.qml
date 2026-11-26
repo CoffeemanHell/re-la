@@ -19,6 +19,6 @@ ToolButton {
         horizontalAlignment: Text.AlignHCenter; verticalAlignment: Text.AlignVCenter
     }
     implicitWidth: 32; implicitHeight: 32
-    ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: on ? "Favorilerden çıkar" : "Favorilere ekle"
+    ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: on ? qsTr("Favorilerden çıkar") : qsTr("Favorilere ekle")
     onClicked: fav.toggle()
 }

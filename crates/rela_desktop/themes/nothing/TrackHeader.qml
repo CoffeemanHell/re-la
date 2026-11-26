@@ -17,12 +17,12 @@ Item {
         anchors.fill: parent
         hideAlbum: h.hideAlbum
         Head { text: "#"; Layout.preferredWidth: 28 }
-        Head { text: "PARÇA ADI"; Layout.fillWidth: true; Layout.preferredWidth: 300 }
+        Head { text: qsTr("PARÇA ADI"); Layout.fillWidth: true; Layout.preferredWidth: 300 }
         Repeater {
             model: cols.columns
             Head {
                 required property var modelData
-                text: modelData.title.toLocaleUpperCase(Qt.locale("tr_TR"))
+                text: modelData.title.toLocaleUpperCase(Qt.locale(Qt.uiLanguage))
                 Layout.preferredWidth: modelData.w; Layout.fillWidth: !!modelData.fill
                 horizontalAlignment: modelData.align === "right" ? Text.AlignRight : modelData.align === "center" ? Text.AlignHCenter : Text.AlignLeft
             }
@@ -39,7 +39,7 @@ Item {
             onObjectRemoved: (i, o) => columnMenu.removeItem(o)
             MenuItem {
                 required property var modelData
-                text: modelData.title.toLocaleUpperCase(Qt.locale("tr_TR"))
+                text: modelData.title.toLocaleUpperCase(Qt.locale(Qt.uiLanguage))
                 checkable: true
                 checked: columnMenu.chosen.indexOf(modelData.key) >= 0
                 onTriggered: Player.setOption("columns", Columns.all.map(c => c.key).filter(k => k === modelData.key ? checked : columnMenu.chosen.indexOf(k) >= 0).join(","))

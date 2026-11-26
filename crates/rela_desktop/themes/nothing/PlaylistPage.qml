@@ -22,14 +22,14 @@ PlaylistData {
                 PageTitle { Layout.fillWidth: true; text: root.pl ? root.pl.name.toUpperCase() : "" }
                 Mono {
                     color: App.theme.muted
-                    text: root.pl ? root.songs.length + " ŞARKI · " + root.w.fmt(root.pl.duration) + " · " + root.pl.owner.toUpperCase() : ""
+                    text: root.pl ? qsTr("%n ŞARKI", "", root.songs.length) + " · " + root.w.fmt(root.pl.duration) + " · " + root.pl.owner.toUpperCase() : ""
                 }
                 RowLayout {
                     Layout.topMargin: 8; spacing: 8
-                    Pill { text: "ÇAL"; on: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
-                    Pill { text: "KARIŞTIR"; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
-                    Pill { text: "YENİDEN ADLANDIR"; visible: root.editable; onClicked: root.rename() }
-                    Pill { text: "SİL"; danger: true; visible: root.editable; onClicked: root.remove() }
+                    Pill { text: qsTr("ÇAL"); on: true; enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.songs, 0) }
+                    Pill { text: qsTr("KARIŞTIR"); enabled: Sync.canControl && root.songs.length > 0; onClicked: Player.play(root.shuffled(root.songs), 0) }
+                    Pill { text: qsTr("YENİDEN ADLANDIR"); visible: root.editable; onClicked: root.rename() }
+                    Pill { text: qsTr("SİL"); danger: true; visible: root.editable; onClicked: root.remove() }
                 }
             }
         }
@@ -49,6 +49,6 @@ PlaylistData {
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.pl !== null && root.songs.length === 0; text: "BU PLAYLIST BOŞ" }
+    Empty { visible: root.pl !== null && root.songs.length === 0; text: qsTr("BU PLAYLIST BOŞ") }
     Loading { loading: root.pl === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

@@ -1,6 +1,7 @@
 //! The server side of the player: login, the saved queue, listening together, calls from themes, demo, downloads.
 use super::state::{Job, PlayerCore, queue_key};
 use crate::queue::{apply_rating, apply_star, for_themes, login_error, next_index, queue_window, readable, subsonic_query, text, writable};
+use crate::i18n::{english, tr};
 use crate::subsonic::Login;
 use crate::subwave::SubwaveSnapshot;
 use crate::sync::{SyncEvent, relay_url};
@@ -65,7 +66,7 @@ impl PlayerCore {
         self.connecting = false;
         self.fresh = false;
         self.login_failed = false;
-        self.set_status("Çıkış yapıldı");
+        self.set_status(tr("Çıkış yapıldı", "Logged out"));
     }
 
     pub(super) fn connect_server(&mut self) {
@@ -77,7 +78,7 @@ impl PlayerCore {
         self.connecting = true;
         self.login_failed = false;
         if !self.offline {
-            self.set_status("Bağlanıyor…");
+            self.set_status(tr("Bağlanıyor…", "Connecting…"));
         }
         self.api("ping", vec![], false, move |c, r| {
             if g != c.generation {
@@ -416,10 +417,10 @@ impl PlayerCore {
     /// Song: the original file; album / playlist: a zip. One at a time.
     pub fn download(&mut self, id: &str, path: PathBuf) {
         if self.downloading {
-            return self.set_status("Bir indirme zaten sürüyor.");
+            return self.set_status(tr("Bir indirme zaten sürüyor.", "A download is already running."));
         }
         let Some(client) = self.client.clone().filter(|_| !id.is_empty()) else {
-            return self.set_status("İndirme başarısız: dosya yazılamıyor");
+            return self.set_status(tr("İndirme başarısız: dosya yazılamıyor", "Download failed: can't write the file"));
         };
         self.downloading = true;
         self.jobs.push(Job::Download { client, id: id.into(), path });
@@ -427,8 +428,9 @@ impl PlayerCore {
 
     pub fn download_progress(&mut self, got: u64, total: Option<u64>) {
         self.set_status(match total {
+            Some(t) if t > 0 && english() => format!("Downloading… {}%", got * 100 / t),
             Some(t) if t > 0 => format!("İndiriliyor… %{}", got * 100 / t),
-            _ => format!("İndiriliyor… {} MB", got >> 20), // a zip comes without a length
+            _ => format!("{} {} MB", tr("İndiriliyor…", "Downloading…"), got >> 20), // a zip comes without a length
         });
     }
 
@@ -436,8 +438,8 @@ impl PlayerCore {
     pub fn download_done(&mut self, r: Result<String, String>) {
         self.downloading = false;
         match r {
-            Ok(name) => self.set_status(format!("İndirildi: {name}")),
-            Err(why) => self.set_status(format!("İndirme başarısız: {why}")),
+            Ok(name) => self.set_status(format!("{} {name}", tr("İndirildi:", "Downloaded:"))),
+            Err(why) => self.set_status(format!("{} {why}", tr("İndirme başarısız:", "Download failed:"))),
         }
     }
 }

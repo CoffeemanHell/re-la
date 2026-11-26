@@ -16,14 +16,14 @@ Dialog {
     contentItem: ColumnLayout {
         spacing: 12
         RowLayout { // the settings window's header
-            PageTitle { text: "Birlikte dinle"; Layout.fillWidth: true }
+            PageTitle { text: qsTr("Birlikte dinle"); Layout.fillWidth: true }
             ToolButton { icon.name: "window-close"; onClicked: d.close() }
         }
         TabBar {
             id: tabs
             Layout.fillWidth: true
-            TabButton { text: "Kişiler" }
-            TabButton { text: "Ayarlar" }
+            TabButton { text: qsTr("Kişiler") }
+            TabButton { text: qsTr("Ayarlar") }
         }
         StackLayout {
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -40,12 +40,12 @@ Dialog {
                     RowLayout {
                         visible: Sync.following !== ""
                         Layout.fillWidth: true
-                        Plain { text: Sync.following + " ile dinliyorsun"; font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
-                        Button { text: "Ayrıl"; onClicked: Sync.unfollow() }
+                        Plain { text: qsTr("%1 ile dinliyorsun").arg(Sync.following); font.weight: Font.DemiBold; Layout.fillWidth: true; elide: Text.ElideRight }
+                        Button { text: qsTr("Ayrıl"); onClicked: Sync.unfollow() }
                     }
-                    Hint { visible: Sync.following !== ""; text: "Ayrılınca aynı kuyrukla kendi başına devam edersin." }
-                    Hint { text: "Birini dinlemeye başlayınca onun çaldığını aynı saniyede duyarsın." }
-                    Hint { visible: Sync.users.length === 0; text: "Şu an çevrimiçi kimse yok." }
+                    Hint { visible: Sync.following !== ""; text: qsTr("Ayrılınca aynı kuyrukla kendi başına devam edersin.") }
+                    Hint { text: qsTr("Birini dinlemeye başlayınca onun çaldığını aynı saniyede duyarsın.") }
+                    Hint { visible: Sync.users.length === 0; text: qsTr("Şu an çevrimiçi kimse yok.") }
                     Repeater {
                         // those listening to me first, then the rest in the relay's order
                         model: Sync.users.filter(u => Sync.listeners.indexOf(u.user) >= 0).concat(Sync.users.filter(u => Sync.listeners.indexOf(u.user) < 0))
@@ -60,7 +60,7 @@ Dialog {
                                 Layout.fillWidth: true; spacing: 2
                                 Plain {
                                     Layout.fillWidth: true; elide: Text.ElideRight
-                                    text: userRow.modelData.user + (userRow.mine ? "  →  seni dinliyor" : userRow.modelData.following ? "  →  " + userRow.modelData.following : "")
+                                    text: userRow.modelData.user + (userRow.mine ? qsTr("  →  seni dinliyor") : userRow.modelData.following ? "  →  " + userRow.modelData.following : "")
                                     font.weight: userRow.mine ? Font.DemiBold : Font.Normal
                                     color: userRow.mine ? palette.highlight : palette.windowText
                                 }
@@ -74,7 +74,7 @@ Dialog {
                             }
                             Button {
                                 visible: !userRow.mine
-                                text: Sync.following === userRow.root ? "Dinliyorsun" : "Dinle"
+                                text: Sync.following === userRow.root ? qsTr("Dinliyorsun") : qsTr("Dinle")
                                 enabled: Sync.following !== userRow.root
                                 onClicked: Sync.follow(userRow.modelData.user)
                             }
@@ -85,14 +85,14 @@ Dialog {
             ColumnLayout {
                 spacing: 10
                 SwitchRow {
-                    label: "Katılanlar kontrol edebilir"
-                    hint: "Seni dinleyenler şarkı değiştirebilir, duraklatabilir, kuyruğu düzenleyebilir."
+                    label: qsTr("Katılanlar kontrol edebilir")
+                    hint: qsTr("Seni dinleyenler şarkı değiştirebilir, duraklatabilir, kuyruğu düzenleyebilir.")
                     checked: Sync.allowControl
                     onToggled: on => Sync.allowControl = on
                 }
                 SwitchRow {
-                    label: "Gizli"
-                    hint: "Çevrimiçi listesinde görünmezsin, kimse seni dinlemeye başlayamaz."
+                    label: qsTr("Gizli")
+                    hint: qsTr("Çevrimiçi listesinde görünmezsin, kimse seni dinlemeye başlayamaz.")
                     checked: Sync.hidden
                     onToggled: on => Sync.hidden = on
                 }

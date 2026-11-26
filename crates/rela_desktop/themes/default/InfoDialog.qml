@@ -7,7 +7,7 @@ import Rela
 
 Dialog {
     id: d
-    title: "Parça Bilgisi"
+    title: qsTr("Parça Bilgisi")
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(720, Overlay.overlay ? Overlay.overlay.width - 40 : 720)
@@ -28,28 +28,28 @@ Dialog {
         const composers = (s.contributors || []).filter(c => c.role === "composer").map(c => c.artist && c.artist.name)
         const gain = s.replayGain || {}
         const all = [
-            ["Parça Adı", s.title],
-            ["Albüm", s.album],
-            ["Sanatçılar", names(s.artists) || s.artist],
-            ["Albüm sanatçıları", names(s.albumArtists) || s.displayAlbumArtist],
-            ["Besteciler", s.displayComposer || composers.join(", ") || s.composer],
-            ["Türler", names(s.genres) || s.genre],
-            ["Süre", s.duration ? clock(s.duration) : ""],
-            ["Yorum", s.comment],
-            ["Yıl", s.year],
-            ["Parça numarası", s.track],
-            ["Disk numarası", s.discNumber],
-            ["Dosya yolu", s.path],
-            ["İçerik türü", s.contentType],
-            ["Dosya tipi", s.suffix],
-            ["Bit hızı", s.bitRate ? s.bitRate + " kbps" : ""],
-            ["Örnekleme", s.samplingRate ? s.samplingRate / 1000 + " kHz" : ""],
-            ["Bit derinliği", s.bitDepth ? s.bitDepth + " bit" : ""],
-            ["Kanallar", s.channelCount],
-            ["Boyut", s.size ? Qt.locale().formattedDataSize(s.size, 1, Locale.DataSizeTraditionalFormat) : ""],
-            ["Çalma sayısı", s.playCount],
-            ["Eklenme", s.created ? new Date(s.created).toLocaleDateString(Qt.locale(), Locale.ShortFormat) : ""],
-            ["ReplayGain", gain.trackGain !== undefined ? "parça " + gain.trackGain + " dB" + (gain.albumGain !== undefined ? ", albüm " + gain.albumGain + " dB" : "") : ""],
+            [qsTr("Parça Adı"), s.title],
+            [qsTr("Albüm"), s.album],
+            [qsTr("Sanatçılar"), names(s.artists) || s.artist],
+            [qsTr("Albüm sanatçıları"), names(s.albumArtists) || s.displayAlbumArtist],
+            [qsTr("Besteciler"), s.displayComposer || composers.join(", ") || s.composer],
+            [qsTr("Türler"), names(s.genres) || s.genre],
+            [qsTr("Süre"), s.duration ? clock(s.duration) : ""],
+            [qsTr("Yorum"), s.comment],
+            [qsTr("Yıl"), s.year],
+            [qsTr("Parça numarası"), s.track],
+            [qsTr("Disk numarası"), s.discNumber],
+            [qsTr("Dosya yolu"), s.path],
+            [qsTr("İçerik türü"), s.contentType],
+            [qsTr("Dosya tipi"), s.suffix],
+            [qsTr("Bit hızı"), s.bitRate ? s.bitRate + " kbps" : ""],
+            [qsTr("Örnekleme"), s.samplingRate ? s.samplingRate / 1000 + " kHz" : ""],
+            [qsTr("Bit derinliği"), s.bitDepth ? s.bitDepth + " bit" : ""],
+            [qsTr("Kanallar"), s.channelCount],
+            [qsTr("Boyut"), s.size ? Qt.locale().formattedDataSize(s.size, 1, Locale.DataSizeTraditionalFormat) : ""],
+            [qsTr("Çalma sayısı"), s.playCount],
+            [qsTr("Eklenme"), s.created ? new Date(s.created).toLocaleDateString(Qt.locale(), Locale.ShortFormat) : ""],
+            ["ReplayGain", gain.trackGain !== undefined ? qsTr("parça %1 dB").arg(gain.trackGain) + (gain.albumGain !== undefined ? ", " + qsTr("albüm %1 dB").arg(gain.albumGain) : "") : ""],
         ]
         return all.filter(r => r[1] !== undefined && r[1] !== null && String(r[1]) !== "" && String(r[1]) !== "0")
                   .map(r => [r[0], String(r[1])])
@@ -65,7 +65,7 @@ Dialog {
             width: d.availableWidth - 16
 
             spacing: 10
-            Plain { visible: d.failed; text: "Yüklenemedi"; color: palette.placeholderText }
+            Plain { visible: d.failed; text: qsTr("Yüklenemedi"); color: palette.placeholderText }
             Repeater {
                 model: d.rows
                 RowLayout {
@@ -75,10 +75,10 @@ Dialog {
                     spacing: 16
                     ToolButton {
                         Layout.preferredWidth: 28; Layout.preferredHeight: 28
-                        opacity: r.modelData[0] === "Dosya yolu" ? 1 : 0
+                        opacity: r.modelData[0] === qsTr("Dosya yolu") ? 1 : 0
                         enabled: opacity > 0
                         icon.name: "edit-copy"
-                        ToolTip.visible: hovered; ToolTip.text: "Kopyala"; ToolTip.delay: 500
+                        ToolTip.visible: hovered; ToolTip.text: qsTr("Kopyala"); ToolTip.delay: 500
                         onClicked: Player.copy(r.modelData[1])
                     }
                     Plain {

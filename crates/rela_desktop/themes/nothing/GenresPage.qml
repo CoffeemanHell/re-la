@@ -13,7 +13,7 @@ GenresData {
         anchors.fill: parent; anchors.margins: 36
         spacing: 18
         visible: root.genres !== null && root.genres.length > 0
-        PageTitle { text: "TÜRLER" }
+        PageTitle { text: qsTr("TÜRLER") }
         ListView {
             id: list
             Layout.fillWidth: true; Layout.fillHeight: true
@@ -21,12 +21,12 @@ GenresData {
             model: root.genres || []
             delegate: ListRow {
                 required property var modelData
-                title: modelData.value; detail: modelData.albumCount + " ALBÜM · " + modelData.songCount + " ŞARKI"
+                title: modelData.value; detail: qsTr("%n ALBÜM", "", modelData.albumCount) + " · " + qsTr("%n ŞARKI", "", modelData.songCount)
                 onClicked: root.w.go("genre", { name: modelData.value })
             }
             ScrollBar.vertical: Scroll {}
         }
     }
-    Empty { visible: root.genres !== null && root.genres.length === 0; text: "TÜR YOK" }
+    Empty { visible: root.genres !== null && root.genres.length === 0; text: qsTr("TÜR YOK") }
     Loading { loading: root.genres === null && !root.failed; failed: root.failed; onRetry: root.load() }
 }

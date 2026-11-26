@@ -23,8 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.rela.R
 import app.rela.core.Rela
 import app.rela.core.text
+import app.rela.str
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -53,30 +55,30 @@ fun Together() {
     }
     val listeners = sync?.listeners ?: emptyList()
     val following = sync?.following ?: ""
-    Page("Birlikte dinle", root = true) { pad ->
+    Page(str(R.string.listen_together), root = true) { pad ->
         Column(Modifier.padding(top = pad.calculateTopPadding())) {
             PrimaryTabRow(tab) {
-                Tab(tab == 0, { tab = 0 }, text = { Text("Kişiler") })
-                Tab(tab == 1, { tab = 1 }, text = { Text("Ayarlar") })
+                Tab(tab == 0, { tab = 0 }, text = { Text(str(R.string.people)) })
+                Tab(tab == 1, { tab = 1 }, text = { Text(str(R.string.settings)) })
             }
             if (tab == 1) {
-                SwitchRow("Katılanlar kontrol edebilir", "Seni dinleyenler şarkı değiştirebilir, duraklatabilir, kuyruğu düzenleyebilir.", sync?.allowControl == true) {
+                SwitchRow(str(R.string.allow_control), str(R.string.allow_control_hint), sync?.allowControl == true) {
                     core?.setAllowControl(it)
                 }
-                SwitchRow("Gizli", "Çevrimiçi listesinde görünmezsin, kimse seni dinlemeye başlayamaz.", sync?.hidden == true) { core?.setHidden(it) }
+                SwitchRow(str(R.string.hidden), str(R.string.hidden_hint), sync?.hidden == true) { core?.setHidden(it) }
                 return@Column
             }
             LazyColumn(contentPadding = PaddingValues(bottom = pad.calculateBottomPadding())) {
-                if (sync?.available != true) item { Hint("Birlikte dinleme sunucusuna bağlanılamadı.") }
+                if (sync?.available != true) item { Hint(str(R.string.relay_unreachable)) }
                 if (following.isNotEmpty()) item {
                     ListItem(
-                        headlineContent = { Text("$following ile dinliyorsun", fontWeight = FontWeight.SemiBold) },
-                        supportingContent = { Text("Ayrılınca aynı kuyrukla kendi başına devam edersin.") },
-                        trailingContent = { Button({ core?.unfollow() }) { Text("Ayrıl") } },
+                        headlineContent = { Text(str(R.string.listening_with, following), fontWeight = FontWeight.SemiBold) },
+                        supportingContent = { Text(str(R.string.leave_hint)) },
+                        trailingContent = { Button({ core?.unfollow() }) { Text(str(R.string.leave)) } },
                     )
                 }
-                item { Hint("Birini dinlemeye başlayınca onun çaldığını aynı saniyede duyarsın.") }
-                if (sync?.available == true && users.isEmpty()) item { Hint("Şu an çevrimiçi kimse yok.") }
+                item { Hint(str(R.string.follow_hint)) }
+                if (sync?.available == true && users.isEmpty()) item { Hint(str(R.string.nobody_online)) }
                 items(users.sortedBy { it["user"].text() !in listeners }) { u ->
                     val name = u["user"].text()
                     val root = u["following"].text().ifEmpty { name }
@@ -88,7 +90,7 @@ fun Together() {
                     ListItem(
                         headlineContent = {
                             Text(
-                                name + if (mine) "  →  seni dinliyor" else u["following"].text().let { if (it.isEmpty()) "" else "  →  $it" },
+                                name + if (mine) "  →  " + str(R.string.listening_to_you) else u["following"].text().let { if (it.isEmpty()) "" else "  →  $it" },
                                 color = if (mine) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                 fontWeight = if (mine) FontWeight.SemiBold else null,
                             )
@@ -96,7 +98,7 @@ fun Together() {
                         supportingContent = if (what.isEmpty()) null else ({ Text(what, maxLines = 1) }),
                         trailingContent = {
                             if (!mine) FilledTonalButton({ core?.follow(name) }, enabled = following != root) {
-                                Text(if (following == root) "Dinliyorsun" else "Dinle")
+                                Text(str(if (following == root) R.string.listening else R.string.listen))
                             }
                         },
                     )

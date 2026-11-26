@@ -16,5 +16,5 @@ RowLayout {
         Mono { text: sr.label; Layout.fillWidth: true }
         Hint { text: sr.hint }
     }
-    Pill { text: sr.checked ? "AÇIK" : "KAPALI"; on: sr.checked; danger: sr.danger; onClicked: sr.toggled(!sr.checked) }
+    Pill { text: sr.checked ? qsTr("AÇIK") : qsTr("KAPALI"); on: sr.checked; danger: sr.danger; onClicked: sr.toggled(!sr.checked) }
 }

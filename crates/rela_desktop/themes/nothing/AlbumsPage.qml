@@ -10,9 +10,9 @@ AlbumsData {
     id: root
     scroller: grid
 
-    readonly property var orders: [{ t: "newest", l: "YENİ EKLENEN" }, { t: "recent", l: "SON DİNLENEN" },
-                                   { t: "frequent", l: "ÇOK DİNLENEN" }, { t: "random", l: "RASTGELE" },
-                                   { t: "alphabeticalByName", l: "ADA GÖRE" }, { t: "alphabeticalByArtist", l: "SANATÇIYA GÖRE" }]
+    readonly property var orders: [{ t: "newest", l: qsTr("YENİ EKLENEN") }, { t: "recent", l: qsTr("SON DİNLENEN") },
+                                   { t: "frequent", l: qsTr("ÇOK DİNLENEN") }, { t: "random", l: qsTr("RASTGELE") },
+                                   { t: "alphabeticalByName", l: qsTr("ADA GÖRE") }, { t: "alphabeticalByArtist", l: qsTr("SANATÇIYA GÖRE") }]
 
     ColumnLayout {
         anchors.fill: parent; anchors.margins: 36
