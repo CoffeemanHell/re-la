@@ -1,6 +1,6 @@
 # re-la
 
-A small native music player for [Navidrome](https://www.navidrome.org/) that lets people listen to the same song at the same time. Built with Qt 6 (QML) and libmpv. Runs on Windows, Linux and Android. The interface is in Turkish and English: Turkish on a Turkish system, English on any other.
+A small native music player for [Navidrome](https://www.navidrome.org/) that lets people listen to the same song at the same time. Built with Qt 6 (QML) and libmpv. Runs on Windows, Linux and Android.
 
 ## Download
 
