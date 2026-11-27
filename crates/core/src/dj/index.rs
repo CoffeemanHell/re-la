@@ -108,7 +108,7 @@ impl Index {
             std::fs::create_dir_all(d)?;
         }
         let f = File { v: 1, words: self.words.clone(), songs: self.songs.clone(), full_day: self.full_day };
-        crate::disk::write_atomic(&self.path, &serde_json::to_vec(&f).map_err(std::io::Error::other)?)
+        crate::disk::write_atomic_private(&self.path, &serde_json::to_vec(&f).map_err(std::io::Error::other)?)
     }
 
     pub fn path(&self) -> &std::path::Path {
@@ -257,6 +257,17 @@ mod tests {
 
     fn song(id: &str, title: &str, artist: &str, genre: &str) -> Value {
         json!({"id": id, "title": title, "artist": artist, "genre": genre, "albumId": "al1"})
+    }
+
+    // play counts, stars and ratings: the owner's alone
+    #[cfg(unix)]
+    #[test]
+    fn saved_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let p = tmp("private");
+        let ix = Index::open(p.clone());
+        ix.save().unwrap();
+        assert_eq!(std::fs::metadata(&p).unwrap().permissions().mode() & 0o777, 0o600);
     }
 
     #[test]
