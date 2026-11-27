@@ -306,6 +306,8 @@ pub struct PlayerCore {
     pub(super) brain: Option<(String, Brain)>, // the DJ's, for the account it was opened for
     pub(super) last_full: Vec<String>,         // genres of the song before, when it was heard in full
     pub(super) memory_saved: f64,              // clock ms
+    pub(super) index_busy: bool,               // the DJ's library index is being walked
+    pub(super) index_next: f64,                // clock ms: no walk before it
 }
 
 impl PlayerCore {
@@ -412,6 +414,8 @@ impl PlayerCore {
             brain: None,
             last_full: vec![],
             memory_saved: 0.0,
+            index_busy: false,
+            index_next: 0.0,
             settings,
             login,
         };

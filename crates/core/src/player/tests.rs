@@ -1754,3 +1754,91 @@ fn reset_dj_memory_forgets() {
     t.c.reset_dj_memory();
     assert!(dj_memory(&mut t).last_heard("s0").is_none());
 }
+
+// ------------------------------------------------------------------ the DJ's library index
+
+fn param<'a>(q: &'a [(String, String)], k: &str) -> &'a str {
+    q.iter().find(|(key, _)| key == k).map_or("", |(_, v)| v.as_str())
+}
+
+fn library(q: &[(String, String)], total: usize) -> Option<Value> {
+    let off: usize = param(q, "songOffset").parse().unwrap();
+    let n: usize = param(q, "songCount").parse().unwrap();
+    let songs: Vec<Value> = (off..total.min(off + n)).map(|i| song(&format!("L{i}"))).collect();
+    ok(json!({"searchResult3": {"song": songs}}))
+}
+
+fn indexing(name: &str) -> T {
+    let mut t = T::new(name);
+    t.c.online = true;
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    t
+}
+
+#[test]
+fn full_scan_pages() {
+    let mut t = indexing("ix-full");
+    t.c.tick();
+    let calls = t.run(false, |m, q| if m == "search3" { library(q, 520) } else { None });
+    assert!(has_call(&calls, "search3?query=&songCount=500&songOffset=0"), "{calls:?}");
+    assert!(has_call(&calls, "search3?query=&songCount=500&songOffset=500"), "{calls:?}");
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    let b = t.c.dj_brain();
+    assert!(b.index.get("L519").is_some() && b.index.get("L0").is_some());
+    assert_eq!(b.index.full_day, day);
+}
+
+#[test]
+fn no_full_scan_on_mobile() {
+    let mut t = indexing("ix-mobile");
+    t.c.set_mobile(true);
+    t.c.tick();
+    let calls = t.run(false, |m, q| if m == "search3" { library(q, 10) } else { None });
+    assert!(!has_call(&calls, "search3"), "{calls:?}");
+}
+
+#[test]
+fn incremental_newest() {
+    let mut t = indexing("ix-newest");
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    {
+        let b = t.c.dj_brain();
+        b.index.upsert(&json!({"id": "old", "albumId": "known"}), day);
+        b.index.full_day = day;
+    }
+    t.c.tick();
+    let calls = t.run(false, |m, q| match m {
+        "getAlbumList2" => ok(json!({"albumList2": {"album": [{"id": "new1"}, {"id": "new2"}, {"id": "known"}, {"id": "older"}]}})),
+        "getAlbum" => ok(json!({"album": {"song": [song(&format!("{}-s", param(q, "id")))]}})),
+        _ => None,
+    });
+    assert!(has_call(&calls, "getAlbumList2?type=newest&size=50&offset=0"), "{calls:?}");
+    let albums: Vec<&String> = calls.iter().filter(|c| c.starts_with("getAlbum?")).collect();
+    assert_eq!(albums, ["getAlbum?id=new1", "getAlbum?id=new2"]);
+    assert!(t.c.dj_brain().index.get("new2-s").is_some());
+    assert!(!has_call(&calls, "search3"));
+}
+
+#[test]
+fn weekly_full_drops_gone_songs_only_when_complete() {
+    let mut t = indexing("ix-weekly");
+    t.set_now(20_000.0 * 86_400_000.0);
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    {
+        let b = t.c.dj_brain();
+        b.index.upsert(&json!({"id": "gone"}), day);
+        b.index.full_day = day - 8;
+    }
+    // the walk breaks half way: nothing is dropped
+    t.c.tick();
+    t.run(false, |m, q| if m == "search3" && param(q, "songOffset") == "0" { library(q, 900) } else { None });
+    assert!(t.c.dj_brain().index.get("gone").is_some());
+    // a whole walk later: dropped
+    t.c.index_next = 0.0;
+    t.c.tick();
+    t.run(false, |m, q| if m == "search3" { library(q, 900) } else { None });
+    let b = t.c.dj_brain();
+    assert!(b.index.get("gone").is_none() && b.index.get("L899").is_some());
+    assert_eq!(b.index.full_day, day);
+}

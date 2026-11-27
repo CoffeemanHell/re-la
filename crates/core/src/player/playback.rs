@@ -254,6 +254,7 @@ impl PlayerCore {
         {
             self.extend((want - ahead) as i32);
         }
+        self.index_refresh();
 
         let k = self.cur;
         let d = &self.decks[k];
@@ -476,5 +477,111 @@ impl PlayerCore {
                 }
             });
         }
+    }
+
+    /// Keeps the DJ's library index fresh: the whole library (search3, 500 a page) when it is empty or a week old and
+    /// the network is not metered; otherwise the newest albums down to the first one it knows. Every 6 hours.
+    pub(super) fn index_refresh(&mut self) {
+        if !self.dj || !self.online || self.index_busy || self.clock_ms < self.index_next || self.following() {
+            return;
+        }
+        let day = crate::dj::memory::day(self.clock_ms);
+        let mobile = self.mobile;
+        let ix = &self.dj_brain().index;
+        let (empty, stale) = (ix.is_empty(), ix.full_day + 7 <= day);
+        if empty && mobile {
+            self.index_next = self.clock_ms + 15.0 * 60_000.0; // until Wi-Fi
+            return;
+        }
+        self.index_busy = true;
+        if (empty || stale) && !mobile {
+            self.index_page(0, HashSet::new());
+        } else {
+            self.index_newest(0);
+        }
+    }
+
+    fn index_done(&mut self, ok: bool) {
+        self.index_busy = false;
+        self.index_next = self.clock_ms + if ok { 6.0 * 3_600_000.0 } else { 15.0 * 60_000.0 };
+        let day = crate::dj::memory::day(self.clock_ms);
+        let b = self.dj_brain();
+        let _ = b.index.save();
+        b.rebuild_genres(day);
+    }
+
+    fn index_page(&mut self, offset: usize, mut ids: HashSet<String>) {
+        const PAGE: usize = 500;
+        let generation = self.generation;
+        let off = offset.to_string();
+        let query = q(&[("query", ""), ("songCount", "500"), ("songOffset", &off), ("artistCount", "0"), ("albumCount", "0")]);
+        self.api("search3", query, true, move |c, r| {
+            if generation != c.generation {
+                return c.index_busy = false;
+            }
+            let Some(r) = r else { return c.index_done(false) }; // half a walk: nothing is dropped
+            let day = crate::dj::memory::day(c.clock_ms);
+            let songs = r["searchResult3"]["song"].as_array().cloned().unwrap_or_default();
+            let ix = &mut c.dj_brain().index;
+            for s in &songs {
+                ix.upsert(s, day);
+                ids.insert(text(&s["id"]));
+            }
+            if songs.len() == PAGE {
+                return c.index_page(offset + PAGE, ids);
+            }
+            ix.retain(&ids);
+            ix.full_day = day;
+            c.index_done(true);
+        });
+    }
+
+    /// Newest albums first, a page of 50 at a time, until one the index already has (20 pages at most).
+    fn index_newest(&mut self, page: usize) {
+        const SIZE: usize = 50;
+        let generation = self.generation;
+        let off = (page * SIZE).to_string();
+        self.api("getAlbumList2", q(&[("type", "newest"), ("size", "50"), ("offset", &off)]), true, move |c, r| {
+            if generation != c.generation {
+                return c.index_busy = false;
+            }
+            let Some(r) = r else { return c.index_done(false) };
+            let albums = r["albumList2"]["album"].as_array().cloned().unwrap_or_default();
+            let ix = &c.dj_brain().index;
+            let mut todo = vec![];
+            let mut known = false;
+            for a in &albums {
+                let id = text(&a["id"]);
+                if ix.has_album(&id) {
+                    known = true;
+                    break;
+                }
+                todo.push(id);
+            }
+            let more = !known && albums.len() == SIZE && page + 1 < 20;
+            c.index_albums(todo, more.then_some(page + 1));
+        });
+    }
+
+    fn index_albums(&mut self, mut todo: Vec<String>, next_page: Option<usize>) {
+        if todo.is_empty() {
+            return match next_page {
+                Some(p) => self.index_newest(p),
+                None => self.index_done(true),
+            };
+        }
+        let id = todo.remove(0);
+        let generation = self.generation;
+        self.api("getAlbum", q(&[("id", &id)]), true, move |c, r| {
+            if generation != c.generation {
+                return c.index_busy = false;
+            }
+            let day = crate::dj::memory::day(c.clock_ms);
+            let ix = &mut c.dj_brain().index;
+            for s in r.as_ref().and_then(|r| r["album"]["song"].as_array()).into_iter().flatten() {
+                ix.upsert(s, day);
+            }
+            c.index_albums(todo, next_page);
+        });
     }
 }
