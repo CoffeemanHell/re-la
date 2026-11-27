@@ -1,7 +1,7 @@
 # One workspace for the relay and the Rust core (see docs/development.md).
 [workspace]
 resolver = "3"
-members = ["crates/proto", "crates/core", "crates/mpv", "crates/rela_desktop", "crates/android", "crates/android/bindgen", "relay"]
+members = ["crates/proto", "crates/core", "crates/mpv", "crates/rela_desktop", "crates/android", "crates/android/bindgen", "relay", "tools/genre-tree"]
 
 [workspace.package]
 edition = "2024"

@@ -203,8 +203,8 @@ impl Genres {
         let mut cand: HashSet<(String, String)> = HashSet::new();
         let mut by_artist: HashMap<u32, Vec<&String>> = HashMap::new();
         let mut by_up: HashMap<u32, Vec<(&String, u8)>> = HashMap::new();
-        // a word shared with a genre the tree does not know: (genres the tree lacks, genres it has)
-        let mut by_token: HashMap<&str, (Vec<&String>, Vec<&String>)> = HashMap::new();
+        // a word shared with a genre the tree does not know: (genres the tree lacks, the known genre named just that)
+        let mut by_token: HashMap<&str, (Vec<&String>, Option<&String>)> = HashMap::new();
         let mut by_node: HashMap<u32, Vec<&String>> = HashMap::new();
         for (n, f) in &g.facts {
             for &a in &f.artists {
@@ -212,7 +212,11 @@ impl Genres {
             }
             for tk in tokens(n) {
                 let e = by_token.entry(tk).or_default();
-                if f.nodes.is_empty() { e.0.push(n) } else { e.1.push(n) }
+                if f.nodes.is_empty() {
+                    e.0.push(n);
+                } else if n == tk {
+                    e.1 = Some(n); // "Qqx Jazz" meets "Jazz"; the tree takes it on to the other jazz genres
+                }
             }
             for &node in &f.nodes {
                 by_node.entry(node).or_default().push(n);
@@ -221,11 +225,11 @@ impl Genres {
                 by_up.entry(x).or_default().push((n, d));
             }
         }
+        // a word shared by more unknown genres than this says little and would make pairs by the million
+        by_token.retain(|_, (unknown, _)| unknown.len() <= 50);
         for (unknown, known) in by_token.values() {
-            for a in unknown {
-                for b in known {
-                    cand.insert(key(a, b));
-                }
+            if let Some(b) = known {
+                unknown.iter().for_each(|a| _ = cand.insert(key(a, b)));
             }
         }
         let mut add_all = |list: &[&String]| {
@@ -415,6 +419,19 @@ mod tests {
         let g = Genres::build(&ix, &[], &UserGenres::default());
         assert!(g.neighbors("Qqx Jazz").iter().any(|(x, _)| x == "Jazz"), "{:?}", g.neighbors("Qqx Jazz"));
         assert!(g.neighbors("Qqa").is_empty(), "{:?}", g.neighbors("Qqa"));
+    }
+
+    // a word shared by thousands of odd tags gives no pairs, so building stays cheap
+    #[test]
+    fn common_word_bucket_capped() {
+        let names: Vec<String> = (0..60).map(|i| format!("Qq{i} Zork")).collect();
+        let songs: Vec<(&str, &str, &[&str])> = vec![];
+        let mut ix = index(&songs);
+        for (i, n) in names.iter().enumerate() {
+            ix.upsert(&json!({"id": format!("z{i}"), "artist": format!("A{i}"), "genre": n}), 1);
+        }
+        let g = Genres::build(&ix, &[], &UserGenres::default());
+        assert!(g.neighbors("Qq0 Zork").is_empty(), "{:?}", g.neighbors("Qq0 Zork"));
     }
 
     #[test]
