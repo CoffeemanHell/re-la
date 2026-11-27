@@ -58,14 +58,14 @@ impl Drop for Brain {
 }
 
 /// Slots of a batch: (exploring, wildcard, normal). Searching doubles the exploring share. Fractions are rounded by
-/// chance, so one-song refills explore as often on average as whole batches (and one song in ten is a wildcard).
-pub fn slots(batch: i32, explore: i32, searching: bool, rng: &mut fastrand::Rng) -> (usize, usize, usize) {
+/// chance, so one-song refills explore (and draw wildcards) as often on average as whole batches.
+pub fn slots(batch: i32, explore: i32, wildcard: f64, searching: bool, rng: &mut fastrand::Rng) -> (usize, usize, usize) {
     let batch = batch.max(0) as usize;
     let share = f64::from(explore.clamp(0, 50)) / 100.0 * if searching { 2.0 } else { 1.0 };
     // one draw for both, so the wildcard does not eat into the exploring share
     let r = rng.f64();
-    let joker = ((batch as f64 * 0.1 + r).floor() as usize).min(batch);
-    let both = ((batch as f64 * (0.1 + share) + r).floor() as usize).min(batch);
+    let joker = ((batch as f64 * wildcard + r).floor() as usize).min(batch);
+    let both = ((batch as f64 * (wildcard + share) + r).floor() as usize).min(batch);
     (both - joker, joker, batch - both)
 }
 
@@ -88,9 +88,18 @@ fn performers(m: &Value) -> Vec<String> {
     v
 }
 
-/// New (under 30 days in the library) or barely played.
-fn fresh(s: &Song, day: u32) -> bool {
-    s.play_count <= 1 || day.saturating_sub(s.created_day) < 30
+/// New (under `new_days` in the library) or barely played.
+fn fresh(s: &Song, day: u32, k: &Knobs) -> bool {
+    s.play_count <= 1 || day.saturating_sub(s.created_day) < k.new_days
+}
+
+/// Held back when heard lately: more so in the first half of `repeat_days`.
+fn repeat_penalty(days_ago: Option<u32>, k: &Knobs) -> f64 {
+    match days_ago {
+        Some(d) if d < k.repeat_days / 2 => -1.0,
+        Some(d) if d < k.repeat_days => -0.4,
+        _ => 0.0,
+    }
 }
 
 /// Long taste per artist and genre: their songs' plays, log-scaled to 0..1.
@@ -157,7 +166,7 @@ fn taste_now<'a>(brain: &'a Brain, history: &[Value], tmp: &'a mut Session, k: &
 
 /// Picks up to k.batch new songs from `pool` to continue `history` (the queue up to the current song) after
 /// `upcoming` (the rest of it). Songs in `similar` came from getSimilarSongs. Pool and history go into the index first.
-/// An artist is picked at most twice counting the last 10 songs and those coming up.
+/// An artist is picked at most `artist_max` times counting the last 10 songs and those coming up.
 #[allow(clippy::too_many_arguments)]
 pub fn pick(
     brain: &mut Brain,
@@ -215,38 +224,37 @@ pub fn pick(
         }
         let Some(s) = ix.get(id) else { continue };
         let age = day.saturating_sub(s.created_day) as f32;
-        let mut score = fit_k * f64::from(session.fit(s, ix)) + 0.5 * f64::from(taste.score(s, ix, &brain.genres));
+        let mut score = fit_k * f64::from(session.fit(s, ix)) + k.taste * f64::from(taste.score(s, ix, &brain.genres));
         if similar.contains(id) {
-            score += 0.8;
+            score += k.similar;
         }
-        score += f64::from(0.6 / (1.0 + s.play_count as f32).sqrt() + 0.5 * (1.0 - age / 30.0).max(0.0));
-        match brain.memory.last_heard(id).map(|d| day.saturating_sub(d)) {
-            Some(d) if d < 3 => score -= 1.0,
-            Some(d) if d < 7 => score -= 0.4,
-            _ => {}
-        }
+        let new = if k.new_days == 0 { 0.0 } else { (1.0 - age / k.new_days as f32).max(0.0) };
+        score += f64::from(0.6 / (1.0 + s.play_count as f32).sqrt() + 0.5 * new);
+        score += repeat_penalty(brain.memory.last_heard(id).map(|d| day.saturating_sub(d)), k);
         if brain.memory.disliked(id, day, k) {
             score = disliked_score(score);
         }
-        cands.push(C { song: m, artists: performers(m), score, fresh: fresh(s, day), same_lang: seed_lang != 0 && ix.lang(s) == seed_lang });
+        cands.push(C { song: m, artists: performers(m), score, fresh: fresh(s, day, k), same_lang: seed_lang != 0 && ix.lang(s) == seed_lang });
     }
 
-    let (n_explore, n_joker, _) = slots(k.batch, k.explore, searching, rng); // normal picks fill the rest
+    let (n_explore, n_joker, _) = slots(k.batch, k.explore, k.wildcard, searching, rng); // normal picks fill the rest
     let quota = if seed_lang == 0 { 0 } else { (f64::from(k.batch.max(0) * k.language.clamp(0, 100)) / 100.0).round() as usize };
     struct Draw {
         used: Vec<bool>,
         per_artist: HashMap<String, i32>,
         same: usize,
         quota: usize,
+        artist_max: i32,
+        temperature: f64,
     }
-    // one draw: 0 = exploring (fresh songs only), 1 = wildcard (evenly), 2 = normal; softmax(score / 0.5) but the wildcard
+    // one draw: 0 = exploring (fresh songs only), 1 = wildcard (evenly), 2 = normal; softmax(score / temperature) but the wildcard
     fn draw(kind: u8, cands: &[C], d: &mut Draw, rng: &mut fastrand::Rng) -> Option<usize> {
         let ok = |i: usize, lang_only: bool| {
             let c = &cands[i];
             !d.used[i]
                 && (kind != 0 || c.fresh)
                 && (!lang_only || c.same_lang)
-                && c.artists.iter().all(|a| *d.per_artist.get(a).unwrap_or(&0) < 2)
+                && c.artists.iter().all(|a| *d.per_artist.get(a).unwrap_or(&0) < d.artist_max)
         };
         let lang_only = d.same < d.quota;
         let mut idx: Vec<usize> = (0..cands.len()).filter(|&i| ok(i, lang_only)).collect();
@@ -263,7 +271,7 @@ pub fn pick(
             idx[rng.usize(..idx.len())]
         } else {
             let max = idx.iter().map(|&i| cands[i].score).fold(f64::MIN, f64::max);
-            let ws: Vec<f64> = idx.iter().map(|&i| ((cands[i].score - max) / 0.5).exp()).collect();
+            let ws: Vec<f64> = idx.iter().map(|&i| ((cands[i].score - max) / d.temperature).exp()).collect();
             let mut r = rng.f64() * ws.iter().sum::<f64>();
             let mut pick = idx[idx.len() - 1];
             for (k, wt) in ws.iter().enumerate() {
@@ -290,7 +298,7 @@ pub fn pick(
             *per_artist.entry(a).or_default() += 1;
         }
     }
-    let mut d = Draw { used: vec![false; cands.len()], per_artist, same: 0, quota };
+    let mut d = Draw { used: vec![false; cands.len()], per_artist, same: 0, quota, artist_max: k.artist_max, temperature: k.temperature };
     let mut chosen = vec![];
     for _ in 0..n_explore {
         match draw(0, &cands, &mut d, rng) {
@@ -330,7 +338,7 @@ pub fn extra_ids(brain: &Brain, history: &[Value], k: &Knobs, _searching: bool, 
             continue;
         }
         let v = session.fit(s, ix) + 0.3 * rng.f32();
-        if fresh(s, day) { new.push((v, &s.id)) } else { old.push((v, &s.id)) }
+        if fresh(s, day, k) { new.push((v, &s.id)) } else { old.push((v, &s.id)) }
     }
     let mut out = vec![];
     for mut l in [new, old] {
@@ -470,14 +478,14 @@ mod tests {
     #[test]
     fn searching_doubles_explore() {
         let r = &mut fastrand::Rng::with_seed(4);
-        assert_eq!(slots(10, 20, false, r), (2, 1, 7));
-        assert_eq!(slots(10, 20, true, r), (4, 1, 5));
-        assert_eq!(slots(0, 20, false, r), (0, 0, 0));
+        assert_eq!(slots(10, 20, 0.1, false, r), (2, 1, 7));
+        assert_eq!(slots(10, 20, 0.1, true, r), (4, 1, 5));
+        assert_eq!(slots(0, 20, 0.1, false, r), (0, 0, 0));
         // one-song refills (the usual case once the queue is full) explore at the same rate on average
         let n = 2000;
-        let (e, j) = (0..n).map(|_| slots(1, 20, false, r)).fold((0, 0), |a, s| (a.0 + s.0, a.1 + s.1));
+        let (e, j) = (0..n).map(|_| slots(1, 20, 0.1, false, r)).fold((0, 0), |a, s| (a.0 + s.0, a.1 + s.1));
         assert!((375..460).contains(&e) && (150..250).contains(&j), "{e} {j}");
-        let e2: usize = (0..n).map(|_| slots(1, 20, true, r).0).sum();
+        let e2: usize = (0..n).map(|_| slots(1, 20, 0.1, true, r).0).sum();
         assert!(e2 > e + 300, "searching: {e2} vs {e}");
     }
 
@@ -601,5 +609,47 @@ mod tests {
         assert!(size < 10_000_000, "index {size} bytes");
         assert!(build.as_millis() < 500, "genres {build:?}");
         assert!(ram < 20_000_000, "ram ~{ram}");
+    }
+
+    #[test]
+    fn repeat_days_tiers() {
+        let k = |repeat_days| Knobs { repeat_days, ..Knobs::default() };
+        assert_eq!(repeat_penalty(Some(2), &k(7)), -1.0);
+        assert_eq!(repeat_penalty(Some(3), &k(7)), -0.4);
+        assert_eq!(repeat_penalty(Some(7), &k(7)), 0.0);
+        assert_eq!(repeat_penalty(Some(4), &k(10)), -1.0);
+        assert_eq!(repeat_penalty(Some(8), &k(10)), -0.4);
+        assert_eq!(repeat_penalty(None, &k(10)), 0.0);
+        assert_eq!(repeat_penalty(Some(0), &k(0)), 0.0);
+    }
+
+    #[test]
+    fn artist_max_one() {
+        let history = vec![song("h", "S", "H", "Qqg")];
+        let pool: Vec<Value> = (0..5).map(|i| song(&format!("z{i}"), "S", "Z", "Qqg")).chain((0..5).map(|i| song(&format!("o{i}"), "S", &format!("O{i}"), "Qqg"))).collect();
+        let mut b = brain();
+        let k = Knobs { artist_max: 1, ..w(0, 0, 4) };
+        let mut rng = fastrand::Rng::with_seed(9);
+        for _ in 0..50 {
+            let p = pick(&mut b, &pool, &history, &[], &HashSet::new(), &k, false, DAY, &mut rng);
+            assert_eq!(p.len(), 4);
+            assert!(p.iter().filter(|m| m["artist"] == "Z").count() <= 1, "{p:?}");
+        }
+    }
+
+    #[test]
+    fn wildcard_zero() {
+        let r = &mut fastrand::Rng::with_seed(4);
+        assert!((0..500).all(|_| slots(10, 20, 0.0, false, r).1 == 0));
+        assert!((0..500).any(|_| slots(10, 20, 0.3, false, r).1 == 3));
+    }
+
+    #[test]
+    fn new_days_zero() {
+        let mut b = brain();
+        b.index.upsert(&json!({"id": "n", "playCount": 50, "created": "2024-09-29T00:00:00Z"}), DAY); // 5 days before DAY
+        let s = b.index.get("n").unwrap();
+        assert!(fresh(s, DAY, &Knobs::default()));
+        assert!(!fresh(s, DAY, &Knobs { new_days: 0, ..Knobs::default() }));
     }
 }

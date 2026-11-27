@@ -1821,6 +1821,18 @@ fn reset_dj_memory_forgets() {
     assert!(dj_memory(&mut t).last_heard("s0").is_none());
 }
 
+#[test]
+fn reset_dj_settings_restores() {
+    let mut t = T::new("dj-settings-reset");
+    t.c.set_option("djArtistMax", json!(4));
+    t.c.set_option("radioExplore", json!(40));
+    t.c.take_changes();
+    t.c.reset_dj_settings();
+    assert_eq!(t.c.options["djArtistMax"], json!(2));
+    assert_eq!(t.c.options["radioExplore"], json!(20));
+    assert!(t.c.take_changes().options);
+}
+
 // the queue's last song played to its end, nothing after it
 #[test]
 fn last_song_to_the_end_learns() {

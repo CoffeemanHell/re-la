@@ -1260,6 +1260,14 @@ impl PlayerCore {
         self.last_full.clear();
     }
 
+    /// The DJ's settings back to how they came.
+    pub fn reset_dj_settings(&mut self) {
+        let defaults = default_options();
+        for k in crate::dj::knobs::KEYS {
+            self.set_option(k, defaults[*k].clone());
+        }
+    }
+
     pub fn set_dj(&mut self, on: bool) {
         self.dj = on;
         self.settings.set("dj", on.into());
