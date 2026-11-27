@@ -49,7 +49,9 @@ Item {
             }
             Plain {
                 Layout.fillWidth: true; elide: Text.ElideRight
-                text: (row.song.artist || "") + (row.width > 640 && row.song.album ? "  ·  " + row.song.album : "")
+                // a DJ pick in the queue says why it came; other rows show the album when there is room
+                text: (row.song.artist || "") + (row.inQueue && row.song.djWhy ? "  ·  " + row.song.djWhy
+                                                 : row.width > 640 && row.song.album ? "  ·  " + row.song.album : "")
                 color: palette.placeholderText
                 font.pointSize: Qt.application.font.pointSize * 0.9
             }

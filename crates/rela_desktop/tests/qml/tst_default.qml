@@ -775,6 +775,66 @@ Item {
             reset.clicked() // below the fold of the page
             compare(Player.called("resetDjMemory").length, 1)
         }
+        function djSettings() {
+            const m = createTemporaryObject(mainWindow, null)
+            m.openSettings("DJ")
+            tryVerify(() => F.text(m.settingsDialog.contentItem, "DJ modu") !== null)
+            return m.settingsDialog
+        }
+        function named(root, n) { return F.all(root, it => it.objectName === n)[0] }
+        function test_dj_knob_sets_option() {
+            const s = djSettings()
+            const k = named(s.contentItem, "knob_djSkipShare")
+            verify(k && k.visible)
+            k.moved(40)
+            const c = Player.called("setOption")
+            compare(c[c.length - 1].slice(1), ["djSkipShare", 40])
+        }
+        function test_dj_advanced_hidden() {
+            const s = djSettings()
+            verify(!named(s.contentItem, "knob_djRandomness").visible)
+            named(s.contentItem, "djAdvanced").toggle()
+            tryVerify(() => named(s.contentItem, "knob_djRandomness").visible)
+        }
+        function test_dj_defaults_button() {
+            const s = djSettings()
+            F.text(s.contentItem, "Varsayılanlara dön").clicked()
+            compare(Player.called("resetDjSettings").length, 1)
+        }
+        function test_dj_feedback_list_remove() {
+            Player.replies = { djFeedback: [{ id: "x1", title: "Song X", artist: "A", dir: 1, day: 20000 }] }
+            const s = djSettings()
+            tryVerify(() => F.text(s.contentItem, "Song X") !== null)
+            named(s.contentItem, "fbRemove_x1").clicked()
+            const c = Player.called("djFeedback")
+            compare(c[c.length - 1][1].id, "x1")
+            compare(c[c.length - 1][2], 0)
+        }
+        function test_dj_state_dialog_rows() {
+            Player.replies = { djState: { searching: false, seed: { title: "S", artist: "A" }, session: [{ tag: "Rock", weight: 1.2 }], rows: [
+                { id: "a", title: "Picked One", artist: "A", total: 2.1, fit: 1, taste: 0.5, similar: 0.8, fresh: 0.1, recent: -0.3, feedback: 0, disliked: false, skip: 0, lastHeardDays: null, why: "S şarkısına benzer", picked: "normal" },
+                { id: "b", title: "Other", artist: "B", total: 0.4, fit: 0.2, taste: 0.1, similar: 0, fresh: 0.1, recent: 0, feedback: 0, disliked: false, skip: 1, lastHeardDays: 3, why: null, picked: null }] } }
+            const s = djSettings()
+            F.text(s.contentItem, "DJ durumu").clicked()
+            const sd = s.stateDialog
+            tryVerify(() => F.text(sd.contentItem, "Picked One") !== null && F.text(sd.contentItem, "Other") !== null)
+            verify(named(sd.contentItem, "djRow_a").picked && !named(sd.contentItem, "djRow_b").picked)
+            Player.replies = { djState: {} }
+            sd.refresh()
+            tryVerify(() => F.text(sd.contentItem, "DJ henüz seçim yapmadı") !== null)
+        }
+        function test_skip_undo_notice() {
+            const m = createTemporaryObject(mainWindow, null)
+            verify(!F.text(m.footer, "Geri al"))
+            Player.skipUndo = { id: "1", title: "X" }
+            tryVerify(() => F.text(m.footer, "Atlama eksi sayılacak") !== null)
+            F.text(m.footer, "Geri al").clicked()
+            compare(Player.called("undoSkip").length, 1)
+        }
+        function test_dj_why_in_queue() {
+            const r = make(songRow, { inQueue: true, song: { id: "s1", title: "Song", artist: "A", djWhy: "Sürpriz" } })
+            verify(F.text(r, "A  ·  Sürpriz"))
+        }
         function test_settings_output_and_cache() {
             Player.audioDevices = [{ name: "pipewire/dac", description: "DAC" }]
             const m = createTemporaryObject(mainWindow, null)

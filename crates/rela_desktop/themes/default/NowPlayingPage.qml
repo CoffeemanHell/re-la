@@ -8,6 +8,9 @@ import Rela
 
 NowPlayingData {
     id: root
+    readonly property DjData djData: DjData {}
+    Connections { target: Player; function onDjChanged() { if (Player.dj) djData.refreshFeedback() } }
+    Component.onCompleted: if (Player.dj) djData.refreshFeedback()
 
     Image {
         id: ambient
@@ -94,11 +97,27 @@ NowPlayingData {
                 active: !!root.cur.albumId
                 onActivated: root.w.go("album", {id: root.cur.albumId})
             }
+            Plain { // why the DJ picked it
+                Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight
+                visible: !Player.station.id && !!root.cur.djWhy
+                text: root.cur.djWhy || ""; color: palette.placeholderText; font.italic: true
+            }
             RowLayout {
                 Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge
                 visible: !Player.station.id && !!root.cur.id
                 Heart { item: root.cur }
                 Stars { item: root.cur }
+                component Fb: ToolButton {
+                    required property int dir
+                    visible: Player.dj
+                    checkable: true
+                    checked: djData.dirOf(root.cur.id) === dir
+                    display: AbstractButton.IconOnly
+                    ToolTip.visible: hovered; ToolTip.text: text; ToolTip.delay: 500
+                    onClicked: djData.toggle(root.cur, dir)
+                }
+                Fb { objectName: "djMore"; dir: 1; icon.name: Util.icon("go-up"); text: qsTr("Bunun gibi daha çok") }
+                Fb { objectName: "djLess"; dir: -1; icon.name: Util.icon("go-down"); text: qsTr("Bunu daha az çal") }
             }
             Item { Layout.fillHeight: true }
         }

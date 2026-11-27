@@ -1,6 +1,7 @@
 module shared
 AlbumData 1.0 AlbumData.qml
 AlbumsData 1.0 AlbumsData.qml
+DjData 1.0 DjData.qml
 ArtistData 1.0 ArtistData.qml
 ArtistsData 1.0 ArtistsData.qml
 Favorite 1.0 Favorite.qml
@@ -21,5 +22,6 @@ SearchData 1.0 SearchData.qml
 SimilarSongs 1.0 SimilarSongs.qml
 TracksData 1.0 TracksData.qml
 singleton Columns 1.0 Columns.qml
+singleton DjKnobs 1.0 DjKnobs.qml
 singleton Shortcuts 1.0 Shortcuts.qml
 singleton Util 1.0 Util.qml

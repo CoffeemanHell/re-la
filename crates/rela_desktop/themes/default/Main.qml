@@ -333,8 +333,21 @@ ApplicationWindow {
                 }
                 Plain {
                     Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft
+                    visible: !Player.skipUndo.id
                     text: win.notice || Player.status; color: palette.placeholderText
                     font.pointSize: Qt.application.font.pointSize * 0.8
+                }
+                RowLayout { // a skip the DJ will hold against the song, for a few seconds: take it back
+                    Layout.alignment: Qt.AlignRight
+                    visible: !!Player.skipUndo.id
+                    spacing: 6
+                    Plain {
+                        text: qsTr("Atlama eksi sayılacak"); color: palette.placeholderText
+                        font.pointSize: Qt.application.font.pointSize * 0.8
+                        ToolTip.visible: undoHover.hovered; ToolTip.text: Player.skipUndo.title || ""
+                        HoverHandler { id: undoHover }
+                    }
+                    Button { text: qsTr("Geri al"); flat: true; implicitHeight: 24; onClicked: Player.undoSkip() }
                 }
             }
         }

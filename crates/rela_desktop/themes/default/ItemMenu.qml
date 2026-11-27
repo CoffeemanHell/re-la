@@ -40,6 +40,8 @@ Menu {
         text: qsTr("Sanatçı radyosu"); icon.name: Util.icon("radio"); visible: m.kind === "artist"; enabled: m.ctl
         onTriggered: Player.get(m, "getSimilarSongs2", { id: m.item.id, count: 50 }, r => { if (!m.act.fail(r)) Player.play(r.similarSongs2.song || [], 0) })
     }
+    Act { text: qsTr("Bunun gibi daha çok"); icon.name: Util.icon("go-up"); visible: m.isSong && Player.dj; onTriggered: m.act.djFeedback(1) }
+    Act { text: qsTr("Bunu daha az çal"); icon.name: Util.icon("go-down"); visible: m.isSong && Player.dj; onTriggered: m.act.djFeedback(-1) }
     Sep { visible: m.kind !== "artist" }
     Act { text: qsTr("Playlist'e ekle…"); icon.name: Util.icon("view-media-playlist"); visible: m.isSong || m.kind === "album"; onTriggered: m.act.withSongs(s => { m.plMenu.songs = s; m.plMenu.popup() }) }
     Act { text: qsTr("İndir…"); icon.name: Util.icon("download"); visible: m.kind !== "artist"; onTriggered: m.w.download(m.item, m.kind) }
