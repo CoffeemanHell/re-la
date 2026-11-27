@@ -3,3 +3,4 @@ pub mod listen;
 pub mod genres;
 pub mod index;
 pub mod memory;
+pub mod session;
