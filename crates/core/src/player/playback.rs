@@ -141,6 +141,7 @@ impl PlayerCore {
                 if self.upcoming() >= 0 {
                     self.advance();
                 } else {
+                    self.heard(true); // nothing comes after it to make way for
                     self.decks[k].id.clear(); // the deck is empty: play opens the song again (toggle)
                     self.set_playing(false);
                 }
@@ -253,6 +254,9 @@ impl PlayerCore {
             && self.clock_ms >= self.extend_retry
         {
             self.extend((want - ahead) as i32);
+        }
+        if self.held_skip.as_ref().is_some_and(|h| self.clock_ms - h.2 > 90_000.0) {
+            self.dj_flush_held(); // no search came of it (paused after one skip)
         }
         self.index_refresh();
 
@@ -492,7 +496,7 @@ impl PlayerCore {
         let mobile = self.mobile;
         let ix = &self.dj_brain().index;
         // songs from DJ pools land in the index too: only a whole walk makes it the library's
-        let (never, stale) = (ix.full_day == 0, ix.full_day + 7 <= day);
+        let (never, stale) = (ix.full_day == 0, ix.full_day.saturating_add(7) <= day);
         if never && mobile {
             self.index_next = self.clock_ms + 15.0 * 60_000.0; // until Wi-Fi
             return;
@@ -532,6 +536,9 @@ impl PlayerCore {
                 ids.insert(text(&s["id"]));
             }
             if songs.len() == PAGE {
+                if c.mobile {
+                    return c.index_done(false); // on mobile data now: the rest waits for Wi-Fi
+                }
                 return c.index_page(offset + PAGE, ids);
             }
             ix.retain(&ids);

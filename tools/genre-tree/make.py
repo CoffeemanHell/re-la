@@ -3,7 +3,7 @@
 aliases, "subclass of" (P279) and "influenced by" (P737) links between them. Run by hand now and then:
     python3 -I tools/genre-tree/make.py crates/core/data/genre_tree.json
 """
-import datetime, json, sys, time, urllib.error, urllib.parse, urllib.request
+import datetime, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 
 URL = "https://query.wikidata.org/sparql"
 GENRE = "?g wdt:P31 wd:Q188451 ."
@@ -56,8 +56,10 @@ def main(out):
             if key in e:
                 e[key] = sorted(set(e[key]))
     doc = {"license": "CC0 (Wikidata)", "made": datetime.date.today().isoformat(), "g": g}
-    with open(out, "w", encoding="utf-8") as f:
+    tmp = f"{out}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(doc, f, ensure_ascii=False, separators=(",", ":"))
+    os.replace(tmp, out)  # a failed write leaves the old catalog
     print(f"{len(g)} genres, {sum(len(e.get('p', [])) for e in g)} parent links, "
           f"{sum(len(e.get('i', [])) for e in g)} influence links")
 

@@ -1117,6 +1117,8 @@ impl PlayerCore {
             let day = crate::dj::memory::day(self.clock_ms);
             let b = Brain::open(&self.cache_dir.join("dj").join(&key), &self.data_dir.join("dj").join(&key), day);
             self.brain = Some((key, b));
+            self.last_full.clear(); // the other account's listening
+            self.index_next = 0.0; // the other account's refresh deadline
         }
         &mut self.brain.as_mut().unwrap().1
     }
@@ -1135,7 +1137,6 @@ impl PlayerCore {
         let h = classify(pos, dur, natural, wave.as_ref().map(|w| w.rms.as_slice()));
         let ratio = if dur > 0.0 { pos / dur } else { 0.0 };
         let (now, day) = (self.clock_ms, crate::dj::memory::day(self.clock_ms));
-        let last_full = std::mem::take(&mut self.last_full);
         if self.held_skip.as_ref().is_some_and(|h| now - h.2 > 90_000.0) {
             self.dj_flush_held(); // no search came of it
         }
@@ -1157,6 +1158,7 @@ impl PlayerCore {
         } else {
             b.memory.record(&id, h, day);
         }
+        let last_full = std::mem::take(&mut self.last_full); // after dj_brain: another account's is gone
         let b = self.dj_brain();
         let genres: Vec<String> = s.genres.iter().map(|&g| b.index.word(g).to_string()).collect();
         if h == Heard::Full {
@@ -1176,7 +1178,7 @@ impl PlayerCore {
         caught || (searching && !was)
     }
 
-    fn dj_flush_held(&mut self) {
+    pub(super) fn dj_flush_held(&mut self) {
         if let (Some((id, day, _)), Some((_, b))) = (self.held_skip.take(), self.brain.as_mut()) {
             b.memory.record(&id, Heard::EarlySkip, day);
         }
@@ -1195,10 +1197,10 @@ impl PlayerCore {
         let at = ((self.idx + 1).max(0) as usize).min(self.queue.len());
         let mut kept = self.queue[..at].to_vec();
         kept.extend(self.queue[at..].iter().filter(|s| !s["dj"].as_bool().unwrap_or(false)).cloned());
+        self.extend_seq += 1; // a request still out was picked for the old direction
+        self.extending = false;
         if kept.len() != self.queue.len() {
             self.queue = Arc::new(kept);
-            self.extend_seq += 1; // a request still out was picked for the old direction
-            self.extending = false;
             self.drop_prefetch();
             self.state_changed();
         }

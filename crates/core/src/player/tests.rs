@@ -1819,6 +1819,34 @@ fn reset_dj_memory_forgets() {
     assert!(dj_memory(&mut t).last_heard("s0").is_none());
 }
 
+// the queue's last song played to its end, nothing after it
+#[test]
+fn last_song_to_the_end_learns() {
+    let mut t = T::new("dj-last");
+    t.c.set_dj(true);
+    t.c.set_option("autoContinue", json!(false));
+    t.c.play(songs(1), 0);
+    t.at(199.0);
+    let k = t.c.cur;
+    t.c.deck_event(k, DeckEvent::EndFile { reason: EndReason::Eof, error: String::new() });
+    assert!(!t.c.snapshot().playing);
+    assert!(dj_memory(&mut t).last_heard("s0").is_some());
+}
+
+// paused after one early skip: it counts once 90 s pass, without waiting for the next song
+#[test]
+fn held_skip_counts_on_tick() {
+    let mut t = T::new("dj-held-tick");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    t.c.toggle();
+    t.advance(91_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 1.0);
+}
+
 // ------------------------------------------------------------------ the DJ's library index
 
 fn param<'a>(q: &'a [(String, String)], k: &str) -> &'a str {
@@ -1862,6 +1890,40 @@ fn no_full_scan_on_mobile() {
     t.c.tick();
     let calls = t.run(false, |m, q| if m == "search3" { library(q, 10) } else { None });
     assert!(!has_call(&calls, "search3") && !has_call(&calls, "getAlbumList2"), "{calls:?}");
+}
+
+// Wi-Fi went away halfway through the walk: the next page waits
+#[test]
+fn full_scan_stops_on_mobile() {
+    let mut t = indexing("ix-to-mobile");
+    t.c.tick();
+    let jobs = t.c.take_jobs();
+    t.c.set_mobile(true);
+    for j in jobs {
+        if let Job::Api { then, method, query, .. } = j {
+            let r = if method == "search3" { library(&query, 1200).unwrap() } else { json!({"status": "ok"}) };
+            then(&mut t.c, Ok(r));
+        }
+    }
+    let calls = t.run(false, |m, q| if m == "search3" { library(q, 1200) } else { None });
+    assert!(!has_call(&calls, "search3"), "{calls:?}");
+    assert!(t.c.dj_brain().index.get("L499").is_some() && t.c.dj_brain().index.full_day == 0);
+}
+
+// another account's index does not wait for the last one's schedule
+#[test]
+fn next_account_indexes_now() {
+    let mut t = indexing("ix-account");
+    t.c.tick();
+    t.run(false, |m, q| if m == "search3" { library(q, 10) } else { None });
+    assert!(t.c.index_next > t.c.clock_ms);
+    t.c.logout();
+    t.c.login("https://music.example.com", "bob", "pw");
+    t.c.online = true;
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    let calls = t.run(false, |m, q| if m == "search3" { library(q, 10) } else { None });
+    assert!(has_call(&calls, "search3"), "{calls:?}");
 }
 
 #[test]

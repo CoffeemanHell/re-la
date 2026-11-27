@@ -15,7 +15,8 @@ fn text(v: &Value) -> &str {
 /// scripts (Cyrillic, Arabic, Han, ...), "" when unknown.
 /// shortcut: letter heuristic; Latin-script languages other than Turkish are not told apart.
 pub fn guess_language(song: &Value) -> String {
-    let genre = text(&song["genre"]).to_lowercase();
+    let names = song["genres"].as_array().into_iter().flatten().map(|g| text(&g["name"]));
+    let genre = std::iter::once(text(&song["genre"])).chain(names).collect::<Vec<_>>().join(" ").to_lowercase();
     if genre.contains("türk") || genre.contains("turk") {
         return "tr".into();
     }
@@ -33,7 +34,7 @@ pub fn guess_language(song: &Value) -> String {
 }
 
 /// Navidrome's names for no artist in particular: they say nothing about the artist's other songs.
-fn nobody(artist: &str) -> bool {
+pub(crate) fn nobody(artist: &str) -> bool {
     matches!(artist, "" | "Various Artists" | "[Unknown Artist]")
 }
 
@@ -201,6 +202,7 @@ impl Index {
         let songs = std::mem::take(&mut self.songs);
         self.by_id.clear();
         self.albums.clear();
+        self.artist_lang.clear(); // as reopening would leave it
         for s in songs.into_iter().filter(|s| ids.contains(&s.id)) {
             self.put(s);
         }

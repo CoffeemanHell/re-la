@@ -59,10 +59,11 @@ pub struct Weights {
 pub fn slots(batch: i32, explore: i32, searching: bool, rng: &mut fastrand::Rng) -> (usize, usize, usize) {
     let batch = batch.max(0) as usize;
     let share = f64::from(explore.clamp(0, 50)) / 100.0 * if searching { 2.0 } else { 1.0 };
-    let mut by_chance = |x: f64| (x + rng.f64()).floor() as usize;
-    let joker = by_chance(batch as f64 * 0.1).min(batch);
-    let exp = by_chance(batch as f64 * share).min(batch - joker);
-    (exp, joker, batch - joker - exp)
+    // one draw for both, so the wildcard does not eat into the exploring share
+    let r = rng.f64();
+    let joker = ((batch as f64 * 0.1 + r).floor() as usize).min(batch);
+    let both = ((batch as f64 * (0.1 + share) + r).floor() as usize).min(batch);
+    (both - joker, joker, batch - both)
 }
 
 /// A disliked song keeps a chance: a good score shrinks, a poor one never grows.
@@ -72,6 +73,16 @@ fn disliked_score(s: f64) -> f64 {
 
 fn text(v: &Value) -> &str {
     v.as_str().unwrap_or("")
+}
+
+/// Who the per-artist cap counts a song for: its artists (as the index reads them), not "Various Artists" and such.
+fn performers(m: &Value) -> Vec<String> {
+    let mut v: Vec<String> = m["artists"].as_array().into_iter().flatten().map(|a| text(&a["name"]).to_string()).collect();
+    if v.iter().all(String::is_empty) {
+        v = vec![text(&m["artist"]).to_string()];
+    }
+    v.retain(|a| !index::nobody(a));
+    v
 }
 
 /// New (under 30 days in the library) or barely played.
@@ -156,7 +167,13 @@ pub fn pick(
     day: u32,
     rng: &mut fastrand::Rng,
 ) -> Vec<Value> {
-    for m in history.iter().chain(pool) {
+    for m in history {
+        // the copy taken when it was queued: older than what the index may know
+        if brain.index.get(text(&m["id"])).is_none() {
+            brain.index.upsert(m, day);
+        }
+    }
+    for m in pool {
         brain.index.upsert(m, day);
     }
     let brain = &*brain;
@@ -180,7 +197,7 @@ pub fn pick(
     let have: HashSet<&str> = history.iter().chain(upcoming).map(|m| text(&m["id"])).collect();
     struct C<'a> {
         song: &'a Value,
-        artist: String,
+        artists: Vec<String>,
         score: f64,
         fresh: bool,
         same_lang: bool,
@@ -208,7 +225,7 @@ pub fn pick(
         if brain.memory.disliked(id, day) {
             score = disliked_score(score);
         }
-        cands.push(C { song: m, artist: text(&m["artist"]).to_string(), score, fresh: fresh(s, day), same_lang: seed_lang != 0 && ix.lang(s) == seed_lang });
+        cands.push(C { song: m, artists: performers(m), score, fresh: fresh(s, day), same_lang: seed_lang != 0 && ix.lang(s) == seed_lang });
     }
 
     let (n_explore, n_joker, _) = slots(w.batch, w.explore, searching, rng); // normal picks fill the rest
@@ -223,11 +240,17 @@ pub fn pick(
     fn draw(kind: u8, cands: &[C], d: &mut Draw, rng: &mut fastrand::Rng) -> Option<usize> {
         let ok = |i: usize, lang_only: bool| {
             let c = &cands[i];
-            !d.used[i] && (kind != 0 || c.fresh) && (!lang_only || c.same_lang) && *d.per_artist.get(&c.artist).unwrap_or(&0) < 2
+            !d.used[i]
+                && (kind != 0 || c.fresh)
+                && (!lang_only || c.same_lang)
+                && c.artists.iter().all(|a| *d.per_artist.get(a).unwrap_or(&0) < 2)
         };
         let lang_only = d.same < d.quota;
         let mut idx: Vec<usize> = (0..cands.len()).filter(|&i| ok(i, lang_only)).collect();
         if idx.is_empty() && lang_only {
+            if kind == 0 && cands.iter().enumerate().any(|(i, c)| c.same_lang && !c.fresh && !d.used[i]) {
+                return None; // normal picks can still meet the quota: leave the slot to them
+            }
             idx = (0..cands.len()).filter(|&i| ok(i, false)).collect(); // the quota cannot be met
         }
         if idx.is_empty() {
@@ -250,7 +273,9 @@ pub fn pick(
             pick
         };
         d.used[chosen] = true;
-        *d.per_artist.entry(cands[chosen].artist.clone()).or_default() += 1;
+        for a in &cands[chosen].artists {
+            *d.per_artist.entry(a.clone()).or_default() += 1;
+        }
         if cands[chosen].same_lang {
             d.same += 1;
         }
@@ -258,7 +283,9 @@ pub fn pick(
     }
     let mut per_artist: HashMap<String, i32> = HashMap::new();
     for m in history.iter().rev().take(10).chain(upcoming) {
-        *per_artist.entry(text(&m["artist"]).to_string()).or_default() += 1;
+        for a in performers(m) {
+            *per_artist.entry(a).or_default() += 1;
+        }
     }
     let mut d = Draw { used: vec![false; cands.len()], per_artist, same: 0, quota };
     let mut chosen = vec![];
@@ -446,7 +473,7 @@ mod tests {
         // one-song refills (the usual case once the queue is full) explore at the same rate on average
         let n = 2000;
         let (e, j) = (0..n).map(|_| slots(1, 20, false, r)).fold((0, 0), |a, s| (a.0 + s.0, a.1 + s.1));
-        assert!((300..500).contains(&e) && (100..300).contains(&j), "{e} {j}");
+        assert!((375..460).contains(&e) && (150..250).contains(&j), "{e} {j}");
         let e2: usize = (0..n).map(|_| slots(1, 20, true, r).0).sum();
         assert!(e2 > e + 300, "searching: {e2} vs {e}");
     }
@@ -463,6 +490,32 @@ mod tests {
             let p = pick(&mut b, &pool, &history, &upcoming, &HashSet::new(), &w(0, 0, 3), false, DAY, &mut rng);
             assert!(p.iter().all(|m| m["artist"] != "Z"), "{p:?}");
         }
+    }
+
+    // "Various Artists" is nobody in particular; "A" counts through the artists list whatever the label says
+    #[test]
+    fn cap_by_performer() {
+        let mut b = brain();
+        let va: Vec<Value> = (0..6).map(|i| song(&format!("v{i}"), "S", "Various Artists", "Qqg")).collect();
+        let p = pick(&mut b, &va, &[], &[], &HashSet::new(), &w(0, 0, 6), false, DAY, &mut fastrand::Rng::with_seed(2));
+        assert_eq!(p.len(), 6);
+        let feat = |id: &str, label: &str| json!({"id": id, "artist": label, "artists": [{"name": "A"}, {"name": "B"}], "genre": "Qqg"});
+        let history = vec![feat("h1", "A"), feat("h2", "A feat. B")];
+        let pool = vec![feat("c1", "B feat. A"), song("o1", "S", "O", "Qqg")];
+        for seed in 0..20 {
+            let p = pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(0, 0, 2), false, DAY, &mut fastrand::Rng::with_seed(seed));
+            assert_eq!(ids(&p), ["o1"]);
+        }
+    }
+
+    // the copy in the queue is older than what the index knows
+    #[test]
+    fn history_keeps_index() {
+        let mut b = brain();
+        b.index.upsert(&json!({"id": "h", "playCount": 9, "created": "2020-01-01T00:00:00Z"}), DAY);
+        pick(&mut b, &[], &[json!({"id": "h", "playCount": 1})], &[], &HashSet::new(), &w(0, 0, 1), false, DAY, &mut fastrand::Rng::new());
+        let s = b.index.get("h").unwrap();
+        assert_eq!((s.play_count, s.created_day < DAY - 100), (9, true));
     }
 
     #[test]

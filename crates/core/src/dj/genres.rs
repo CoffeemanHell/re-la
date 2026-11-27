@@ -15,6 +15,7 @@ pub fn norm(s: &str) -> String {
     for c in s.trim().chars() {
         match c {
             'I' | 'İ' | 'ı' => out.push('i'),
+            '\u{307}' => {} // the dot of a decomposed "İ" (as lower-casing "İ" leaves it)
             '&' => out.push_str(" and "),
             '-' | '_' | '/' => out.push(' '),
             c => out.extend(c.to_lowercase()),
@@ -146,8 +147,8 @@ pub struct Genres {
     facts: HashMap<String, Facts>,                // by canonical name: the library's genres
     together: HashMap<(String, String), f32>,     // songs tagged with both
     heard: HashMap<(String, String), f32>,        // heard back to back (faded count)
-    names: HashMap<String, String>,               // canonical → the library's own spelling
-    neighbors: HashMap<String, Vec<(String, f32)>>, // by the library's spelling
+    names: HashMap<String, Vec<String>>,          // canonical → the library's own spellings
+    neighbors: HashMap<String, Vec<(String, f32)>>, // by canonical name; every library spelling of each neighbor
 }
 
 fn key(a: &str, b: &str) -> (String, String) {
@@ -175,9 +176,13 @@ impl Genres {
         for s in &index.songs {
             let names: Vec<String> = s.genres.iter().map(|&w| canon(index.word(w))).collect();
             for (&w, n) in s.genres.iter().zip(&names) {
-                g.names.entry(n.clone()).or_insert_with(|| index.word(w).to_string());
+                let spellings = g.names.entry(n.clone()).or_default();
+                if !spellings.iter().any(|x| x == index.word(w)) {
+                    spellings.push(index.word(w).to_string());
+                }
                 let f = g.facts.entry(n.clone()).or_default();
-                f.artists.extend(&s.artists);
+                // "Various Artists" on two genres says nothing about them
+                f.artists.extend(s.artists.iter().filter(|&&a| !crate::dj::index::nobody(index.word(a))));
             }
             for i in 0..names.len() {
                 for j in i + 1..names.len() {
@@ -198,20 +203,29 @@ impl Genres {
         let mut cand: HashSet<(String, String)> = HashSet::new();
         let mut by_artist: HashMap<u32, Vec<&String>> = HashMap::new();
         let mut by_up: HashMap<u32, Vec<(&String, u8)>> = HashMap::new();
-        let mut by_token: HashMap<&str, Vec<&String>> = HashMap::new();
-        let mut by_node: HashMap<u32, &String> = HashMap::new();
+        // a word shared with a genre the tree does not know: (genres the tree lacks, genres it has)
+        let mut by_token: HashMap<&str, (Vec<&String>, Vec<&String>)> = HashMap::new();
+        let mut by_node: HashMap<u32, Vec<&String>> = HashMap::new();
         for (n, f) in &g.facts {
             for &a in &f.artists {
                 by_artist.entry(a).or_default().push(n);
             }
-            if f.nodes.is_empty() {
-                tokens(n).for_each(|tk| by_token.entry(tk).or_default().push(n));
+            for tk in tokens(n) {
+                let e = by_token.entry(tk).or_default();
+                if f.nodes.is_empty() { e.0.push(n) } else { e.1.push(n) }
             }
             for &node in &f.nodes {
-                by_node.insert(node, n);
+                by_node.entry(node).or_default().push(n);
             }
             for (x, d) in t.up(&f.nodes) {
                 by_up.entry(x).or_default().push((n, d));
+            }
+        }
+        for (unknown, known) in by_token.values() {
+            for a in unknown {
+                for b in known {
+                    cand.insert(key(a, b));
+                }
             }
         }
         let mut add_all = |list: &[&String]| {
@@ -224,7 +238,7 @@ impl Genres {
             }
         };
         by_artist.values().for_each(|l| add_all(l));
-        by_token.values().for_each(|l| add_all(l));
+        by_token.values().for_each(|(unknown, _)| add_all(unknown));
         for l in by_up.values() {
             for i in 0..l.len() {
                 for j in i + 1..l.len() {
@@ -237,8 +251,10 @@ impl Genres {
         for (n, f) in &g.facts {
             for &node in &f.nodes {
                 for &o in &t.influenced[node as usize] {
-                    if let Some(m) = by_node.get(&o).filter(|m| *m != &n) {
-                        cand.insert(key(n, m));
+                    for &m in by_node.get(&o).into_iter().flatten() {
+                        if m != n {
+                            cand.insert(key(n, m));
+                        }
                     }
                 }
             }
@@ -249,7 +265,7 @@ impl Genres {
 
         let mut lists: HashMap<String, Vec<(String, f32)>> = HashMap::new();
         for (a, b) in cand {
-            if !g.facts.contains_key(&a) || !g.facts.contains_key(&b) {
+            if a == b || !g.facts.contains_key(&a) || !g.facts.contains_key(&b) {
                 continue;
             }
             let s = g.score(&a, &b);
@@ -261,11 +277,22 @@ impl Genres {
         for (n, mut l) in lists {
             l.sort_by(|x, y| y.1.total_cmp(&x.1));
             l.truncate(10);
-            let spelled = |c: &String| g.names.get(c).cloned().unwrap_or_else(|| c.clone());
-            let l = l.iter().map(|(c, s)| (spelled(c), *s)).collect();
-            g.neighbors.insert(spelled(&n), l);
+            let l = l.iter().flat_map(|(c, s)| g.names[c].iter().map(move |x| (x.clone(), *s))).collect();
+            g.neighbors.insert(n, l);
+        }
+        // the other spellings of a genre are the same genre
+        for (n, spellings) in &g.names {
+            if spellings.len() > 1 {
+                let l = g.neighbors.entry(n.clone()).or_default();
+                l.splice(0..0, spellings.iter().map(|x| (x.clone(), 1.0)));
+            }
         }
         g
+    }
+
+    fn canon(&self, n: &str) -> String {
+        let n = norm(n);
+        self.user_alias.get(&n).cloned().unwrap_or(n)
     }
 
     /// Both canonical (normalized, aliases followed).
@@ -303,16 +330,13 @@ impl Genres {
 
     /// 1.0 for the same genre, 0 for unrelated ones. Works for names outside the library too (tree and words only).
     pub fn sim(&self, a: &str, b: &str) -> f32 {
-        let canon = |n: &str| {
-            let n = norm(n);
-            self.user_alias.get(&n).cloned().unwrap_or(n)
-        };
-        self.score(&canon(a), &canon(b))
+        self.score(&self.canon(a), &self.canon(b))
     }
 
-    /// The closest library genres, at most 10, closest first.
+    /// The closest library genres (at most 10, closest first), in every spelling the library uses; first the other
+    /// spellings of `g` itself (and `g`) at 1.0 when there are any.
     pub fn neighbors(&self, g: &str) -> &[(String, f32)] {
-        self.neighbors.get(g).map_or(&[], Vec::as_slice)
+        self.neighbors.get(&self.canon(g)).map_or(&[], Vec::as_slice)
     }
 }
 
@@ -351,6 +375,7 @@ mod tests {
         assert_eq!(norm("IŞIK"), norm("ışık"));
         assert_eq!(norm("İz"), norm("iz"));
         assert_eq!(norm("Türkçe ROCK"), "türkçe rock");
+        assert_eq!(norm("İtalyan"), norm("i\u{307}talyan"));
     }
 
     #[test]
@@ -367,6 +392,29 @@ mod tests {
         let g = Genres::build(&index(&[]), &[], &UserGenres::default());
         let s = g.sim("Fooqx Metalzz", "Barqx Metalzz");
         assert!(s > 0.0 && s <= 0.3, "{s}");
+    }
+
+    // two spellings of one genre: one genre, linked both ways, never its own neighbor twice
+    #[test]
+    fn spellings_are_one_genre() {
+        let ix = index(&[("A1", "", &["Hip-Hop"]), ("A2", "", &["hip hop"]), ("A3", "", &["Qqa"])]);
+        let pairs = [("Hip-Hop".into(), "hip hop".into(), 5.0)];
+        let g = Genres::build(&ix, &pairs, &user(json!({"link": {"Qqa": ["hip hop"]}})));
+        for sp in ["Hip-Hop", "hip hop"] {
+            let n = g.neighbors(sp);
+            assert!(n.iter().any(|(x, _)| x == "Qqa"), "{sp}: {n:?}");
+            assert_eq!(n.iter().filter(|(x, _)| x == sp).count(), 1, "{sp}: {n:?}");
+        }
+        let n = g.neighbors("Qqa");
+        assert!(n.iter().any(|(x, _)| x == "Hip-Hop") && n.iter().any(|(x, _)| x == "hip hop"), "{n:?}");
+    }
+
+    #[test]
+    fn unknown_meets_known_by_word_not_by_various_artists() {
+        let ix = index(&[("A1", "", &["Jazz"]), ("A2", "", &["Qqx Jazz"]), ("Various Artists", "", &["Qqa"]), ("Various Artists", "", &["Qqb"])]);
+        let g = Genres::build(&ix, &[], &UserGenres::default());
+        assert!(g.neighbors("Qqx Jazz").iter().any(|(x, _)| x == "Jazz"), "{:?}", g.neighbors("Qqx Jazz"));
+        assert!(g.neighbors("Qqa").is_empty(), "{:?}", g.neighbors("Qqa"));
     }
 
     #[test]

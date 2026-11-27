@@ -61,6 +61,8 @@ impl PlayerCore {
         self.queue = Arc::default(); // never the next user's, nor saved to their server
         self.dj_flush();
         self.brain = None;
+        self.last_full.clear();
+        self.index_next = 0.0; // the next account's index owes nothing to this one's schedule
         self.before.clear();
         self.extend_seq += 1;
         self.extending = false;
