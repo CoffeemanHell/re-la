@@ -367,7 +367,8 @@ impl PlayerCore {
             return true;
         }
         if !write && method == "djFeedback" {
-            let list = self.dj_open().map(|b| b.memory.feedback_list()).unwrap_or_default();
+            // saved choices: open the DJ for them (signed in), it may not be open yet this run
+            let list = if self.login.token.is_empty() { None } else { Some(self.dj_brain().memory.feedback_list()) }.unwrap_or_default();
             let v = list
                 .into_iter()
                 .map(|f| json!({"id": f.id, "title": if f.title.is_empty() { &f.id } else { &f.title }, "artist": f.artist, "dir": f.dir, "day": f.day}))

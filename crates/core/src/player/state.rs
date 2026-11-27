@@ -1211,8 +1211,9 @@ impl PlayerCore {
         if b.index.get(&id).is_none() {
             b.index.upsert(&song, day);
         }
-        // "less like this" already said it: leaving the song early says nothing more
-        let h = if h == Heard::EarlySkip && b.memory.feedback(&id) < 0 { Heard::Neutral } else { h };
+        // "less like this" already said it: leaving the song says nothing more, and it never holds a searching listener
+        let less = b.memory.feedback(&id) < 0;
+        let (h, ratio) = if less && h != Heard::Full { (Heard::Neutral, 0.0) } else { (h, ratio) };
         let Some(s) = b.index.get(&id).cloned() else { return false };
         let was = b.session.searching(now, &k);
         let before = b.session.clone();

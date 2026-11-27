@@ -39,7 +39,7 @@ Dialog {
     }
 
     property alias stateDialog: stateDialog
-    readonly property DjData dj: DjData {}
+    readonly property DjData dj: DjData { parent: d.contentItem } // a parent: Player.get answers only such owners
     DjStateDialog { id: stateDialog; w: d.w }
 
     objectName: "settings"

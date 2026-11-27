@@ -1880,6 +1880,36 @@ fn less_like_this_skips_without_penalty() {
     assert!(t.c.held_skip.is_none());
 }
 
+// the list is saved data: it shows before anything opened the DJ this run (DJ off, offline start)
+#[test]
+fn feedback_list_before_the_dj_opens() {
+    let mut t = T::new("dj-feedback-cold");
+    t.c.dj_feedback(song("x1"), 1);
+    t.c.brain = None; // as at start: saved, nothing open
+    assert!(t.c.request(6, "djFeedback", Map::new(), false));
+    let r = t.c.take_replies();
+    assert_eq!(r[0].1.as_ref().unwrap().as_array().map(Vec::len), Some(1));
+}
+
+// "less like this" while looking around: the song does not become the new direction
+#[test]
+fn less_like_this_is_not_a_catch() {
+    let mut t = T::new("dj-less-search");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(20.0);
+    t.c.next();
+    t.at(20.0);
+    t.c.next();
+    let now = t.c.clock_ms;
+    assert!(t.c.dj_brain().session.searching(now, &Knobs::default()));
+    t.at(130.0); // past half: would hold a searching listener
+    t.c.dj_feedback(song("s2"), -1);
+    let b = t.c.dj_brain();
+    let a = b.index.word_id("A").unwrap();
+    assert!(b.session.weight(crate::dj::session::Tag::Artist(a)) < 0.0, "{}", b.session.weight(crate::dj::session::Tag::Artist(a)));
+}
+
 #[test]
 fn feedback_list_names() {
     let mut t = T::new("dj-feedback-list");

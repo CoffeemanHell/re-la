@@ -262,4 +262,26 @@ mod tests {
         s.hear(ix.get("a").unwrap(), EarlySkip, 3000.0, 0.1, &g, &ix, &k);
         assert!(s.searching(3000.0, &k));
     }
+
+    #[test]
+    fn search_sec_idle_and_fade() {
+        let (ix, g) = setup();
+        let short = Knobs { search_ms: 30_000.0, ..Knobs::default() };
+        let mut s = Session::default();
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix, &short);
+        s.hear(ix.get("b").unwrap(), EarlySkip, 61_000.0, 0.1, &g, &ix, &short);
+        assert!(!s.searching(61_000.0, &short), "60 s apart is not close with a 30 s window");
+
+        let idle = Knobs { idle_ms: 10.0 * 60_000.0, ..Knobs::default() };
+        let mut s = Session::default();
+        s.hear(ix.get("a").unwrap(), Full, 1000.0, 1.0, &g, &ix, &idle);
+        s.hear(ix.get("b").unwrap(), Full, 1000.0 + 11.0 * 60_000.0, 1.0, &g, &ix, &idle);
+        assert_eq!(s.weight(genre(&ix, "Qqa")), 0.0);
+
+        let fade = Knobs { fade: 0.5, ..Knobs::default() };
+        let mut s = Session::default();
+        s.hear(ix.get("a").unwrap(), Full, 1000.0, 1.0, &g, &ix, &fade);
+        s.hear(ix.get("b").unwrap(), Full, 2000.0, 1.0, &g, &ix, &fade);
+        assert!((s.weight(genre(&ix, "Qqa")) - 0.5).abs() < 1e-5);
+    }
 }

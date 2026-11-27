@@ -8,7 +8,7 @@ import Rela
 
 NowPlayingData {
     id: root
-    readonly property DjData djData: DjData {}
+    DjData { id: djData }
     Connections { target: Player; function onDjChanged() { if (Player.dj) djData.refreshFeedback() } }
     Component.onCompleted: if (Player.dj) djData.refreshFeedback()
 

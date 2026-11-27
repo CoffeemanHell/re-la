@@ -138,4 +138,13 @@ mod tests {
         k.skip_share = 0.5;
         assert_eq!(classify(100.0, 300.0, false, None, &k), Heard::EarlySkip);
     }
+
+    #[test]
+    fn skip_max_sec_and_full_share() {
+        let k = Knobs::default();
+        assert_eq!(classify(100.0, 400.0, false, None, &k), Heard::EarlySkip);
+        assert_eq!(classify(100.0, 400.0, false, None, &Knobs { skip_max_sec: 60.0, ..Knobs::default() }), Heard::Neutral);
+        assert_eq!(classify(250.0, 300.0, false, None, &k), Heard::Neutral);
+        assert_eq!(classify(250.0, 300.0, false, None, &Knobs { full_share: 0.8, ..Knobs::default() }), Heard::Full);
+    }
 }

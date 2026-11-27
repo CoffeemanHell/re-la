@@ -9,7 +9,7 @@ import Rela
 Dialog {
     id: d
     property var w // the window
-    readonly property DjData dj: DjData {}
+    readonly property DjData dj: DjData { parent: d.contentItem } // a parent: Player.get answers only such owners
     function show() { dj.refresh(); open() }
     function refresh() { dj.refresh() }
     objectName: "djState"

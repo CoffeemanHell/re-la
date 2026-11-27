@@ -42,15 +42,16 @@ QtObject {
     function reset() { calls = []; replies = {}; queue = []; index = -1; current = {}; station = {}; skipUndo = {}; playing = false; hold = false; held = []; shuffle = false; repeat = 0; position = 0; duration = 0; bitrate = 0; streamInfo = ""; dj = false; connecting = false; loginFailed = false; online = true; offline = false; cacheBytes = 0; audioDevices = []; signedIn = true; options = { autoContinue: true, scrobble: true, nowPlaying: true } }
     function rec(c) { calls = calls.concat([c]) }
     function called(name, method) { return calls.filter(c => c[0] === name && (method === undefined || c[1] === method)) }
-    function answer(method, done) {
+    function answer(owner, method, done) {
         const r = replies[method]
-        const f = () => done(r === undefined ? null : r)
+        // as qml/Player.qml: no answer for an owner without a parent (gone, or a QtObject that never had one)
+        const f = () => { if (owner && owner.parent) done(r === undefined ? null : r) }
         if (hold) held = held.concat([f])
         else Qt.callLater(f)
     }
     function release() { const h = held; held = []; hold = false; h.forEach(f => f()) }
-    function get(owner, method, params, done) { rec(["get", method, params]); answer(method, done) }
-    function set(owner, method, params, done) { rec(["set", method, params]); answer(method, done) }
+    function get(owner, method, params, done) { rec(["get", method, params]); answer(owner, method, done) }
+    function set(owner, method, params, done) { rec(["set", method, params]); answer(owner, method, done) }
     function play(songs, start) { rec(["play", songs, start]) }
     function add(songs, where) { rec(["add", songs, where]) }
     function playStation(id) { rec(["playStation", id]) }

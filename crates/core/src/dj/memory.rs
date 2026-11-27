@@ -392,4 +392,14 @@ mod tests {
         assert_eq!(m.skip("a", 5, &kn()), 1.0);
         assert_eq!(m.feedback("a"), 0);
     }
+
+    #[test]
+    fn dislike_days_one() {
+        let mut m = Memory::open(tmp("days-one"));
+        for _ in 0..4 {
+            m.record("x", EarlySkip, 1, &kn());
+        }
+        assert!(!m.disliked("x", 1, &kn()));
+        assert!(m.disliked("x", 1, &Knobs { dislike_days: 1, ..Knobs::default() }));
+    }
 }

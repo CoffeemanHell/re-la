@@ -126,11 +126,14 @@ pub mod ffi {
         #[qinvokable]
         #[cxx_name = "resetDjMemory"]
         fn reset_dj_memory(self: &RustPlayer);
+        #[qinvokable]
         #[cxx_name = "resetDjSettings"]
         fn reset_dj_settings(self: &RustPlayer);
+        #[qinvokable]
         /// "more like this" (1), "less like this" (-1), neither (0)
         #[cxx_name = "djFeedbackJson"]
         fn dj_feedback_json(self: &RustPlayer, song_json: &QString, dir: i32);
+        #[qinvokable]
         #[cxx_name = "undoSkip"]
         fn undo_skip(self: &RustPlayer);
         #[qinvokable]
@@ -565,5 +568,27 @@ mod tests {
         let mut hold = Some(SeekHold { to: 99.0, at: t0, song: "a".into() });
         assert_eq!(held(&mut hold, 2.0, "b", t0 + Duration::from_millis(16)), 2.0);
         assert!(hold.is_none());
+    }
+
+    // every Player function a theme test calls exists on the real Player: in qml/Player.qml or as a Q_INVOKABLE here
+    #[test]
+    fn the_fake_player_offers_nothing_the_real_one_lacks() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let read = |p: &str| std::fs::read_to_string(dir.join(p)).unwrap();
+        let fns = |qml: &str| -> Vec<String> {
+            qml.lines().filter_map(|l| l.trim().strip_prefix("function ")).map(|l| l.split('(').next().unwrap().trim().to_string()).collect()
+        };
+        let (fake, wrapper, rust) = (fns(&read("tests/qml/Rela/Player.qml")), fns(&read("qml/Player.qml")), read("src/player.rs"));
+        let lines: Vec<&str> = rust.lines().map(str::trim).collect();
+        // a Q_INVOKABLE: #[qinvokable], then maybe #[cxx_name = "x"], then fn x_or_snake
+        let invokable = |name: &str| {
+            lines.windows(3).any(|w| {
+                w[0] == "#[qinvokable]"
+                    && (w[1] == format!("#[cxx_name = \"{name}\"]") || w[1].starts_with(&format!("fn {name}(")))
+            })
+        };
+        let test_only = ["reset", "rec", "called", "answer", "release"];
+        let missing: Vec<&String> = fake.iter().filter(|f| !test_only.contains(&f.as_str()) && !wrapper.contains(f) && !invokable(f)).collect();
+        assert!(missing.is_empty(), "not callable from QML on the real Player: {missing:?}");
     }
 }

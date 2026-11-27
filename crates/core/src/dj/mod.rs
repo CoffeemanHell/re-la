@@ -864,4 +864,25 @@ mod tests {
         let a = (0..200).filter(|_| pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(0, 0, 1), false, DAY, &mut rng)[0]["id"] == "a").count();
         assert!(a < 60, "less like this: {a}");
     }
+
+    #[test]
+    fn similar_taste_and_randomness() {
+        let history = vec![song("h", "S", "H", "Qqg")];
+        let pool = vec![song("a", "S", "A", "Qqg"), song("b", "S", "B", "Qqg")];
+        let similar: HashSet<String> = HashSet::from(["a".into()]);
+        let row = |b: &Brain, id: &str| serde_json::to_value(b.last_pick.as_ref().unwrap()).unwrap()["rows"].as_array().unwrap().iter().find(|r| r["id"] == id).unwrap().clone();
+        let mut b = brain();
+        let k = Knobs { similar: 1.5, taste: 0.0, ..w(0, 0, 1) };
+        pick(&mut b, &pool, &history, &[], &similar, &k, false, DAY, &mut fastrand::Rng::with_seed(1));
+        assert_eq!(row(&b, "a")["similar"], 1.5);
+        assert_eq!(row(&b, "b")["taste"], 0.0);
+        // a cold draw takes the better song nearly always; a hot one is closer to a coin
+        let mut count = |temperature: f64| {
+            let k = Knobs { temperature, wildcard: 0.0, ..w(0, 0, 1) };
+            let mut rng = fastrand::Rng::with_seed(3);
+            (0..400).filter(|_| pick(&mut b, &pool, &history, &[], &similar, &k, false, DAY, &mut rng)[0]["id"] == "a").count()
+        };
+        let (cold, hot) = (count(0.1), count(2.0));
+        assert!(cold > 390 && hot < 320, "{cold} {hot}");
+    }
 }

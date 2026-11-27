@@ -1,10 +1,12 @@
 // What the DJ knows, for its settings and state page: its last pick (djState) and the listener's "more / less like
-// this" list (djFeedback). Both are answered by the core itself, offline too.
+// this" list (djFeedback). Both are answered by the core itself, offline too. An Item, as Player.get answers only an
+// owner with a parent.
 import QtQuick
 import Rela
 
-QtObject {
+Item {
     id: root
+    visible: false // no room in a layout
     property var state: ({})    // {searching, seed: {title, artist}, session: [{tag, weight}], rows: [...]}; {} before a pick
     property var feedback: []   // [{id, title, artist, dir, day}], newest first
     readonly property bool picked: !!(state.rows && state.rows.length)
