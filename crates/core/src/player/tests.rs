@@ -1877,7 +1877,7 @@ fn less_like_this_skips_without_penalty() {
     assert_eq!(t.c.idx, 1, "on to the next song");
     assert_eq!(skip_of(&mut t, "s0"), 0.0);
     assert_eq!(dj_memory(&mut t).feedback("s0"), -1);
-    assert!(t.c.held_skip.is_none());
+    assert!(t.c.held_skip.is_empty());
 }
 
 // "less like this" near the end: the advance it makes is no full listen
@@ -1890,6 +1890,38 @@ fn less_like_this_at_the_end_is_no_listen() {
     t.c.dj_feedback(song("s0"), -1);
     assert_eq!(t.c.idx, 1);
     assert!(dj_memory(&mut t).last_heard("s0").is_none());
+}
+
+// "less like this" on the last song: nothing to move on to, so it stops, and no skip counts
+#[test]
+fn less_like_this_on_the_last_song_stops() {
+    let mut t = T::new("dj-less-last");
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    t.at(10.0);
+    t.c.dj_feedback(song("s0"), -1);
+    assert!(!t.c.playing);
+    assert_eq!(skip_of(&mut t, "s0"), 0.0);
+}
+
+// three skips needed to start looking around: none of the three counts
+#[test]
+fn longer_search_streak_counts_no_skip() {
+    let mut t = T::new("dj-search-3");
+    t.c.set_dj(true);
+    t.c.set_option("djSearchSkips", json!(3));
+    t.c.play(songs(5), 0);
+    for _ in 0..3 {
+        t.at(20.0);
+        t.c.next();
+    }
+    let now = t.c.clock_ms;
+    let k = t.c.knobs();
+    assert!(t.c.dj_brain().session.searching(now, &k));
+    t.advance(100_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 0.0);
+    assert_eq!(skip_of(&mut t, "s1"), 0.0);
 }
 
 // the list is saved data: it shows before anything opened the DJ this run (DJ off, offline start)
@@ -2046,7 +2078,7 @@ fn logout_drops_undo() {
     t.c.logout();
     assert!(t.c.snapshot().skip_undo.is_null());
     t.c.undo_skip();
-    assert!(t.c.held_skip.is_none());
+    assert!(t.c.held_skip.is_empty());
 }
 
 #[test]
