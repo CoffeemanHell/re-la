@@ -389,6 +389,12 @@ fn flush(core: &mut PlayerCore, tx: &mpsc::UnboundedSender<Msg>, listener: &dyn 
                 });
                 download.cache = Some(Download { task, part });
             }
+            Job::Work { run } => {
+                tokio::task::spawn_blocking(move || {
+                    let then = run();
+                    let _ = tx.send(Msg::Run(then));
+                });
+            }
             Job::CancelDownload => {
                 if let Some(d) = download.cache.take().filter(|_| core.caching) {
                     d.task.abort();

@@ -512,10 +512,8 @@ impl PlayerCore {
     fn index_done(&mut self, ok: bool) {
         self.index_busy = false;
         self.index_next = self.clock_ms + if ok { 6.0 * 3_600_000.0 } else { 15.0 * 60_000.0 };
-        let day = crate::dj::memory::day(self.clock_ms);
-        let b = self.dj_brain();
-        let _ = b.index.save();
-        b.rebuild_genres(day);
+        let _ = self.dj_brain().index.save();
+        self.dj_rebuild_genres();
     }
 
     fn index_page(&mut self, offset: usize, mut ids: HashSet<String>) {

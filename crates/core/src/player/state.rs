@@ -50,7 +50,12 @@ pub enum Job {
     CacheSong { client: Arc<Subsonic>, query: Vec<(String, String)>, path: PathBuf },
     /// Logout: the URLs (also CacheSong's) carry this login's token.
     CancelDownload,
+    /// Slow work off the player thread; what it returns runs on the player thread when done.
+    Work { run: Box<dyn FnOnce() -> Then + Send> },
 }
+
+/// What a `Job::Work` hands back to run on the player thread.
+pub type Then = Box<dyn FnOnce(&mut PlayerCore) + Send>;
 
 /// Which signal groups changed since the last take_changes.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -310,6 +315,7 @@ pub struct PlayerCore {
     pub(super) by_listener: bool,              // a command from someone in the room is running
     pub(super) index_busy: bool,               // the DJ's library index is being walked
     pub(super) index_next: f64,                // clock ms: no walk before it
+    pub(super) genres_seq: u64,                // the latest genre rebuild asked for
 }
 
 impl PlayerCore {
@@ -420,6 +426,7 @@ impl PlayerCore {
             by_listener: false,
             index_busy: false,
             index_next: 0.0,
+            genres_seq: 0,
             settings,
             login,
         };
@@ -1114,13 +1121,36 @@ impl PlayerCore {
         if self.brain.as_ref().is_none_or(|(k, _)| *k != key) {
             self.dj_flush();
             self.brain = None; // saved on drop
-            let day = crate::dj::memory::day(self.clock_ms);
-            let b = Brain::open(&self.cache_dir.join("dj").join(&key), &self.data_dir.join("dj").join(&key), day);
+            let b = Brain::open_lazy(&self.cache_dir.join("dj").join(&key), &self.data_dir.join("dj").join(&key));
             self.brain = Some((key, b));
             self.last_full.clear(); // the other account's listening
             self.index_next = 0.0; // the other account's refresh deadline
+            self.dj_rebuild_genres();
         }
         &mut self.brain.as_mut().unwrap().1
+    }
+
+    /// Genre closeness from the index and memory as they are now, built off the player thread (a big or oddly
+    /// tagged library takes a while). It lands only if this account's brain is still open and nothing newer was asked.
+    pub(super) fn dj_rebuild_genres(&mut self) {
+        let day = crate::dj::memory::day(self.clock_ms);
+        let Some((key, b)) = self.brain.as_ref() else { return };
+        let build = b.genres_later(day);
+        self.genres_seq += 1;
+        let (key, seq) = (key.clone(), self.genres_seq);
+        self.jobs.push(Job::Work {
+            run: Box::new(move || {
+                let g = build();
+                Box::new(move |c: &mut PlayerCore| {
+                    if let Some((k, b)) = c.brain.as_mut()
+                        && *k == key
+                        && c.genres_seq == seq
+                    {
+                        b.genres = g;
+                    }
+                })
+            }),
+        });
     }
 
     /// The current song ends (`natural`: played to its end). The DJ learns from it, unless following someone or on a
@@ -1208,14 +1238,12 @@ impl PlayerCore {
 
     /// Forgets what the DJ learned from skips and listens; the library index stays.
     pub fn reset_dj_memory(&mut self) {
-        let day = crate::dj::memory::day(self.clock_ms);
         let b = self.dj_brain();
         b.memory.clear();
         b.session = Default::default();
         self.held_skip = None;
-        let b = self.dj_brain();
-        b.rebuild_genres(day);
-        let _ = b.memory.save();
+        let _ = self.dj_brain().memory.save();
+        self.dj_rebuild_genres();
         self.last_full.clear();
     }
 

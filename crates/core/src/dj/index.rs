@@ -208,6 +208,20 @@ impl Index {
         }
     }
 
+    /// Just the songs and words (what genre closeness reads), to build from on another thread.
+    pub fn genre_view(&self) -> Index {
+        Index {
+            path: self.path.clone(),
+            words: self.words.clone(),
+            word_ids: HashMap::new(),
+            songs: self.songs.clone(),
+            by_id: HashMap::new(),
+            albums: HashSet::new(),
+            artist_lang: HashMap::new(),
+            full_day: self.full_day,
+        }
+    }
+
     pub fn get(&self, id: &str) -> Option<&Song> {
         self.by_id.get(id).map(|&i| &self.songs[i])
     }

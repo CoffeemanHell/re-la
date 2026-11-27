@@ -241,6 +241,7 @@ impl T {
                         self.c.cache_done(true);
                     }
                     Job::CancelDownload => calls.push("cancel download".into()),
+                    Job::Work { run } => run()(&mut self.c),
                 }
             }
         }
@@ -1845,6 +1846,39 @@ fn held_skip_counts_on_tick() {
     t.advance(91_000.0);
     t.c.tick();
     assert_eq!(skip_of(&mut t, "s0"), 1.0);
+}
+
+// genre closeness is built off the player thread; a result for an account that is gone does not land
+#[test]
+fn genres_built_aside_land_for_their_account_only() {
+    let mut t = T::new("dj-genres-aside");
+    t.c.set_dj(true);
+    let metal = |id: &str, g: &str| json!({"id": id, "artist": id, "genre": g});
+    t.c.dj_brain().index.upsert(&metal("m", "Heavy Metal"), 1);
+    t.c.dj_brain().index.upsert(&metal("r", "Hard Rock"), 1);
+    t.c.dj_brain().index.save().unwrap();
+    t.c.take_jobs();
+    t.c.dj_rebuild_genres();
+    let jobs = t.c.take_jobs();
+    assert!(t.c.dj_brain().genres.neighbors("Heavy Metal").is_empty(), "not built on the player thread");
+    t.c.logout();
+    t.c.login("https://music.example.com", "bob", "pw");
+    t.c.dj_brain();
+    for j in jobs {
+        if let Job::Work { run } = j {
+            run()(&mut t.c);
+        }
+    }
+    assert!(t.c.dj_brain().genres.neighbors("Heavy Metal").is_empty(), "ana's genres stay out of bob's brain");
+    t.c.logout();
+    t.c.login("https://music.example.com", "ana", "pw");
+    t.c.dj_brain();
+    for j in t.c.take_jobs() {
+        if let Job::Work { run } = j {
+            run()(&mut t.c);
+        }
+    }
+    assert!(t.c.dj_brain().genres.neighbors("Heavy Metal").iter().any(|(n, _)| n == "Hard Rock"));
 }
 
 // ------------------------------------------------------------------ the DJ's library index

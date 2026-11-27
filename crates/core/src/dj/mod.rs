@@ -25,15 +25,27 @@ pub struct Brain {
 impl Brain {
     /// The index (rebuildable) under `cache`, the memory and the listener's genre file under `data`.
     pub fn open(cache: &Path, data: &Path, day: u32) -> Brain {
+        let mut b = Brain::open_lazy(cache, data);
+        b.rebuild_genres(day);
+        b
+    }
+
+    /// Opens with no genre closeness yet: the caller builds it (`genres_later`) where it does not hold anything up.
+    pub fn open_lazy(cache: &Path, data: &Path) -> Brain {
         let index = Index::open(cache.join("dj-index.json"));
         let memory = Memory::open(data.join("dj-memory.json"));
         let user = UserGenres::load(&data.join("dj-genres.json"));
-        let genres = Genres::build(&index, &memory.pairs(day), &user);
-        Brain { index, memory, genres, session: Session::default(), user }
+        Brain { index, memory, genres: Genres::default(), session: Session::default(), user }
     }
 
     pub fn rebuild_genres(&mut self, day: u32) {
-        self.genres = Genres::build(&self.index, &self.memory.pairs(day), &self.user);
+        self.genres = self.genres_later(day)();
+    }
+
+    /// Builds genre closeness from a copy of what it needs now, on whatever thread calls it.
+    pub fn genres_later(&self, day: u32) -> impl FnOnce() -> Genres + Send + 'static {
+        let (index, pairs, user) = (self.index.genre_view(), self.memory.pairs(day), self.user.clone());
+        move || Genres::build(&index, &pairs, &user)
     }
 }
 
@@ -571,8 +583,11 @@ mod tests {
             b.memory.record_pair(&genre(i), &genre(i + 1), DAY);
         }
         let t = Instant::now();
-        b.rebuild_genres(DAY);
-        let build = t.elapsed();
+        let later = b.genres_later(DAY);
+        let copy = t.elapsed();
+        b.genres = later();
+        let build = t.elapsed() - copy;
+        println!("genre copy on the player thread {copy:?}");
         b.index.save().unwrap();
         let size = std::fs::metadata(b.index.path()).unwrap().len();
         let history: Vec<Value> = (0..5).map(|i| json!({"id": format!("song-{i:08}-abcdef")})).collect();

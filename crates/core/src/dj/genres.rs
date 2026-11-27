@@ -25,7 +25,7 @@ pub fn norm(s: &str) -> String {
 }
 
 /// The listener's corrections, from `dj-genres.json`: `alias` (same genre), `link` (close), `apart` (not close).
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct UserGenres {
     alias: HashMap<String, String>,
     link: Vec<(String, String)>,
@@ -140,6 +140,7 @@ struct Facts {
     nodes: Vec<u32>,
 }
 
+#[derive(Default)]
 pub struct Genres {
     user_alias: HashMap<String, String>,
     link: HashSet<(String, String)>,
