@@ -121,7 +121,7 @@ fn start(name: &str) -> (Player, Arc<Front>, Arc<Mutex<Vec<String>>>, PathBuf) {
     let decks: Arc<Mutex<Vec<String>>> = Arc::default();
     let d2 = decks.clone();
     let make = move |i: usize, _sink: DeckSink| -> Box<dyn Deck> { Box::new(FakeDeck(i, d2.clone())) };
-    let player = Player::new(settings, dir.clone(), make, front.clone());
+    let player = Player::new(settings, dir.clone(), dir.join("data"), make, front.clone());
     (player, front, decks, dir)
 }
 

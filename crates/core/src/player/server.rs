@@ -59,6 +59,7 @@ impl PlayerCore {
         self.local_key.clear();
         self.settings.remove("token");
         self.queue = Arc::default(); // never the next user's, nor saved to their server
+        self.brain = None; // the DJ's memory is saved as it closes
         self.before.clear();
         self.extend_seq += 1;
         self.extending = false;

@@ -87,6 +87,11 @@ impl Memory {
         self.file.songs.get(id).is_some_and(|e| e.skip_days >= 2 && faded(e.skip, e.skip_day, day) >= 3.0)
     }
 
+    /// The faded early-skip count.
+    pub fn skip(&self, id: &str, day: u32) -> f32 {
+        self.file.songs.get(id).map_or(0.0, |e| faded(e.skip, e.skip_day, day))
+    }
+
     pub fn last_heard(&self, id: &str) -> Option<u32> {
         self.file.songs.get(id).filter(|e| e.heard > 0).map(|e| e.last_heard)
     }
@@ -177,6 +182,15 @@ mod tests {
         m.record("x", Full, 2);
         m.record("x", Full, 2);
         assert!(!m.disliked("x", 2));
+    }
+
+    #[test]
+    fn skip_count() {
+        let mut m = Memory::open(tmp("skip"));
+        m.record("x", EarlySkip, 0);
+        assert_eq!(m.skip("x", 0), 1.0);
+        assert!((m.skip("x", 60) - 0.5).abs() < 1e-4);
+        assert_eq!(m.skip("y", 0), 0.0);
     }
 
     #[test]

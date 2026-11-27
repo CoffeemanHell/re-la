@@ -2,7 +2,7 @@
 use super::deck::{DeckEvent, EndReason};
 use super::state::PlayerCore;
 use crate::queue::{Drift, drift_action, play_report, scrobble_due, similar_append, text};
-use crate::radio::{RadioWeights, radio_pick, relaxed};
+use crate::dj::{Weights, extra_ids, pick};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::f64::consts::PI;
@@ -64,11 +64,14 @@ impl PlayerCore {
                     let (from_dur, i) = (d.appended_from_dur, d.appended_idx);
                     d.out.drop_first();
                     self.anchor += from_dur * 1000.0;
+                    let turn = self.heard(true);
                     self.idx = i;
                     self.play += 1;
-                    self.skips = 0; // listened to the end
                     if self.valid(i) {
                         self.decks[k].id = self.song_id(i);
+                    }
+                    if turn {
+                        self.drop_dj_picks();
                     }
                     self.state_changed();
                     self.timer(3000, |c| c.publish());
@@ -183,11 +186,14 @@ impl PlayerCore {
     /// Natural advance: the next track's 0:00 is scheduled on the shared timeline, so peers stay locked regardless of
     /// how long each one took to buffer.
     pub(super) fn advance(&mut self) {
-        self.skips = 0; // listened to the end
+        let turn = self.heard(true);
         self.fade_s = self.fade_of(self.duration());
         self.anchor += (self.duration() - self.fade_s) * 1000.0;
         let n = self.upcoming();
         self.cross_to(n);
+        if turn {
+            self.drop_dj_picks();
+        }
         self.timer(((self.xfade + 3) * 1000) as u64, |c| c.publish());
     }
 
@@ -360,8 +366,8 @@ impl PlayerCore {
     }
 
     /// Queue end. DJ off: Navidrome's getSimilarSongs as it comes (random songs when it has nothing new). DJ on:
-    /// candidates from similar songs + same genre + a wide random pool, picked by radio_pick with the weights from
-    /// settings, loosened while the listener keeps skipping. Only the root extends; followers get the songs with its
+    /// candidates from similar songs + same genre + a wide random pool + the index's best fits (getSong), picked by
+    /// dj::pick with the weights from settings; a listener looking for something else gets more new songs. Only the root extends; followers get the songs with its
     /// next state.
     pub(super) fn extend(&mut self, need: i32) {
         let seed = self.queue[self.idx as usize].clone();
@@ -414,9 +420,13 @@ impl PlayerCore {
             similar: HashSet<String>,
             pending: usize,
         }
-        let lang = self.options.get("radioLanguage").and_then(Value::as_i64).unwrap_or(80) as i32;
-        let genre_w = self.options.get("radioGenre").and_then(Value::as_i64).unwrap_or(50) as i32;
-        let w = relaxed(RadioWeights { language: lang, genre: genre_w, batch: need }, self.skips);
+        let opt = |k: &str, def: i64| self.options.get(k).and_then(Value::as_i64).unwrap_or(def) as i32;
+        let w = Weights { language: opt("radioLanguage", 80), genre: opt("radioGenre", 50), explore: opt("radioExplore", 20), batch: need };
+        let (now, day) = (self.clock_ms, crate::dj::memory::day(self.clock_ms));
+        let searching = self.dj_brain().session.searching(now);
+        let at = ((self.idx + 1).max(0) as usize).min(self.queue.len());
+        let history = self.queue[..at].to_vec();
+        let extra = extra_ids(&self.brain.as_ref().unwrap().1, &history, &w, searching, day, &mut self.rng);
         let fetch = Arc::new(Mutex::new(Fetch { pool: vec![], similar: HashSet::new(), pending: 0 }));
         let finish = Arc::new(Mutex::new(Some(finish)));
         let mut calls = vec![("getSimilarSongs", q(&[("id", &seed_id), ("count", "50")]), "similarSongs", true)];
@@ -424,16 +434,25 @@ impl PlayerCore {
         if !genre.is_empty() {
             calls.push(("getRandomSongs", q(&[("size", "100"), ("genre", &genre)]), "randomSongs", false));
         }
-        if w.language > 0 || self.skips >= 2 {
-            // wide pool: the language quota can be met, and a skip streak gets variety
+        if w.language > 0 || searching {
+            // wide pool: the language quota can be met, and a searching listener gets variety
             calls.push(("getRandomSongs", q(&[("size", "400")]), "randomSongs", false));
+        }
+        for id in &extra {
+            calls.push(("getSong", q(&[("id", id)]), "song", false));
         }
         fetch.lock().unwrap().pending = calls.len();
         for (method, params, key, is_similar) in calls {
             let (fetch, finish) = (fetch.clone(), finish.clone());
             self.api(method, params, true, move |c, r| {
                 let mut f = fetch.lock().unwrap();
-                for s in r.map(|r| songs_of(&r, key)).unwrap_or_default() {
+                let got = match r {
+                    Some(r) if key == "song" && r["song"].is_object() => vec![r["song"].clone()],
+                    Some(_) if key == "song" => vec![],
+                    Some(r) => songs_of(&r, key),
+                    None => vec![],
+                };
+                for s in got {
                     if is_similar {
                         f.similar.insert(text(&s["id"]));
                     }
@@ -443,9 +462,11 @@ impl PlayerCore {
                 if f.pending > 0 {
                     return;
                 }
-                let at = (c.idx + 1).max(0) as usize;
+                let at = ((c.idx + 1).max(0) as usize).min(c.queue.len());
                 let pool = similar_append(&c.queue, &f.pool);
-                let mut picked = radio_pick(&pool, &c.queue[..at.min(c.queue.len())], &f.similar, &w, &mut c.rng);
+                c.dj_brain();
+                let brain = &mut c.brain.as_mut().unwrap().1;
+                let mut picked = pick(brain, &pool, &c.queue[..at], &f.similar, &w, searching, day, &mut c.rng);
                 for s in &mut picked {
                     s["dj"] = true.into(); // so a skip streak can swap the DJ's own picks, never the listener's
                 }

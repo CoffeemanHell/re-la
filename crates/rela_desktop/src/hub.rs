@@ -24,6 +24,12 @@ fn cache_dir() -> PathBuf {
     PathBuf::from(std::env::var_os("LOCALAPPDATA").unwrap_or_default()).join("re-la").join("re-la").join("cache")
 }
 
+/// Where Qt's AppDataLocation is on Windows (next to the themes): what must outlive a cleared cache.
+#[cfg(windows)]
+fn data_dir() -> PathBuf {
+    PathBuf::from(std::env::var_os("APPDATA").unwrap_or_default()).join("re-la").join("re-la")
+}
+
 /// The app was Nsync: its settings, cache and themes move to the new name's folders on the first start.
 #[cfg(windows)]
 pub fn move_from_nsync() {
@@ -77,6 +83,12 @@ fn cache_dir() -> PathBuf {
     xdg("XDG_CACHE_HOME", ".cache").join("re-la").join("re-la")
 }
 
+/// Where Qt's AppDataLocation is on Linux (next to the themes): what must outlive a cleared cache.
+#[cfg(not(windows))]
+fn data_dir() -> PathBuf {
+    xdg("XDG_DATA_HOME", ".local/share").join("re-la").join("re-la")
+}
+
 /// The app was Nsync: its settings, cache and themes move to the new name's folders on the first start.
 #[cfg(not(windows))]
 pub fn move_from_nsync() {
@@ -102,7 +114,7 @@ pub fn player() -> &'static Player {
         }
         // RELA_AO: mpv's audio outputs to try instead (e.g. "null" for a run without a sound device)
         let ao = std::env::var("RELA_AO").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| "pipewire,pulse,alsa,".into());
-        let p = Player::new(settings, cache_dir(), move |i, sink| rela_mpv::mpv_deck(i, sink, &ao), Arc::new(Front));
+        let p = Player::new(settings, cache_dir(), data_dir(), move |i, sink| rela_mpv::mpv_deck(i, sink, &ao), Arc::new(Front));
         crate::mpris::start(cache_dir());
         p
     })

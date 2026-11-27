@@ -140,9 +140,11 @@ fn wall_ms() -> f64 {
 impl Player {
     /// make_deck(index, sink): the front end's audio output; it reports through sink. The saved login (if any)
     /// connects at once.
+    /// `data_dir` keeps what must outlive a cleared cache (the DJ's memory).
     pub fn new(
         settings: Arc<dyn Settings>,
         cache_dir: PathBuf,
+        data_dir: PathBuf,
         make_deck: impl Fn(usize, DeckSink) -> Box<dyn Deck>,
         listener: Arc<dyn PlayerListener>,
     ) -> Player {
@@ -159,6 +161,7 @@ impl Player {
         let core = PlayerCore::new(
             settings.clone(),
             cache_dir.clone(),
+            data_dir,
             decks,
             Box::new(SyncPortImpl { client: sync.clone(), view }),
             Box::new(StationPortImpl(subwave.clone())),
