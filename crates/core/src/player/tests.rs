@@ -1960,6 +1960,18 @@ fn next_account_indexes_now() {
     assert!(has_call(&calls, "search3"), "{calls:?}");
 }
 
+// demo songs are nobody's listening
+#[test]
+fn demo_learns_nothing() {
+    let mut t = T::new("dj-demo");
+    t.c.set_dj(true);
+    t.c.demo();
+    let first = t.current();
+    t.at(t.c.duration() - 1.0);
+    t.c.next();
+    assert!(dj_memory(&mut t).last_heard(&first).is_none());
+}
+
 // offline too: someone else's sign-in does not inherit the queue the DJ would learn from
 #[test]
 fn login_as_another_while_offline_drops_the_queue() {

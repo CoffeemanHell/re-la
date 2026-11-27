@@ -1160,6 +1160,9 @@ impl PlayerCore {
         if !self.dj || self.following() || self.by_listener || !self.station.is_empty() || !self.valid(self.idx) {
             return false;
         }
+        if self.login.token.is_empty() {
+            return false; // no one signed in (demo): nobody's listening to learn
+        }
         let song = self.queue[self.idx as usize].clone();
         let id = text(&song["id"]);
         let (pos, dur) = (self.position(), self.duration());

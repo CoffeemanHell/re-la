@@ -139,6 +139,7 @@ impl Memory {
     /// Forgets everything, on disk too: the file goes now rather than waiting for a write that may fail.
     pub fn clear(&mut self) {
         self.file = File { v: 1, ..Default::default() };
+        let _ = std::fs::remove_file(self.path.with_extension("tmp")); // a write that died leaves its copy
         self.dirty = std::fs::remove_file(&self.path).is_err_and(|e| e.kind() != std::io::ErrorKind::NotFound);
     }
 }
@@ -168,7 +169,9 @@ mod tests {
         let mut m = Memory::open(p.clone());
         two_days(&mut m);
         m.save().unwrap();
+        std::fs::write(p.with_extension("tmp"), b"{}").unwrap(); // left by a write that died
         m.clear();
+        assert!(!p.with_extension("tmp").exists());
         assert!(Memory::open(p).skip("x", 2) == 0.0);
     }
 
