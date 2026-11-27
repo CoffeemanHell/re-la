@@ -142,6 +142,20 @@
     <message numerus="yes"><source>%n sn</source><translation><numerusform>%n s</numerusform><numerusform>%n s</numerusform></translation></message>
     <message numerus="yes"><source>%n dk</source><translation><numerusform>%n min</numerusform><numerusform>%n min</numerusform></translation></message>
     <message numerus="yes"><source>%n şarkı</source><translation><numerusform>%n song</numerusform><numerusform>%n songs</numerusform></translation></message>
+    <message><source>Erken atlama eksi sayılsın</source><translation>Early skips count against a song</translation></message>
+    <message><source>Kapalıyken atlamalar hiç sayılmaz, bildirim de çıkmaz.</source><translation>Off: skips never count, and no notice shows.</translation></message>
+    <message><source>Sevilmeyen şarkı</source><translation>Disliked songs</translation></message>
+    <message><source>Eksileri biriken şarkı çok seyrek çalar.</source><translation>A song with many skips plays very rarely.</translation></message>
+    <message><source>Arayış modu</source><translation>Looking around</translation></message>
+    <message><source>Yakında dinlediğin şarkılar geri planda kalır.</source><translation>Songs you heard recently stay in the background.</translation></message>
+    <message><source>Her partide puana bakılmadan seçilen şarkılar.</source><translation>Songs picked without looking at their scores.</translation></message>
+    <message><source>Bu kadar gün içinde dinlediğin şarkılar geri planda kalır.</source><translation>Songs you heard within this many days stay in the background.</translation></message>
+    <message><source>2 hafta</source><translation>2 weeks</translation></message>
+    <message><source>1 ay</source><translation>1 month</translation></message>
+    <message><source>2 ay</source><translation>2 months</translation></message>
+    <message><source>3 ay</source><translation>3 months</translation></message>
+    <message><source>6 ay</source><translation>6 months</translation></message>
+    <message><source>1 yıl</source><translation>1 year</translation></message>
 </context>
 <context>
     <name>DjStateDialog</name>

@@ -187,9 +187,9 @@ Dialog {
                         valueText: DjKnobs.text(modelData, Player.options[modelData.key] ?? modelData.from)
                         onMoved: v => Player.setOption(modelData.key, Math.round(v))
                     }
-                    Repeater { model: DjKnobs.main; delegate: Knob {} }
+                    Repeater { model: DjKnobs.knobs.filter(k => k.kind !== "switch" && k.group !== "fine"); delegate: Knob {} }
                     Switch { id: advanced; objectName: "djAdvanced"; text: qsTr("Gelişmiş ayarlar"); enabled: Player.dj }
-                    Repeater { model: DjKnobs.advanced; delegate: Knob { visible: advanced.checked } }
+                    Repeater { model: DjKnobs.knobs.filter(k => k.group === "fine"); delegate: Knob { visible: advanced.checked } }
                     RowLayout {
                         Hint { text: qsTr("DJ ayarlarını ilk hâline getirir."); Layout.fillWidth: true }
                         Button { text: qsTr("Varsayılanlara dön"); icon.name: Util.icon("edit-undo"); onClicked: Player.resetDjSettings() }

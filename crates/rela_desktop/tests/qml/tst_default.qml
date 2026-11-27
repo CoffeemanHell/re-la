@@ -851,6 +851,15 @@ Item {
             verify(named(m.footer, "status").visible) // the status line no longer hides behind the notice
             compare(m.ToolTip.toolTip.contentItem.textFormat, Text.PlainText) // song names in tips: never markup
         }
+        function test_dj_knob_table() {
+            const k = DjKnobs.knobs.filter(e => e.key === "djMemoryDays")[0]
+            compare(DjKnobs.text(k, 60), "2 ay") // a preset is named by its length
+            verify(DjKnobs.isDefault(k, 60))
+            verify(!DjKnobs.isDefault(k, 63)) // a stored value between the steps: no preset, but the reset mark
+            compare(DjKnobs.text(k, 63), "63 gün")
+            verify(DjKnobs.isDefault(DjKnobs.knobs.filter(e => e.key === "djSkipOn")[0], undefined)) // a missing switch is on
+            compare(DjKnobs.of("memory").length, 4)
+        }
         function test_dj_why_in_queue() {
             const r = make(songRow, { inQueue: true, song: { id: "s1", title: "Song", artist: "A", djWhy: "Sürpriz" } })
             verify(F.text(r, "A  ·  Sürpriz"))

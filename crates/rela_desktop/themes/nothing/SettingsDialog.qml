@@ -174,12 +174,12 @@ Dialog {
                         value: (at - modelData.from) / (modelData.to - modelData.from)
                         onPicked: v => Player.setOption(modelData.key, modelData.from + Math.round(v * (modelData.to - modelData.from) / modelData.step) * modelData.step)
                     }
-                    Repeater { model: DjKnobs.main; delegate: Knob {} }
+                    Repeater { model: DjKnobs.knobs.filter(k => k.kind !== "switch" && k.group !== "fine"); delegate: Knob {} }
                     RowLayout {
                         Mono { text: qsTr("GELİŞMİŞ AYARLAR"); Layout.fillWidth: true }
                         Pill { id: advanced; objectName: "djAdvanced"; checkable: true; on: checked; enabled: Player.dj; text: checked ? qsTr("AÇIK") : qsTr("KAPALI") }
                     }
-                    Repeater { model: DjKnobs.advanced; delegate: Knob { visible: advanced.checked } }
+                    Repeater { model: DjKnobs.knobs.filter(k => k.group === "fine"); delegate: Knob { visible: advanced.checked } }
                     Hint { text: qsTr("DJ AYARLARINI İLK HÂLİNE GETİRİR.") }
                     RowLayout {
                         Item { Layout.fillWidth: true }

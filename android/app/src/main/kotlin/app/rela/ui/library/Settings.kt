@@ -191,7 +191,7 @@ private val djResets = androidx.compose.runtime.mutableIntStateOf(0)
 /** The DJ's settings page: mode, the knobs (the advanced ones folded), "more / less like this" list, state, reset. */
 private fun androidx.compose.foundation.lazy.LazyListScope.djPage(dj: Boolean, num: (String, Int) -> Int, set: (String, Any) -> Unit) {
     item { SwitchRow(str(R.string.dj_mode), str(R.string.dj_mode_hint), dj) { Rela.core?.setDj(it) } }
-    items(djMain, key = { it.key }) { k -> KnobRow(k, num(k.key, k.from), dj, set) }
+    items(djKnobs.filter { it.group != Knob.Group.FINE }, key = { it.key }) { k -> KnobRow(k, num(k.key, k.from), dj, set) }
     item { DjAdvanced(dj, num, set) }
     item {
         ListItem(
@@ -227,7 +227,7 @@ private fun DjAdvanced(dj: Boolean, num: (String, Int) -> Int, set: (String, Any
     var open by rememberSaveable { mutableStateOf(false) }
     Column {
         SwitchRow(str(R.string.dj_advanced), "", open, dj) { open = it }
-        if (open) djAdvanced.forEach { k -> KnobRow(k, num(k.key, k.from), dj, set) }
+        if (open) djKnobs.filter { it.group == Knob.Group.FINE }.forEach { k -> KnobRow(k, num(k.key, k.from), dj, set) }
     }
 }
 
