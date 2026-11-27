@@ -102,6 +102,8 @@ pub struct PlayerState {
     pub options_json: String,
     /// Android: "system", "light" or "dark" (the desktop keeps its theme folder name under the same key).
     pub theme: String,
+    /// {id, title} of a skip the DJ will count unless taken back, or null.
+    pub skip_undo_json: String,
 }
 
 #[derive(uniffi::Enum, Debug, Clone, PartialEq)]
@@ -208,6 +210,7 @@ fn player_state(s: &PlayerSnapshot) -> PlayerState {
         stream_info: s.stream_info.clone(),
         options_json: Value::Object(s.options.clone()).to_string(),
         theme: s.theme.clone(),
+        skip_undo_json: s.skip_undo.to_string(),
     }
 }
 
@@ -475,6 +478,17 @@ impl Core {
     }
     pub fn reset_dj_memory(&self) {
         self.player.call(|c| c.reset_dj_memory());
+    }
+    pub fn reset_dj_settings(&self) {
+        self.player.call(|c| c.reset_dj_settings());
+    }
+    /// "More like this" (1), "less like this" (-1), neither (0).
+    pub fn dj_feedback(&self, song_json: String, dir: i8) {
+        let song = serde_json::from_str(&song_json).unwrap_or(Value::Null);
+        self.player.call(move |c| c.dj_feedback(song, dir));
+    }
+    pub fn undo_skip(&self) {
+        self.player.call(|c| c.undo_skip());
     }
     pub fn demo(&self) {
         self.player.call(|c| c.demo());

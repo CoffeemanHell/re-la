@@ -106,7 +106,7 @@ fn main() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     builtin_themes(&root.join("themes"));
     build_date();
-    let qrc = resources(&root);
+    let qrc = resources(root);
     // re-la: Player (qml/Player.qml over the Rust PlayerCore), Sync, Subwave and App as singletons; Shell.qml is what
     // main loads first
     CxxQtBuilder::new_qml_module(

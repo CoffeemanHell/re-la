@@ -36,6 +36,7 @@ PlayerCore {
     function play(songs, start) { playJson(JSON.stringify(songs), start) } // replace the queue, play from start
     function add(songs, where) { addJson(JSON.stringify(songs), where) }   // 0 play now, 1 next, 2 end
     function setOption(key, value) { setOptionJson(key, JSON.stringify(value)) }
+    function djFeedback(song, dir) { djFeedbackJson(JSON.stringify(song), dir) } // DJ: 1 more like this, -1 less, 0 neither
     function download(id, file) { downloadTo(id, file.toString()) }        // song: original file, album / playlist: zip
 
     // Player.copy(text): the system clipboard, through a TextEdit (Qt's clipboard without any C++)
