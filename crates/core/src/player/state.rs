@@ -189,8 +189,8 @@ pub(super) fn queue_key(q: &[Value], i: i64) -> String {
     format!("{}|{i}", queue_hash(q))
 }
 
-pub(super) fn default_options() -> Map<String, Value> {
-    json!({
+pub(crate) fn default_options() -> Map<String, Value> {
+    let mut o = json!({
         "relayUrl": "",       // empty: <server>/re-with
         "radioLanguage": 80,  // % of radio picks in the seed's language
         "radioGenre": 50,     // seed genre preference
@@ -229,7 +229,10 @@ pub(super) fn default_options() -> Map<String, Value> {
     })
     .as_object()
     .cloned()
-    .unwrap()
+    .unwrap();
+    // the DJ's rules: dj::knobs::RANGES says what each one is
+    o.extend(crate::dj::knobs::RANGES.iter().map(|(k, def, ..)| (k.to_string(), Value::from(*def))));
+    o
 }
 
 pub struct PlayerCore {
@@ -1115,6 +1118,11 @@ impl PlayerCore {
     }
 
     /// Queue end: on = client-side picks, off = Navidrome's similar songs.
+    /// The DJ's numbers as the options set them now.
+    pub(super) fn knobs(&self) -> crate::dj::Knobs {
+        crate::dj::Knobs::from_options(&self.options)
+    }
+
     /// The DJ's brain for the signed-in account; another account's is saved and closed first.
     pub(super) fn dj_brain(&mut self) -> &mut Brain {
         let key = crate::disk::hashed(&format!("{}\n{}", self.login.server, self.login.user));
@@ -1133,9 +1141,9 @@ impl PlayerCore {
     /// Genre closeness from the index and memory as they are now, built off the player thread (a big or oddly
     /// tagged library takes a while). It lands only if this account's brain is still open and nothing newer was asked.
     pub(super) fn dj_rebuild_genres(&mut self) {
-        let day = crate::dj::memory::day(self.clock_ms);
+        let (day, k) = (crate::dj::memory::day(self.clock_ms), self.knobs());
         let Some((key, b)) = self.brain.as_ref() else { return };
-        let build = b.genres_later(day);
+        let build = b.genres_later(day, &k);
         self.genres_seq += 1;
         let (key, seq) = (key.clone(), self.genres_seq);
         self.jobs.push(Job::Work {
@@ -1167,10 +1175,11 @@ impl PlayerCore {
         let id = text(&song["id"]);
         let (pos, dur) = (self.position(), self.duration());
         let wave = crate::waveform::cached(&self.cache_dir.join("waveforms"), &self.login.server, &id);
-        let h = classify(pos, dur, natural, wave.as_ref().map(|w| w.rms.as_slice()));
+        let k = self.knobs();
+        let h = classify(pos, dur, natural, wave.as_ref().map(|w| w.rms.as_slice()), &k);
         let ratio = if dur > 0.0 { pos / dur } else { 0.0 };
         let (now, day) = (self.clock_ms, crate::dj::memory::day(self.clock_ms));
-        if self.held_skip.as_ref().is_some_and(|h| now - h.2 > 90_000.0) {
+        if self.held_skip.as_ref().is_some_and(|h| now - h.2 > k.search_ms) {
             self.dj_flush_held(); // no search came of it
         }
         let b = self.dj_brain();
@@ -1178,18 +1187,18 @@ impl PlayerCore {
             b.index.upsert(&song, day);
         }
         let Some(s) = b.index.get(&id).cloned() else { return false };
-        let was = b.session.searching(now);
-        let caught = b.session.hear(&s, h, now, ratio, &b.genres, &b.index);
-        let searching = b.session.searching(now);
+        let was = b.session.searching(now, &k);
+        let caught = b.session.hear(&s, h, now, ratio, &b.genres, &b.index, &k);
+        let searching = b.session.searching(now, &k);
         if searching {
             self.held_skip = None; // it was the start of a search: skips while looking for something else do not count
         } else if h == Heard::EarlySkip {
             if self.held_skip.is_some() {
                 self.dj_flush_held();
             }
-            self.held_skip = Some((id.clone(), day, now)); // counts once 90 s pass without a search
+            self.held_skip = Some((id.clone(), day, now)); // counts once search_ms pass without a search
         } else {
-            b.memory.record(&id, h, day);
+            b.memory.record(&id, h, day, &k);
         }
         let last_full = std::mem::take(&mut self.last_full); // after dj_brain: another account's is gone
         let b = self.dj_brain();
@@ -1197,7 +1206,7 @@ impl PlayerCore {
         if h == Heard::Full {
             for a in &last_full {
                 for g in genres.iter().filter(|g| *g != a) {
-                    b.memory.record_pair(a, g, day);
+                    b.memory.record_pair(a, g, day, &k);
                 }
             }
         }
@@ -1212,8 +1221,9 @@ impl PlayerCore {
     }
 
     pub(super) fn dj_flush_held(&mut self) {
+        let k = self.knobs();
         if let (Some((id, day, _)), Some((_, b))) = (self.held_skip.take(), self.brain.as_mut()) {
-            b.memory.record(&id, Heard::EarlySkip, day);
+            b.memory.record(&id, Heard::EarlySkip, day, &k);
         }
     }
 

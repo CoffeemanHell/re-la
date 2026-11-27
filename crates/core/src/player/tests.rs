@@ -1,5 +1,6 @@
 //! The player logic against a fake deck, a fake relay and canned Subsonic answers.
 use super::*;
+use crate::dj::Knobs;
 use crate::sync::SyncEvent;
 use md5::Digest;
 use crate::settings::{JsonSettings, Settings};
@@ -1624,7 +1625,7 @@ fn dj_memory(t: &mut T) -> &crate::dj::memory::Memory {
 
 fn skip_of(t: &mut T, id: &str) -> f32 {
     let day = crate::dj::memory::day(t.c.clock_ms);
-    dj_memory(t).skip(id, day)
+    dj_memory(t).skip(id, day, &Knobs::default())
 }
 
 #[test]
@@ -1656,7 +1657,7 @@ fn quit_saves_memory_and_a_held_skip() {
     let m = crate::dj::memory::Memory::open(file);
     let day = crate::dj::memory::day(t.c.clock_ms);
     assert!(m.last_heard("s0").is_some());
-    assert_eq!(m.skip("s1", day), 1.0);
+    assert_eq!(m.skip("s1", day, &Knobs::default()), 1.0);
 }
 
 // a listener in the room pressing next is not the root skipping
@@ -1671,7 +1672,7 @@ fn follower_next_learns_nothing() {
     t.c.on_sync(&SyncEvent::CommandReceived { op: "next".into(), args: json!({}) });
     assert_eq!(t.current(), "s2");
     let now = t.c.clock_ms;
-    assert!(!t.c.dj_brain().session.searching(now));
+    assert!(!t.c.dj_brain().session.searching(now, &Knobs::default()));
     t.advance(120_000.0);
     t.at(195.0);
     t.c.next();
@@ -1712,7 +1713,7 @@ fn full_listen_learns_and_streak_does_not() {
         t.c.next();
     }
     let now = t.c.clock_ms;
-    assert!(t.c.dj_brain().session.searching(now));
+    assert!(t.c.dj_brain().session.searching(now, &Knobs::default()));
     t.advance(120_000.0);
     t.at(195.0);
     t.c.next();
@@ -1741,7 +1742,7 @@ fn catch_refills() {
     t.at(110.0); // more than half of s2: it holds the listener
     t.c.next();
     let now = t.c.clock_ms;
-    assert!(!t.c.dj_brain().session.searching(now));
+    assert!(!t.c.dj_brain().session.searching(now, &Knobs::default()));
     assert!(t.c.extend_seq > seq, "picks made while searching make way");
 }
 

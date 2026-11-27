@@ -1,20 +1,19 @@
-//! What this listener did with each song over the months: skips that fade (half-life 60 days), the day last heard, and
+//! What this listener did with each song over the months: skips that fade (half-life `Knobs::memory_days`), the day last heard, and
 //! which genres were heard back to back. On disk as JSON.
 
+use crate::dj::Knobs;
 use crate::dj::listen::Heard;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-
-const HALF_LIFE_DAYS: f32 = 60.0;
 
 /// Days since 1970 of a wall clock in ms.
 pub fn day(clock_ms: f64) -> u32 {
     (clock_ms / 86_400_000.0).max(0.0) as u32
 }
 
-fn faded(v: f32, from: u32, to: u32) -> f32 {
-    v * 0.5f32.powf(to.saturating_sub(from) as f32 / HALF_LIFE_DAYS)
+fn faded(v: f32, from: u32, to: u32, k: &Knobs) -> f32 {
+    v * 0.5f32.powf(to.saturating_sub(from) as f32 / k.memory_days)
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -57,12 +56,12 @@ impl Memory {
         Memory { path, file, dirty: false }
     }
 
-    pub fn record(&mut self, id: &str, h: Heard, day: u32) {
+    pub fn record(&mut self, id: &str, h: Heard, day: u32, k: &Knobs) {
         if h == Heard::Neutral {
             return;
         }
         let e = self.file.songs.entry(id.to_string()).or_default();
-        e.skip = faded(e.skip, e.skip_day, day);
+        e.skip = faded(e.skip, e.skip_day, day, k);
         e.skip_day = day;
         match h {
             Heard::EarlySkip => {
@@ -85,14 +84,14 @@ impl Memory {
         self.dirty = true;
     }
 
-    /// Skipped early again and again, on two days at least; fades back out over the months.
-    pub fn disliked(&self, id: &str, day: u32) -> bool {
-        self.file.songs.get(id).is_some_and(|e| e.skip_days >= 2 && faded(e.skip, e.skip_day, day) >= 3.0)
+    /// Skipped early again and again, on more than one day; fades back out over the months.
+    pub fn disliked(&self, id: &str, day: u32, k: &Knobs) -> bool {
+        self.file.songs.get(id).is_some_and(|e| e.skip_days >= k.dislike_days && faded(e.skip, e.skip_day, day, k) >= k.dislike_skips)
     }
 
     /// The faded early-skip count.
-    pub fn skip(&self, id: &str, day: u32) -> f32 {
-        self.file.songs.get(id).map_or(0.0, |e| faded(e.skip, e.skip_day, day))
+    pub fn skip(&self, id: &str, day: u32, k: &Knobs) -> f32 {
+        self.file.songs.get(id).map_or(0.0, |e| faded(e.skip, e.skip_day, day, k))
     }
 
     pub fn last_heard(&self, id: &str) -> Option<u32> {
@@ -104,21 +103,21 @@ impl Memory {
     }
 
     /// Two genres heard in full one after the other.
-    pub fn record_pair(&mut self, a: &str, b: &str, day: u32) {
+    pub fn record_pair(&mut self, a: &str, b: &str, day: u32, k: &Knobs) {
         let p = self.file.pairs.entry(Self::pair_key(a, b)).or_default();
-        p.n = faded(p.n, p.day, day) + 1.0;
+        p.n = faded(p.n, p.day, day, k) + 1.0;
         p.day = day;
         self.dirty = true;
     }
 
     /// (a, b, faded count) with a <= b.
-    pub fn pairs(&self, day: u32) -> Vec<(String, String, f32)> {
+    pub fn pairs(&self, day: u32, k: &Knobs) -> Vec<(String, String, f32)> {
         self.file
             .pairs
             .iter()
-            .filter_map(|(k, p)| {
-                let (a, b) = k.split_once('\n')?;
-                Some((a.to_string(), b.to_string(), faded(p.n, p.day, day)))
+            .filter_map(|(key, p)| {
+                let (a, b) = key.split_once('\n')?;
+                Some((a.to_string(), b.to_string(), faded(p.n, p.day, day, k)))
             })
             .collect()
     }
@@ -149,6 +148,10 @@ mod tests {
     use super::*;
     use crate::dj::listen::Heard::*;
 
+    fn kn() -> Knobs {
+        Knobs::default()
+    }
+
     fn tmp(name: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("re-la-djmem-{}-{name}", std::process::id()));
         let _ = std::fs::remove_dir_all(&d);
@@ -158,7 +161,7 @@ mod tests {
 
     fn two_days(m: &mut Memory) {
         for d in [1, 1, 2, 2] {
-            m.record("x", EarlySkip, d);
+            m.record("x", EarlySkip, d, &kn());
         }
     }
 
@@ -172,7 +175,7 @@ mod tests {
         std::fs::write(p.with_extension("tmp"), b"{}").unwrap(); // left by a write that died
         m.clear();
         assert!(!p.with_extension("tmp").exists());
-        assert!(Memory::open(p).skip("x", 2) == 0.0);
+        assert!(Memory::open(p).skip("x", 2, &kn()) == 0.0);
     }
 
     // listening history: the owner's alone
@@ -191,18 +194,18 @@ mod tests {
     fn one_bad_day() {
         let mut m = Memory::open(tmp("bad"));
         for _ in 0..5 {
-            m.record("x", EarlySkip, 1);
+            m.record("x", EarlySkip, 1, &kn());
         }
-        assert!(!m.disliked("x", 1));
+        assert!(!m.disliked("x", 1, &kn()));
     }
 
     #[test]
     fn two_days_dislike_then_forget() {
         let mut m = Memory::open(tmp("two"));
         two_days(&mut m);
-        assert!(m.disliked("x", 2));
-        assert!(!m.disliked("x", 2 + 120));
-        assert!(!m.disliked("other", 2));
+        assert!(m.disliked("x", 2, &kn()));
+        assert!(!m.disliked("x", 2 + 120, &kn()));
+        assert!(!m.disliked("other", 2, &kn()));
     }
 
     // a dislike that faded away does not come back from one bad evening months later
@@ -211,35 +214,35 @@ mod tests {
         let mut m = Memory::open(tmp("old"));
         two_days(&mut m);
         for _ in 0..3 {
-            m.record("x", EarlySkip, 300);
+            m.record("x", EarlySkip, 300, &kn());
         }
-        assert!(!m.disliked("x", 300));
+        assert!(!m.disliked("x", 300, &kn()));
     }
 
     #[test]
     fn full_listen_heals() {
         let mut m = Memory::open(tmp("heal"));
         two_days(&mut m);
-        m.record("x", Full, 2);
-        m.record("x", Full, 2);
-        assert!(!m.disliked("x", 2));
+        m.record("x", Full, 2, &kn());
+        m.record("x", Full, 2, &kn());
+        assert!(!m.disliked("x", 2, &kn()));
     }
 
     #[test]
     fn skip_count() {
         let mut m = Memory::open(tmp("skip"));
-        m.record("x", EarlySkip, 0);
-        assert_eq!(m.skip("x", 0), 1.0);
-        assert!((m.skip("x", 60) - 0.5).abs() < 1e-4);
-        assert_eq!(m.skip("y", 0), 0.0);
+        m.record("x", EarlySkip, 0, &kn());
+        assert_eq!(m.skip("x", 0, &kn()), 1.0);
+        assert!((m.skip("x", 60, &kn()) - 0.5).abs() < 1e-4);
+        assert_eq!(m.skip("y", 0, &kn()), 0.0);
     }
 
     #[test]
     fn last_heard() {
         let mut m = Memory::open(tmp("heard"));
-        m.record("x", Full, 7);
-        m.record("x", Neutral, 9);
-        m.record("x", EarlySkip, 10);
+        m.record("x", Full, 7, &kn());
+        m.record("x", Neutral, 9, &kn());
+        m.record("x", EarlySkip, 10, &kn());
         assert_eq!(m.last_heard("x"), Some(7));
         assert_eq!(m.last_heard("y"), None);
     }
@@ -247,12 +250,12 @@ mod tests {
     #[test]
     fn pairs_decay() {
         let mut m = Memory::open(tmp("pairs"));
-        m.record_pair("Rock", "Metal", 0);
-        m.record_pair("Metal", "Rock", 0);
-        let at = |m: &Memory, d| m.pairs(d).iter().find(|p| p.0 == "Metal" && p.1 == "Rock").map(|p| p.2).unwrap();
+        m.record_pair("Rock", "Metal", 0, &kn());
+        m.record_pair("Metal", "Rock", 0, &kn());
+        let at = |m: &Memory, d| m.pairs(d, &kn()).iter().find(|p| p.0 == "Metal" && p.1 == "Rock").map(|p| p.2).unwrap();
         assert!((at(&m, 0) - 2.0).abs() < 1e-4);
         assert!((at(&m, 60) - 1.0).abs() < 1e-3);
-        assert_eq!(m.pairs(0).len(), 1);
+        assert_eq!(m.pairs(0, &kn()).len(), 1);
     }
 
     #[test]
@@ -260,13 +263,13 @@ mod tests {
         let p = tmp("round");
         let mut m = Memory::open(p.clone());
         two_days(&mut m);
-        m.record("y", Full, 3);
-        m.record_pair("A", "B", 3);
+        m.record("y", Full, 3, &kn());
+        m.record_pair("A", "B", 3, &kn());
         m.save().unwrap();
         let m = Memory::open(p);
-        assert!(m.disliked("x", 2));
+        assert!(m.disliked("x", 2, &kn()));
         assert_eq!(m.last_heard("y"), Some(3));
-        assert_eq!(m.pairs(3).len(), 1);
+        assert_eq!(m.pairs(3, &kn()).len(), 1);
     }
 
     #[test]
@@ -275,7 +278,7 @@ mod tests {
         std::fs::write(&p, "{nope").unwrap();
         let mut m = Memory::open(p.clone());
         assert!(m.last_heard("x").is_none());
-        m.record("x", Full, 1);
+        m.record("x", Full, 1, &kn());
         m.save().unwrap();
         let v: serde_json::Value = serde_json::from_slice(&std::fs::read(&p).unwrap()).unwrap();
         assert_eq!(v["v"], 1);
@@ -286,12 +289,32 @@ mod tests {
         let mut m = Memory::open(tmp("clear"));
         two_days(&mut m);
         m.clear();
-        assert!(!m.disliked("x", 2));
+        assert!(!m.disliked("x", 2, &kn()));
     }
 
     #[test]
     fn day_of_clock() {
         assert_eq!(day(0.0), 0);
         assert_eq!(day(86_400_000.0 * 3.5), 3);
+    }
+
+    // a new threshold judges skips already on record
+    #[test]
+    fn dislike_threshold_applies_to_old_skips() {
+        let mut m = Memory::open(tmp("threshold"));
+        let k = Knobs::default();
+        for d in [1, 1, 2, 2] {
+            m.record("x", EarlySkip, d, &k);
+        }
+        assert!(m.disliked("x", 2, &k));
+        assert!(!m.disliked("x", 2, &Knobs { dislike_skips: 5.0, ..Knobs::default() }));
+    }
+
+    #[test]
+    fn memory_days_sets_half_life() {
+        let mut m = Memory::open(tmp("half-life"));
+        let k = Knobs { memory_days: 30.0, ..Knobs::default() };
+        m.record("x", EarlySkip, 0, &k);
+        assert!((m.skip("x", 30, &k) - 0.5).abs() < 1e-4);
     }
 }

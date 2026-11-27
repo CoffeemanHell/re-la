@@ -1,10 +1,12 @@
 //! The DJ: picks for the queue end from what this listener plays, skips and keeps.
+pub mod knobs;
 pub mod listen;
 pub mod genres;
 pub mod index;
 pub mod memory;
 pub mod session;
 
+pub use knobs::Knobs;
 use genres::{Genres, UserGenres};
 use index::{Index, Song};
 use memory::Memory;
@@ -24,9 +26,9 @@ pub struct Brain {
 
 impl Brain {
     /// The index (rebuildable) under `cache`, the memory and the listener's genre file under `data`.
-    pub fn open(cache: &Path, data: &Path, day: u32) -> Brain {
+    pub fn open(cache: &Path, data: &Path, day: u32, k: &Knobs) -> Brain {
         let mut b = Brain::open_lazy(cache, data);
-        b.rebuild_genres(day);
+        b.rebuild_genres(day, k);
         b
     }
 
@@ -38,13 +40,13 @@ impl Brain {
         Brain { index, memory, genres: Genres::default(), session: Session::default(), user }
     }
 
-    pub fn rebuild_genres(&mut self, day: u32) {
-        self.genres = self.genres_later(day)();
+    pub fn rebuild_genres(&mut self, day: u32, k: &Knobs) {
+        self.genres = self.genres_later(day, k)();
     }
 
     /// Builds genre closeness from a copy of what it needs now, on whatever thread calls it.
-    pub fn genres_later(&self, day: u32) -> impl FnOnce() -> Genres + Send + 'static {
-        let (index, pairs, user) = (self.index.genre_view(), self.memory.pairs(day), self.user.clone());
+    pub fn genres_later(&self, day: u32, k: &Knobs) -> impl FnOnce() -> Genres + Send + 'static {
+        let (index, pairs, user) = (self.index.genre_view(), self.memory.pairs(day, k), self.user.clone());
         move || Genres::build(&index, &pairs, &user)
     }
 }
@@ -53,17 +55,6 @@ impl Drop for Brain {
     fn drop(&mut self) {
         let _ = self.memory.save();
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Weights {
-    /// % of each batch in the seed's language (when one is known)
-    pub language: i32,
-    /// how strongly to stay close to what plays, 0-100
-    pub genre: i32,
-    /// % of each batch kept for new or rarely played songs
-    pub explore: i32,
-    pub batch: i32,
 }
 
 /// Slots of a batch: (exploring, wildcard, normal). Searching doubles the exploring share. Fractions are rounded by
@@ -155,16 +146,16 @@ impl Taste {
 }
 
 /// The sitting's taste, or one made from the last songs when nothing was heard yet.
-fn taste_now<'a>(brain: &'a Brain, history: &[Value], tmp: &'a mut Session) -> &'a Session {
+fn taste_now<'a>(brain: &'a Brain, history: &[Value], tmp: &'a mut Session, k: &Knobs) -> &'a Session {
     if !brain.session.is_empty() {
         return &brain.session;
     }
     let recent: Vec<&Song> = history.iter().rev().take(5).rev().filter_map(|m| brain.index.get(text(&m["id"]))).collect();
-    tmp.seed(&recent, &brain.genres, &brain.index);
+    tmp.seed(&recent, &brain.genres, &brain.index, k);
     tmp
 }
 
-/// Picks up to w.batch new songs from `pool` to continue `history` (the queue up to the current song) after
+/// Picks up to k.batch new songs from `pool` to continue `history` (the queue up to the current song) after
 /// `upcoming` (the rest of it). Songs in `similar` came from getSimilarSongs. Pool and history go into the index first.
 /// An artist is picked at most twice counting the last 10 songs and those coming up.
 #[allow(clippy::too_many_arguments)]
@@ -174,7 +165,7 @@ pub fn pick(
     history: &[Value],
     upcoming: &[Value],
     similar: &HashSet<String>,
-    w: &Weights,
+    k: &Knobs,
     searching: bool,
     day: u32,
     rng: &mut fastrand::Rng,
@@ -191,7 +182,7 @@ pub fn pick(
     let brain = &*brain;
     let ix = &brain.index;
     let mut tmp = Session::default();
-    let session = taste_now(brain, history, &mut tmp);
+    let session = taste_now(brain, history, &mut tmp, k);
     let taste = Taste::of(ix);
 
     // seed language: the most common among the last 5 songs
@@ -214,7 +205,7 @@ pub fn pick(
         fresh: bool,
         same_lang: bool,
     }
-    let fit_k = 0.5 + f64::from(w.genre.clamp(0, 100)) / 100.0;
+    let fit_k = 0.5 + f64::from(k.genre.clamp(0, 100)) / 100.0;
     let mut seen = HashSet::new();
     let mut cands: Vec<C> = vec![];
     for m in pool {
@@ -234,14 +225,14 @@ pub fn pick(
             Some(d) if d < 7 => score -= 0.4,
             _ => {}
         }
-        if brain.memory.disliked(id, day) {
+        if brain.memory.disliked(id, day, k) {
             score = disliked_score(score);
         }
         cands.push(C { song: m, artists: performers(m), score, fresh: fresh(s, day), same_lang: seed_lang != 0 && ix.lang(s) == seed_lang });
     }
 
-    let (n_explore, n_joker, _) = slots(w.batch, w.explore, searching, rng); // normal picks fill the rest
-    let quota = if seed_lang == 0 { 0 } else { (f64::from(w.batch.max(0) * w.language.clamp(0, 100)) / 100.0).round() as usize };
+    let (n_explore, n_joker, _) = slots(k.batch, k.explore, searching, rng); // normal picks fill the rest
+    let quota = if seed_lang == 0 { 0 } else { (f64::from(k.batch.max(0) * k.language.clamp(0, 100)) / 100.0).round() as usize };
     struct Draw {
         used: Vec<bool>,
         per_artist: HashMap<String, i32>,
@@ -310,7 +301,7 @@ pub fn pick(
     for _ in 0..n_joker {
         chosen.extend(draw(1, &cands, &mut d, rng));
     }
-    while chosen.len() < w.batch.max(0) as usize {
+    while chosen.len() < k.batch.max(0) as usize {
         match draw(2, &cands, &mut d, rng) {
             Some(i) => chosen.push(i),
             None => break,
@@ -323,15 +314,15 @@ pub fn pick(
 
 /// Ids from the index worth adding to the pool: up to 2·batch new or barely played songs and 2·batch others, those
 /// that fit this sitting best (with some chance). None when the index is empty.
-pub fn extra_ids(brain: &Brain, history: &[Value], w: &Weights, _searching: bool, day: u32, rng: &mut fastrand::Rng) -> Vec<String> {
+pub fn extra_ids(brain: &Brain, history: &[Value], k: &Knobs, _searching: bool, day: u32, rng: &mut fastrand::Rng) -> Vec<String> {
     let ix = &brain.index;
     if ix.is_empty() {
         return vec![];
     }
     let mut tmp = Session::default();
-    let session = taste_now(brain, history, &mut tmp);
+    let session = taste_now(brain, history, &mut tmp, k);
     let have: HashSet<&str> = history.iter().map(|m| text(&m["id"])).collect();
-    let n = 2 * w.batch.max(0) as usize;
+    let n = 2 * k.batch.max(0) as usize;
     let mut new: Vec<(f32, &str)> = vec![];
     let mut old: Vec<(f32, &str)> = vec![];
     for s in &ix.songs {
@@ -358,15 +349,15 @@ mod tests {
 
     fn brain() -> Brain {
         let d = std::env::temp_dir().join(format!("re-la-djpick-{}-{}", std::process::id(), fastrand::u64(..)));
-        Brain::open(&d.join("cache"), &d.join("data"), DAY)
+        Brain::open(&d.join("cache"), &d.join("data"), DAY, &Knobs::default())
     }
 
     fn song(id: &str, title: &str, artist: &str, genre: &str) -> Value {
         json!({"id": id, "title": title, "artist": artist, "genre": genre, "playCount": 5, "created": "2020-01-01T00:00:00Z"})
     }
 
-    fn w(language: i32, explore: i32, batch: i32) -> Weights {
-        Weights { language, genre: 50, explore, batch }
+    fn w(language: i32, explore: i32, batch: i32) -> Knobs {
+        Knobs { language, explore, batch, ..Knobs::default() }
     }
 
     fn ids(v: &[Value]) -> Vec<String> {
@@ -428,7 +419,7 @@ mod tests {
             let mut b = brain();
             if disliked {
                 for d in [DAY - 1, DAY - 1, DAY, DAY] {
-                    b.memory.record("x", listen::Heard::EarlySkip, d);
+                    b.memory.record("x", listen::Heard::EarlySkip, d, &Knobs::default());
                 }
             }
             let mut rng = fastrand::Rng::with_seed(7);
@@ -464,7 +455,7 @@ mod tests {
         let history = vec![song("h", "S", "H", "Qqg")];
         let pool = vec![song("a", "S", "A", "Qqg"), song("b", "S", "B", "Qqg")];
         let mut b = brain();
-        b.memory.record("a", listen::Heard::Full, DAY - 1);
+        b.memory.record("a", listen::Heard::Full, DAY - 1, &Knobs::default());
         let mut rng = fastrand::Rng::with_seed(5);
         let (mut a, mut bb) = (0, 0);
         for _ in 0..1000 {
@@ -577,13 +568,13 @@ mod tests {
             );
         }
         for i in 0..5000 {
-            b.memory.record(&format!("song-{i:08}-abcdef"), if i % 3 == 0 { listen::Heard::EarlySkip } else { listen::Heard::Full }, DAY - (i % 90) as u32);
+            b.memory.record(&format!("song-{i:08}-abcdef"), if i % 3 == 0 { listen::Heard::EarlySkip } else { listen::Heard::Full }, DAY - (i % 90) as u32, &Knobs::default());
         }
         for i in 0..2000 {
-            b.memory.record_pair(&genre(i), &genre(i + 1), DAY);
+            b.memory.record_pair(&genre(i), &genre(i + 1), DAY, &Knobs::default());
         }
         let t = Instant::now();
-        let later = b.genres_later(DAY);
+        let later = b.genres_later(DAY, &Knobs::default());
         let copy = t.elapsed();
         b.genres = later();
         let build = t.elapsed() - copy;
