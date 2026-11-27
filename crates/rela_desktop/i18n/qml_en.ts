@@ -96,6 +96,7 @@
 </context>
 <context>
     <name>DjKnobs</name>
+    <message><source>%%1</source><translation>%1%</translation></message>
     <message><source>Dil bağlılığı</source><translation>Language affinity</translation></message>
     <message><source>Eklenen şarkıların ne kadarı çalan şarkıyla aynı dilde olsun. Türkçe bir şarkıdan başlarsan %80 → 10 şarkının 8&apos;i Türkçe.</source><translation>How many of the added songs share the playing song&apos;s language. Start from a Turkish song at 80% → 8 of 10 songs are Turkish.</translation></message>
     <message><source>Benzerlik gücü</source><translation>Similarity strength</translation></message>
@@ -678,6 +679,7 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>HENÜZ YOK. BİR ŞARKININ MENÜSÜNDEN &quot;BUNUN GİBİ DAHA ÇOK&quot; YA DA &quot;BUNU DAHA AZ ÇAL&quot; DİYEBİLİRSİN.</source><translation>NONE YET. A SONG&apos;S MENU HAS &quot;MORE LIKE THIS&quot; AND &quot;LESS LIKE THIS&quot;.</translation></message>
     <message><source>DAHA ÇOK</source><translation>MORE</translation></message>
     <message><source>DAHA AZ</source><translation>LESS</translation></message>
+    <message><source>%1 · %2</source><translation>%1 · %2</translation></message>
     <message><source>KALDIR</source><translation>REMOVE</translation></message>
     <message><source>DJ&apos;NİN SON SEÇİMDE TARTTIĞI ŞARKILAR VE PUANLARI.</source><translation>THE SONGS THE DJ WEIGHED FOR ITS LAST PICK, WITH THEIR SCORES.</translation></message>
     <message><source>DJ DURUMU</source><translation>DJ STATE</translation></message>

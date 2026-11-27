@@ -597,6 +597,7 @@ Item {
             tryVerify(() => F.text(m.footer, trUp("Atlama eksi sayılacak")) !== null)
             F.text(m.footer, trUp("Geri al")).clicked()
             compare(Player.called("undoSkip").length, 1)
+            compare(m.ToolTip.toolTip.contentItem.textFormat, Text.PlainText) // song names in tips: never markup
         }
         function test_dj_why_in_queue() {
             const r = make(songRow, { inQueue: true, song: { id: "s1", title: "Song", artist: "A", djWhy: "Sürpriz" } })

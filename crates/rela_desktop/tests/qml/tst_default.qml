@@ -42,6 +42,7 @@ Item {
     Component { id: songRow; SongRow { index: 0; song: ({ id: "s1", title: "Song" }) } }
     Component { id: playlistPage; PlaylistPage {} }
     Component { id: mainWindow; Main {} }
+    Component { id: djDataComp; DjData {} }
     Component { id: stars; Stars {} }
     Component { id: heart; Heart {} }
     Component { id: share; Share {} }
@@ -810,6 +811,17 @@ Item {
             compare(c[c.length - 1][1].id, "x1")
             compare(c[c.length - 1][2], 0)
         }
+        // a list read before a choice comes back after it: the choice stays
+        function test_dj_data_keeps_a_newer_choice() {
+            Player.replies = { djFeedback: [] }
+            Player.hold = true
+            const dj = createTemporaryObject(djDataComp, win.contentItem)
+            dj.refreshFeedback()
+            dj.toggle({ id: "x1", title: "X" }, 1)
+            Player.release()
+            wait(0)
+            compare(dj.dirOf("x1"), 1)
+        }
         function test_dj_state_dialog_rows() {
             Player.replies = { djState: { searching: false, seed: { title: "S", artist: "A" }, session: [{ tag: "Rock", weight: 1.2 }], rows: [
                 { id: "a", title: "Picked One", artist: "A", total: 2.1, fit: 1, taste: 0.5, similar: 0.8, fresh: 0.1, recent: -0.3, feedback: 0, disliked: false, skip: 0, lastHeardDays: null, why: "S şarkısına benzer", picked: "normal" },
@@ -830,6 +842,7 @@ Item {
             tryVerify(() => F.text(m.footer, "Atlama eksi sayılacak") !== null)
             F.text(m.footer, "Geri al").clicked()
             compare(Player.called("undoSkip").length, 1)
+            compare(m.ToolTip.toolTip.contentItem.textFormat, Text.PlainText) // song names in tips: never markup
         }
         function test_dj_why_in_queue() {
             const r = make(songRow, { inQueue: true, song: { id: "s1", title: "Song", artist: "A", djWhy: "Sürpriz" } })

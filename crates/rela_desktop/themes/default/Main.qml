@@ -425,6 +425,7 @@ ApplicationWindow {
         })
     }
     Component.onCompleted: {
+        if (ToolTip.toolTip.contentItem) ToolTip.toolTip.contentItem.textFormat = Text.PlainText // tips carry song names: never markup
         for (const item of [contentItem, header, footer, Overlay.overlay]) followStyle(item) // header, footer, popups sit beside the content
         geoReady = true
         start()

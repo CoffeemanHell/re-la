@@ -1880,6 +1880,18 @@ fn less_like_this_skips_without_penalty() {
     assert!(t.c.held_skip.is_none());
 }
 
+// "less like this" near the end: the advance it makes is no full listen
+#[test]
+fn less_like_this_at_the_end_is_no_listen() {
+    let mut t = T::new("dj-less-end");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(195.0);
+    t.c.dj_feedback(song("s0"), -1);
+    assert_eq!(t.c.idx, 1);
+    assert!(dj_memory(&mut t).last_heard("s0").is_none());
+}
+
 // the list is saved data: it shows before anything opened the DJ this run (DJ off, offline start)
 #[test]
 fn feedback_list_before_the_dj_opens() {
@@ -1961,6 +1973,52 @@ fn undo_notice_expires() {
     t.c.tick();
     assert!(t.c.snapshot().skip_undo.is_null());
     t.c.undo_skip(); // too late: the notice is gone
+    t.advance(100_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 1.0, "the skip still counts");
+}
+
+// "more like this" between the skip and its undo stays
+#[test]
+fn undo_keeps_later_feedback() {
+    let mut t = T::new("dj-undo-feedback");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    let mut b = song("x1");
+    b["artist"] = "B".into();
+    t.c.dj_feedback(b, 1);
+    t.c.undo_skip();
+    let br = t.c.dj_brain();
+    let a = br.index.word_id("B").unwrap();
+    assert!(br.session.weight(crate::dj::session::Tag::Artist(a)) > 0.0);
+}
+
+// a station started after the skip: its ticks still take the notice down
+#[test]
+fn undo_notice_expires_on_a_station() {
+    let mut t = T::new("dj-undo-station");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    t.c.station.insert("id".into(), json!("st"));
+    t.advance(8_100.0);
+    t.c.tick();
+    assert!(t.c.snapshot().skip_undo.is_null());
+}
+
+// no tick came in time: a late undo still takes nothing back
+#[test]
+fn late_undo_does_nothing() {
+    let mut t = T::new("dj-undo-late");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    t.advance(8_100.0);
+    t.c.undo_skip();
     t.advance(100_000.0);
     t.c.tick();
     assert_eq!(skip_of(&mut t, "s0"), 1.0, "the skip still counts");

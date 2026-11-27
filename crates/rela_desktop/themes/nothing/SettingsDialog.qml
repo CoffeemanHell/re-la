@@ -198,7 +198,10 @@ Dialog {
                             ColumnLayout {
                                 Layout.fillWidth: true; spacing: 2
                                 Mono { text: (fb.modelData.title || "").toUpperCase(); elide: Text.ElideRight; Layout.fillWidth: true }
-                                Hint { text: (fb.modelData.dir > 0 ? qsTr("DAHA ÇOK") : qsTr("DAHA AZ")) + (fb.modelData.artist ? " · " + fb.modelData.artist.toUpperCase() : "") }
+                                Hint {
+                                    readonly property string dir: fb.modelData.dir > 0 ? qsTr("DAHA ÇOK") : qsTr("DAHA AZ")
+                                    text: fb.modelData.artist ? qsTr("%1 · %2").arg(dir).arg(fb.modelData.artist.toUpperCase()) : dir
+                                }
                             }
                             Pill { objectName: "fbRemove_" + fb.modelData.id; text: qsTr("KALDIR"); onClicked: d.dj.toggle(fb.modelData, fb.modelData.dir) }
                         }

@@ -185,6 +185,9 @@ private fun CoverCacheRow() {
     )
 }
 
+/** Bumped when the DJ memory is reset, so the "more / less like this" list reloads (the reset clears it). */
+private val djResets = androidx.compose.runtime.mutableIntStateOf(0)
+
 /** The DJ's settings page: mode, the knobs (the advanced ones folded), "more / less like this" list, state, reset. */
 private fun androidx.compose.foundation.lazy.LazyListScope.djPage(dj: Boolean, num: (String, Int) -> Int, set: (String, Any) -> Unit) {
     item { SwitchRow(str(R.string.dj_mode), str(R.string.dj_mode_hint), dj) { Rela.core?.setDj(it) } }
@@ -210,7 +213,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.djPage(dj: Boolean, n
         ListItem(
             headlineContent = { Text(str(R.string.dj_memory)) },
             supportingContent = { Text(str(R.string.dj_memory_hint)) },
-            trailingContent = { OutlinedButton({ Rela.core?.resetDjMemory() }) { Text(str(R.string.reset)) } },
+            trailingContent = { OutlinedButton({ Rela.core?.resetDjMemory(); djResets.intValue++ }) { Text(str(R.string.reset)) } },
         )
     }
 }
@@ -232,7 +235,7 @@ private fun DjAdvanced(dj: Boolean, num: (String, Int) -> Int, set: (String, Any
 @Composable
 private fun DjFeedbackList() {
     var list by remember { mutableStateOf<List<kotlinx.serialization.json.JsonObject>>(emptyList()) }
-    LaunchedEffect(Unit) { list = (Rela.local("djFeedback") as? kotlinx.serialization.json.JsonArray)?.mapNotNull { it as? kotlinx.serialization.json.JsonObject } ?: emptyList() }
+    LaunchedEffect(djResets.intValue) { list = (Rela.local("djFeedback") as? kotlinx.serialization.json.JsonArray)?.mapNotNull { it as? kotlinx.serialization.json.JsonObject } ?: emptyList() }
     Column {
         Header(str(R.string.dj_feedback))
         if (list.isEmpty()) Text(str(R.string.dj_feedback_none), Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)

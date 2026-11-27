@@ -425,6 +425,7 @@ ApplicationWindow {
 
     // --settings opens the panel at start (handy while designing a theme with --demo)
     Component.onCompleted: {
+        if (ToolTip.toolTip.contentItem) ToolTip.toolTip.contentItem.textFormat = Text.PlainText // tips carry song names: never markup
         geoReady = true
         start()
         if (Qt.application.arguments.indexOf("--settings") >= 0) openSettings("Genel")

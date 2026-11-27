@@ -200,6 +200,11 @@ impl PlayerCore {
 
     pub fn tick(&mut self) {
         self.report_playback();
+        // before the early returns: a station or an empty queue does not keep a skip held
+        if self.held_skip.as_ref().is_some_and(|h| self.clock_ms - h.at_ms > self.knobs().search_ms) {
+            self.dj_flush_held(); // no search came of it (paused after one skip)
+        }
+        self.expire_skip_undo();
         if !self.station.is_empty() {
             // live stream: no timeline, crossfade or prefetch
             let info = self.stream_info();
@@ -255,10 +260,6 @@ impl PlayerCore {
         {
             self.extend((want - ahead) as i32);
         }
-        if self.held_skip.as_ref().is_some_and(|h| self.clock_ms - h.at_ms > self.knobs().search_ms) {
-            self.dj_flush_held(); // no search came of it (paused after one skip)
-        }
-        self.expire_skip_undo();
         self.index_refresh();
 
         let k = self.cur;

@@ -206,7 +206,10 @@ Dialog {
                             ColumnLayout {
                                 Layout.fillWidth: true; spacing: 0
                                 Plain { text: fb.modelData.title; elide: Text.ElideRight; Layout.fillWidth: true }
-                                Hint { text: (fb.modelData.dir > 0 ? qsTr("Daha çok") : qsTr("Daha az")) + (fb.modelData.artist ? " · " + fb.modelData.artist : "") }
+                                Hint {
+                                    readonly property string dir: fb.modelData.dir > 0 ? qsTr("Daha çok") : qsTr("Daha az")
+                                    text: fb.modelData.artist ? qsTr("%1 · %2").arg(dir).arg(fb.modelData.artist) : dir
+                                }
                             }
                             Button {
                                 objectName: "fbRemove_" + fb.modelData.id

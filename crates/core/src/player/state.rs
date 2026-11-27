@@ -1211,9 +1211,10 @@ impl PlayerCore {
         if b.index.get(&id).is_none() {
             b.index.upsert(&song, day);
         }
-        // "less like this" already said it: leaving the song says nothing more, and it never holds a searching listener
+        // "less like this" already said it: leaving the song says nothing more, and it never holds a searching listener;
+        // only playing it out to its end still counts
         let less = b.memory.feedback(&id) < 0;
-        let (h, ratio) = if less && h != Heard::Full { (Heard::Neutral, 0.0) } else { (h, ratio) };
+        let (h, ratio) = if less && !(natural && h == Heard::Full) { (Heard::Neutral, 0.0) } else { (h, ratio) };
         let Some(s) = b.index.get(&id).cloned() else { return false };
         let was = b.session.searching(now, &k);
         let before = b.session.clone();
@@ -1275,6 +1276,7 @@ impl PlayerCore {
 
     /// Takes back the early skip the notice offers: it will not count, and the sitting is as before it.
     pub fn undo_skip(&mut self) {
+        self.expire_skip_undo(); // no tick may have come since the time was up
         if self.skip_undo.is_null() {
             return;
         }
@@ -1328,6 +1330,13 @@ impl PlayerCore {
             b.session.nudge(&s, 3.0 * f32::from(dir), &b.genres, &b.index);
         }
         let _ = b.memory.save();
+        // an undo of a held skip keeps this choice: it goes into the sitting the undo brings back too
+        if dir != 0
+            && let (Some(h), Some((_, b))) = (self.held_skip.as_mut(), self.brain.as_ref())
+            && let Some(s) = b.index.get(&id)
+        {
+            h.before.nudge(s, 3.0 * f32::from(dir), &b.genres, &b.index);
+        }
         if dir < 0 && self.valid(self.idx) && text(&self.queue[self.idx as usize]["id"]) == id {
             self.next();
         }

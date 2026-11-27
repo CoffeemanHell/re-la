@@ -4,7 +4,7 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    // unit: "%" (shown before the number, as in Turkish), "days", "s", "min", "songs" or "" (a plain number)
+    // unit: "%", "days", "s", "min", "songs" or "" (a plain number)
     readonly property var main: [
         { key: "radioLanguage", label: qsTr("Dil bağlılığı"), unit: "%", from: 0, to: 100, step: 10,
           hint: qsTr("Eklenen şarkıların ne kadarı çalan şarkıyla aynı dilde olsun. Türkçe bir şarkıdan başlarsan %80 → 10 şarkının 8'i Türkçe.") },
@@ -57,7 +57,7 @@ QtObject {
     }
     // a knob's value as the settings show it
     function text(k, v) {
-        if (k.unit === "%") return "%" + v
+        if (k.unit === "%") return qsTr("%%1").arg(v) // Turkish puts the sign first, English after
         if (k.unit === "days") return qsTr("%n gün", "", v)
         if (k.unit === "s") return qsTr("%n sn", "", v)
         if (k.unit === "min") return qsTr("%n dk", "", v)

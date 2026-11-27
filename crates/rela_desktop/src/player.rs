@@ -451,8 +451,7 @@ impl ffi::RustPlayer {
     }
     fn request(&self, id: i32, method: &QString, params_json: &QString, write: bool) -> bool {
         let m = method.to_string();
-        let allowed = if write { rela_core::queue::writable(&m) } else { rela_core::queue::readable(&m) };
-        if !allowed {
+        if !rela_core::queue::askable(&m, write) {
             return false;
         }
         let params = match json_value(params_json) {

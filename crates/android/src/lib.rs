@@ -392,8 +392,7 @@ impl Core {
 
     /// A Subsonic call through the core's guards; false when the method is not allowed (no reply then).
     pub fn request(&self, id: u64, method: String, params_json: String, write: bool) -> bool {
-        let allowed = if write { rela_core::queue::writable(&method) } else { rela_core::queue::readable(&method) };
-        if !allowed {
+        if !rela_core::queue::askable(&method, write) {
             return false;
         }
         let params = match serde_json::from_str(&params_json) {
