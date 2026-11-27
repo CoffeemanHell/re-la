@@ -96,8 +96,13 @@ pub const RANGES: &[(&str, i64, i64, i64)] = &[
 pub const KEYS: &[&str] = &[
     "radioLanguage", "radioGenre", "radioExplore", "radioBatch", "djSkipShare", "djDislikeSkips", "djDislikeDays",
     "djMemoryDays", "djRepeatDays", "djArtistMax", "djWildcard", "djSkipMaxSec", "djFullShare", "djSearchSkips",
-    "djSearchSec", "djIdleMin", "djSessionFade", "djNewDays", "djSimilar", "djTaste", "djRandomness",
+    "djSearchSec", "djIdleMin", "djSessionFade", "djNewDays", "djSimilar", "djTaste", "djRandomness", "djSkipOn",
+    "djSearchOn", "djDislikeOn", "djRepeatOn", "djWildcardOn",
 ];
+
+/// On/off switches of the DJ's features (default on; a missing or non-bool value counts as on); off, the feature's
+/// value stays stored.
+pub const SWITCHES: &[&str] = &["djSkipOn", "djSearchOn", "djDislikeOn", "djRepeatOn", "djWildcardOn"];
 
 impl Knobs {
     /// From the options; a missing or non-integer value takes the default, one out of range the nearest end.
@@ -108,21 +113,22 @@ impl Knobs {
             get(k, def, lo, hi)
         };
         let pct = |k: &str| dj(k) as f64 / 100.0;
+        let on = |k: &str| o.get(k).and_then(Value::as_bool).unwrap_or(true);
         Knobs {
             language: get("radioLanguage", 80, 0, 100) as i32,
             genre: get("radioGenre", 50, 0, 100) as i32,
             explore: get("radioExplore", 20, 0, 50) as i32,
             batch: get("radioBatch", 10, 1, 50) as i32,
-            skip_share: pct("djSkipShare"),
+            skip_share: if on("djSkipOn") { pct("djSkipShare") } else { 0.0 },
             skip_max_sec: dj("djSkipMaxSec") as f64,
             full_share: pct("djFullShare"),
-            dislike_skips: dj("djDislikeSkips") as f32,
+            dislike_skips: if on("djDislikeOn") { dj("djDislikeSkips") as f32 } else { f32::INFINITY },
             dislike_days: dj("djDislikeDays") as u8,
             memory_days: dj("djMemoryDays") as f32,
-            repeat_days: dj("djRepeatDays") as u32,
+            repeat_days: if on("djRepeatOn") { dj("djRepeatDays") as u32 } else { 0 },
             artist_max: dj("djArtistMax") as i32,
-            wildcard: pct("djWildcard"),
-            search_skips: dj("djSearchSkips") as usize,
+            wildcard: if on("djWildcardOn") { pct("djWildcard") } else { 0.0 },
+            search_skips: if on("djSearchOn") { dj("djSearchSkips") as usize } else { usize::MAX },
             search_ms: dj("djSearchSec") as f64 * 1000.0,
             idle_ms: dj("djIdleMin") as f64 * 60_000.0,
             fade: pct("djSessionFade") as f32,
@@ -146,6 +152,34 @@ mod tests {
         assert_eq!(Knobs::from_options(&Map::new()), Knobs::default());
         for (k, def, ..) in RANGES {
             assert_eq!(o.get(*k).and_then(Value::as_i64), Some(*def), "{k} in the default options");
+        }
+    }
+
+    #[test]
+    fn switches_off_turn_features_off() {
+        let o = json!({
+            "djSkipShare": 40, "djSkipOn": false, "djSearchOn": false, "djDislikeOn": false,
+            "djRepeatOn": false, "djRepeatDays": 9, "djWildcardOn": false, "djWildcard": 20
+        });
+        let k = Knobs::from_options(o.as_object().unwrap());
+        assert_eq!(k.skip_share, 0.0);
+        assert_eq!(k.search_skips, usize::MAX);
+        assert!(k.dislike_skips.is_infinite());
+        assert_eq!(k.repeat_days, 0);
+        assert_eq!(k.wildcard, 0.0);
+    }
+
+    #[test]
+    fn switches_back_on_keep_the_values() {
+        let o = json!({"djSkipShare": 40, "djSkipOn": true, "djRepeatDays": 9, "djRepeatOn": "yes", "djWildcard": 20});
+        let k = Knobs::from_options(o.as_object().unwrap());
+        assert_eq!((k.skip_share, k.repeat_days, k.wildcard), (0.4, 9, 0.2)); // a non-bool counts as on
+    }
+
+    #[test]
+    fn switches_are_reset_with_the_rest() {
+        for s in SWITCHES {
+            assert!(KEYS.contains(s), "{s}");
         }
     }
 

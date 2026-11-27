@@ -240,6 +240,11 @@ pub(crate) fn default_options() -> Map<String, Value> {
         "transcodeWifi": "",      // "opus-128"; empty: the original
         "transcodeMobile": "",
         "coverQuality": "high",   // low | medium | high: cover pixels ×0.5 / ×0.75 / ×1
+        "djSkipOn": true,         // the DJ's feature switches (dj::knobs::SWITCHES)
+        "djSearchOn": true,
+        "djDislikeOn": true,
+        "djRepeatOn": true,
+        "djWildcardOn": true,
     })
     .as_object()
     .cloned()
@@ -1418,6 +1423,10 @@ impl PlayerCore {
         match key {
             "audioDevice" => self.decks.iter_mut().for_each(|d| d.out.set_audio_device(&text(&value))),
             "transcodeWifi" | "transcodeMobile" => self.drop_preload(),
+            "djSkipOn" if !value.as_bool().unwrap_or(true) => {
+                self.held_skip.clear(); // a switched-off penalty: skips already held never count
+                self.set_skip_undo(Value::Null);
+            }
             "offlineGb" => {
                 self.cache_next = 0.0;
                 if self.cache_cap() > 0 {

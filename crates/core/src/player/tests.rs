@@ -2082,6 +2082,22 @@ fn logout_drops_undo() {
 }
 
 #[test]
+fn skip_switch_off_drops_held_skips() {
+    let mut t = T::new("dj-skip-off");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    assert!(!t.c.snapshot().skip_undo.is_null());
+    t.c.set_option("djSkipOn", json!(false));
+    assert!(t.c.held_skip.is_empty());
+    assert!(t.c.snapshot().skip_undo.is_null());
+    t.advance(120_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 0.0, "nothing was recorded as an early skip");
+}
+
+#[test]
 fn reset_dj_settings_restores() {
     let mut t = T::new("dj-settings-reset");
     t.c.set_option("djArtistMax", json!(4));
