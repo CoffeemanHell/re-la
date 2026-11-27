@@ -698,6 +698,16 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>DJ&apos;NİN SON SEÇİMDE TARTTIĞI ŞARKILAR VE PUANLARI.</source><translation>THE SONGS THE DJ WEIGHED FOR ITS LAST PICK, WITH THEIR SCORES.</translation></message>
     <message><source>DJ DURUMU</source><translation>DJ STATE</translation></message>
     <message><source>ATLAMALARI, DİNLEMELERİ VE GERİ BİLDİRİMLERİNİ SİLER. KÜTÜPHANE DİZİNİ KALIR.</source><translation>FORGETS SKIPS, LISTENS AND YOUR FEEDBACK. THE LIBRARY INDEX STAYS.</translation></message>
+    <message><source>Seçim</source><translation>Selection</translation></message>
+    <message><source>Atlamalar</source><translation>Skips</translation></message>
+    <message><source>Hafıza</source><translation>Memory</translation></message>
+    <message><source>İnce ayar</source><translation>Fine tuning</translation></message>
+    <message><source>SEÇİM</source><translation>SELECTION</translation></message>
+    <message><source>ATLAMALAR</source><translation>SKIPS</translation></message>
+    <message><source>HAFIZA</source><translation>MEMORY</translation></message>
+    <message><source>İNCE AYAR</source><translation>FINE TUNING</translation></message>
+    <message><source>VARSAYILAN</source><translation>DEFAULT</translation></message>
+    <message><source>Varsayılana dön</source><translation>Reset to default</translation></message>
 </context>
 <context>
     <name>Share</name>
