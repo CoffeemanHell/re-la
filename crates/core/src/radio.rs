@@ -1,7 +1,6 @@
 //! DJ picks for the queue end.
 use serde_json::Value;
 use std::collections::{BTreeMap, HashMap, HashSet};
-use unicode_script::{Script, UnicodeScript};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct RadioWeights {
@@ -23,26 +22,7 @@ fn text(v: &Value) -> &str {
     v.as_str().unwrap_or("")
 }
 
-/// Best-effort language of a song: "tr" for Turkish-only letters or a Turkish genre tag, a script name for non-Latin
-/// scripts (Cyrillic, Arabic, Han, ...), "" when unknown.
-/// shortcut: letter heuristic; Latin-script languages other than Turkish are not told apart.
-pub fn guess_language(song: &Value) -> String {
-    let genre = text(&song["genre"]).to_lowercase();
-    if genre.contains("türk") || genre.contains("turk") {
-        return "tr".into();
-    }
-    let all = format!("{}{}{}", text(&song["title"]), text(&song["artist"]), text(&song["album"]));
-    for c in all.chars() {
-        if "ğĞşŞıİ".contains(c) {
-            return "tr".into();
-        }
-        let script = c.script();
-        if c.is_alphabetic() && !matches!(script, Script::Latin | Script::Common | Script::Inherited) {
-            return script.full_name().into();
-        }
-    }
-    String::new()
-}
+pub use crate::dj::index::guess_language;
 
 fn most_common(counts: &BTreeMap<String, i32>) -> String {
     let mut best = (String::new(), 0);
