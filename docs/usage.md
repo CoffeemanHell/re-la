@@ -12,6 +12,16 @@ Click the button at the top right that says who is online (**… kişi çevrimi�
 
 This needs the relay on the server ([relay/README.md](../relay/README.md)). Without it, re-la is a normal player.
 
+## The DJ
+
+With **DJ modu** on (Settings → DJ; on the desktop also the **DJ** button in the player bar, on Android the ⋯ menu on Now Playing), re-la keeps the queue going with songs it picks itself. It learns on this device from what you play to the end and what you skip early, and keeps no data on the server.
+
+- **Why this song?** Each song the DJ adds says why under its name, in the queue and on Now Playing: "close to the shoegaze you just heard", "not played for 3 months", "new in the library", "surprise".
+- **More like this / Less like this:** in a song's menu (desktop) or the ⋯ menu on Now Playing. Clearer than a skip. *Less like this* also moves on to the next song without counting a skip. Settings → DJ → **Geri bildirimlerin** lists every choice; **Kaldır** takes one back.
+- **Undo a skip:** an early skip counts against a song after a short wait. Until then a notice says **Atlama eksi sayılacak** with **Geri al** (undo; on the desktop it sits in the bar at the bottom), for the times you skipped because of the moment, not the song.
+- **DJ durumu** (DJ state, in Settings → DJ): the songs the DJ weighed for its last pick, best first, with each score's parts: fit with what you just played, long-term taste, Navidrome's "similar", new or rarely played, played lately, your feedback. The picked ones stand out.
+- **Settings:** every rule the DJ follows can be changed, for example how early a skip counts against a song, after how many such skips (on how many different days) a song counts as disliked, how long it remembers and how many songs per artist. The math lives under **Gelişmiş ayarlar** (advanced). **Varsayılanlara dön** puts them all back. **DJ hafızasını sıfırla** forgets skips, listens and feedback; the library index stays.
+
 ## SUB/WAVE radio
 
 If a radio station in Navidrome is a [SUB/WAVE](https://www.getsubwave.com) station, re-la shows what is on air: the real track and cover, the DJ and show, lyrics, the upcoming tracks, a heart button and a request button.
