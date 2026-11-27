@@ -400,6 +400,10 @@ impl PlayerCore {
                 let batch = c.options.get("radioBatch").and_then(Value::as_i64).unwrap_or(10);
                 let room = (batch - (c.queue.len() as i64 - c.idx - 1)).max(0) as usize; // skips while waiting
                 add.truncate(room);
+            } else {
+                for s in &mut add {
+                    s["auto"] = true.into(); // automatic, not a DJ pick: no DJ badge, but "back" and skips may drop it
+                }
             }
             if add.is_empty() {
                 c.extend_retry = c.clock_ms + 15000.0;

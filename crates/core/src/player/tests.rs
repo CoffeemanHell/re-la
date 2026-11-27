@@ -402,6 +402,155 @@ fn prev_restarts_after_3s() {
     assert_eq!(t.current(), "s0");
 }
 
+// ---------------------------------------------------------------- Task 2: queue swap memory
+
+#[test]
+fn back_from_an_opened_song_restores_the_queue() {
+    let mut t = T::new("swap1");
+    t.c.set_dj(true);
+    let auto = |id: &str| {
+        let mut s = song(id);
+        s["dj"] = true.into();
+        s
+    };
+    t.c.play(vec![song("s0"), song("s1"), auto("d0"), song("u0"), auto("d1")], 1);
+    t.c.add(vec![song("x")], 0);
+    assert_eq!(t.current(), "x");
+    assert_eq!(t.ids(), ["s0", "s1", "x", "u0"], "the old song's picks go, the listener's stay");
+    t.c.prev();
+    assert_eq!(t.current(), "s1");
+    assert_eq!(t.ids(), ["s0", "s1", "d0", "u0", "d1"]);
+}
+
+#[test]
+fn back_from_a_new_lists_first_song_restores() {
+    let mut t = T::new("swap2");
+    t.c.play(songs(3), 2);
+    t.c.play(vec![song("a0"), song("a1"), song("a2")], 1);
+    t.c.prev();
+    assert_eq!(t.current(), "a0", "mid-list: back walks the list");
+    t.c.prev();
+    assert_eq!(t.current(), "s2");
+    assert_eq!(t.ids(), ["s0", "s1", "s2"]);
+}
+
+#[test]
+fn back_after_three_seconds_restarts_the_opened_song() {
+    let mut t = T::new("swap3");
+    t.c.play(songs(2), 0);
+    t.c.add(vec![song("x")], 0);
+    t.at(10.0);
+    t.c.prev();
+    assert_eq!(t.current(), "x");
+    t.at(1.0);
+    t.c.prev();
+    assert_eq!(t.current(), "s0");
+}
+
+#[test]
+fn an_edit_forgets_the_swap() {
+    type Edit = fn(&mut PlayerCore);
+    let edits: [(&str, Edit); 5] = [
+        ("add at the end", |c| c.add(vec![song("y")], 2)),
+        ("remove", |c| c.remove(2)),
+        ("move", |c| c.move_song(0, 2)),
+        ("clear upcoming", |c| c.clear_upcoming()),
+        ("shuffle", |c| c.set_shuffle(true)),
+    ];
+    for (what, edit) in edits {
+        let mut t = T::new(&format!("swap-edit-{}", what.replace(' ', "-")));
+        t.c.play(songs(2), 0);
+        t.c.add(vec![song("x")], 0); // [s0, x, s1], x playing
+        edit(&mut t.c);
+        t.c.prev();
+        assert!(t.ids().contains(&"x".to_string()), "{what}: {:?}", t.ids());
+    }
+}
+
+#[test]
+fn a_newer_swap_replaces_the_older() {
+    let mut t = T::new("swap5");
+    t.c.play(songs(2), 0);
+    t.c.add(vec![song("x")], 0);
+    t.c.add(vec![song("y")], 0);
+    t.c.prev();
+    assert_eq!(t.current(), "x");
+    t.c.prev(); // the older swap is gone: a plain prev
+    assert_eq!(t.current(), "s0");
+    assert!(t.ids().contains(&"x".to_string()));
+}
+
+#[test]
+fn coming_back_to_the_opened_song_still_restores() {
+    let mut t = T::new("swap4");
+    t.c.play(songs(2), 0);
+    t.c.add(vec![song("x")], 0); // [s0, x, s1]
+    t.c.next();
+    assert_eq!(t.current(), "s1");
+    t.c.prev();
+    assert_eq!(t.current(), "x");
+    t.c.prev();
+    assert_eq!(t.current(), "s0");
+    assert_eq!(t.ids(), ["s0", "s1"]);
+}
+
+#[test]
+fn refill_in_flight_stays_out_of_the_restored_queue() {
+    let mut t = T::new("swap-inflight");
+    t.c.online = true;
+    t.c.play(songs(1), 0);
+    t.c.add(vec![song("x")], 0);
+    t.c.tick(); // the queue ends at x: a refill for x is asked for
+    let jobs = t.c.take_jobs();
+    assert!(jobs.iter().any(|j| matches!(j, Job::Api { .. })));
+    t.c.prev();
+    assert_eq!(t.ids(), ["s0"]);
+    for j in jobs {
+        if let Job::Api { then, .. } = j {
+            then(&mut t.c, Ok(similar(&["x1"]).unwrap()));
+        }
+    }
+    assert_eq!(t.ids(), ["s0"], "the late reply does not land");
+}
+
+#[test]
+fn offline_refused_song_keeps_no_swap() {
+    let mut t = T::new("swap-offline");
+    t.c.play(songs(2), 0);
+    t.c.offline = true;
+    t.c.add(vec![song("x")], 0);
+    assert!(t.c.swap.is_none());
+    assert_eq!(t.ids(), ["s0", "s1"]);
+}
+
+#[test]
+fn dj_off_refill_songs_are_marked_and_dropped() {
+    let mut t = T::new("swap-auto");
+    t.c.online = true;
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    t.run(false, |m, _| if m == "getSimilarSongs" { similar(&["x1", "x2"]) } else { None });
+    let q = t.c.snapshot().queue;
+    assert_eq!(q.len(), 3, "{q:?}");
+    assert!(q[1]["auto"] == true && q[1].get("dj").is_none(), "{q:?}");
+    t.c.add(vec![song("x")], 0);
+    assert_eq!(t.ids(), ["s0", "x"]);
+}
+
+#[test]
+fn follower_back_goes_to_the_root() {
+    let mut t = T::new("swap-follow");
+    t.c.play(songs(2), 0);
+    t.follow("root");
+    t.clear();
+    t.c.add(vec![song("x")], 0);
+    t.c.prev();
+    let ops: Vec<String> = t.sent().iter().map(|(o, _)| o.clone()).collect();
+    assert_eq!(ops, ["add", "prev"]);
+    assert!(t.c.swap.is_none());
+    assert_eq!(t.ids(), ["s0", "s1"]);
+}
+
 #[test]
 fn queue_changed_only_when_songs_differ() {
     let mut t = T::new("qchanged");
