@@ -45,6 +45,7 @@ impl PlayerCore {
             self.jobs.push(j); // built before the token goes
         }
         self.generation += 1; // cancels in-flight connects and pending retries
+        self.swap = None; // the old queue belongs to this account
         self.persist_seq += 1; // a pending queue save must not go out with the next login's token
         if self.downloading || self.caching {
             self.jobs.push(Job::CancelDownload);
