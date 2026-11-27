@@ -12,7 +12,7 @@ Get the latest build from [Releases](../../releases). re-la was called Nsync: on
 
 ## Build on Linux
 
-Requires Qt 6.11.2+ (with Qt Widgets and the Qt.labs.platform QML module), libmpv from mpv 0.41 or newer, Rust (cargo, rustc 1.88+) and a C++17 compiler. Qt Linguist tools (`lrelease`, Fedora `qt6-linguist`) add the English translation; without them the build is Turkish only. The first build needs the network (it fetches the Rust crates).
+Requires Qt 6.11.2+ (with Qt Widgets and the Qt.labs.platform QML module), libmpv from mpv 0.41 or newer, and Rust (cargo, rustc 1.88+). Qt Linguist tools (`lrelease`, Fedora `qt6-linguist`) add the English translation; without them the build is Turkish only. The first build needs the network (it fetches the Rust crates).
 
 ```bash
 cargo build --release --locked -p rela_desktop
