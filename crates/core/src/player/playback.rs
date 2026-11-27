@@ -2,7 +2,7 @@
 use super::deck::{DeckEvent, EndReason};
 use super::state::PlayerCore;
 use crate::queue::{Drift, drift_action, play_report, scrobble_due, similar_append, text};
-use crate::radio::{RadioWeights, radio_pick, relaxed};
+use crate::dj::{Weights, extra_ids, pick};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::f64::consts::PI;
@@ -64,11 +64,14 @@ impl PlayerCore {
                     let (from_dur, i) = (d.appended_from_dur, d.appended_idx);
                     d.out.drop_first();
                     self.anchor += from_dur * 1000.0;
+                    let turn = self.heard(true);
                     self.idx = i;
                     self.play += 1;
-                    self.skips = 0; // listened to the end
                     if self.valid(i) {
                         self.decks[k].id = self.song_id(i);
+                    }
+                    if turn {
+                        self.drop_dj_picks();
                     }
                     self.state_changed();
                     self.timer(3000, |c| c.publish());
@@ -138,6 +141,7 @@ impl PlayerCore {
                 if self.upcoming() >= 0 {
                     self.advance();
                 } else {
+                    self.heard(true); // nothing comes after it to make way for
                     self.decks[k].id.clear(); // the deck is empty: play opens the song again (toggle)
                     self.set_playing(false);
                 }
@@ -183,11 +187,14 @@ impl PlayerCore {
     /// Natural advance: the next track's 0:00 is scheduled on the shared timeline, so peers stay locked regardless of
     /// how long each one took to buffer.
     pub(super) fn advance(&mut self) {
-        self.skips = 0; // listened to the end
+        let turn = self.heard(true);
         self.fade_s = self.fade_of(self.duration());
         self.anchor += (self.duration() - self.fade_s) * 1000.0;
         let n = self.upcoming();
         self.cross_to(n);
+        if turn {
+            self.drop_dj_picks();
+        }
         self.timer(((self.xfade + 3) * 1000) as u64, |c| c.publish());
     }
 
@@ -248,6 +255,10 @@ impl PlayerCore {
         {
             self.extend((want - ahead) as i32);
         }
+        if self.held_skip.as_ref().is_some_and(|h| self.clock_ms - h.2 > 90_000.0) {
+            self.dj_flush_held(); // no search came of it (paused after one skip)
+        }
+        self.index_refresh();
 
         let k = self.cur;
         let d = &self.decks[k];
@@ -360,8 +371,8 @@ impl PlayerCore {
     }
 
     /// Queue end. DJ off: Navidrome's getSimilarSongs as it comes (random songs when it has nothing new). DJ on:
-    /// candidates from similar songs + same genre + a wide random pool, picked by radio_pick with the weights from
-    /// settings, loosened while the listener keeps skipping. Only the root extends; followers get the songs with its
+    /// candidates from similar songs + same genre + a wide random pool + the index's best fits (getSong), picked by
+    /// dj::pick with the weights from settings; a listener looking for something else gets more new songs. Only the root extends; followers get the songs with its
     /// next state.
     pub(super) fn extend(&mut self, need: i32) {
         let seed = self.queue[self.idx as usize].clone();
@@ -414,9 +425,13 @@ impl PlayerCore {
             similar: HashSet<String>,
             pending: usize,
         }
-        let lang = self.options.get("radioLanguage").and_then(Value::as_i64).unwrap_or(80) as i32;
-        let genre_w = self.options.get("radioGenre").and_then(Value::as_i64).unwrap_or(50) as i32;
-        let w = relaxed(RadioWeights { language: lang, genre: genre_w, batch: need }, self.skips);
+        let opt = |k: &str, def: i64| self.options.get(k).and_then(Value::as_i64).unwrap_or(def) as i32;
+        let w = Weights { language: opt("radioLanguage", 80), genre: opt("radioGenre", 50), explore: opt("radioExplore", 20), batch: need };
+        let (now, day) = (self.clock_ms, crate::dj::memory::day(self.clock_ms));
+        let searching = self.dj_brain().session.searching(now);
+        let at = ((self.idx + 1).max(0) as usize).min(self.queue.len());
+        let history = self.queue[..at].to_vec();
+        let extra = extra_ids(&self.brain.as_ref().unwrap().1, &history, &w, searching, day, &mut self.rng);
         let fetch = Arc::new(Mutex::new(Fetch { pool: vec![], similar: HashSet::new(), pending: 0 }));
         let finish = Arc::new(Mutex::new(Some(finish)));
         let mut calls = vec![("getSimilarSongs", q(&[("id", &seed_id), ("count", "50")]), "similarSongs", true)];
@@ -424,16 +439,25 @@ impl PlayerCore {
         if !genre.is_empty() {
             calls.push(("getRandomSongs", q(&[("size", "100"), ("genre", &genre)]), "randomSongs", false));
         }
-        if w.language > 0 || self.skips >= 2 {
-            // wide pool: the language quota can be met, and a skip streak gets variety
+        if w.language > 0 || searching {
+            // wide pool: the language quota can be met, and a searching listener gets variety
             calls.push(("getRandomSongs", q(&[("size", "400")]), "randomSongs", false));
+        }
+        for id in &extra {
+            calls.push(("getSong", q(&[("id", id)]), "song", false));
         }
         fetch.lock().unwrap().pending = calls.len();
         for (method, params, key, is_similar) in calls {
             let (fetch, finish) = (fetch.clone(), finish.clone());
             self.api(method, params, true, move |c, r| {
                 let mut f = fetch.lock().unwrap();
-                for s in r.map(|r| songs_of(&r, key)).unwrap_or_default() {
+                let got = match r {
+                    Some(r) if key == "song" && r["song"].is_object() => vec![r["song"].clone()],
+                    Some(_) if key == "song" => vec![],
+                    Some(r) => songs_of(&r, key),
+                    None => vec![],
+                };
+                for s in got {
                     if is_similar {
                         f.similar.insert(text(&s["id"]));
                     }
@@ -443,9 +467,14 @@ impl PlayerCore {
                 if f.pending > 0 {
                     return;
                 }
-                let at = (c.idx + 1).max(0) as usize;
+                if generation != c.generation || seq != c.extend_seq {
+                    return; // another account or a new direction: these songs are not for this index
+                }
+                let at = ((c.idx + 1).max(0) as usize).min(c.queue.len());
                 let pool = similar_append(&c.queue, &f.pool);
-                let mut picked = radio_pick(&pool, &c.queue[..at.min(c.queue.len())], &f.similar, &w, &mut c.rng);
+                c.dj_brain();
+                let brain = &mut c.brain.as_mut().unwrap().1;
+                let mut picked = pick(brain, &pool, &c.queue[..at], &c.queue[at..], &f.similar, &w, searching, day, &mut c.rng);
                 for s in &mut picked {
                     s["dj"] = true.into(); // so a skip streak can swap the DJ's own picks, never the listener's
                 }
@@ -455,5 +484,123 @@ impl PlayerCore {
                 }
             });
         }
+    }
+
+    /// Keeps the DJ's library index fresh: the whole library (search3, 500 a page) when it is empty or a week old and
+    /// the network is not metered; otherwise the newest albums down to the first one it knows. Every 6 hours.
+    pub(super) fn index_refresh(&mut self) {
+        if !self.dj || !self.online || self.index_busy || self.clock_ms < self.index_next || self.following() {
+            return;
+        }
+        let day = crate::dj::memory::day(self.clock_ms);
+        let mobile = self.mobile;
+        let ix = &self.dj_brain().index;
+        // songs from DJ pools land in the index too: only a whole walk makes it the library's
+        let (never, stale) = (ix.full_day == 0, ix.full_day.saturating_add(7) <= day);
+        if never && mobile {
+            self.index_next = self.clock_ms + 15.0 * 60_000.0; // until Wi-Fi
+            return;
+        }
+        self.index_busy = true;
+        if (never || stale) && !mobile {
+            self.index_page(0, HashSet::new());
+        } else {
+            self.index_newest(0);
+        }
+    }
+
+    fn index_done(&mut self, ok: bool) {
+        self.index_busy = false;
+        self.index_next = self.clock_ms + if ok { 6.0 * 3_600_000.0 } else { 15.0 * 60_000.0 };
+        let _ = self.dj_brain().index.save();
+        self.dj_rebuild_genres();
+    }
+
+    fn index_page(&mut self, offset: usize, mut ids: HashSet<String>) {
+        const PAGE: usize = 500;
+        const MAX_SONGS: usize = 1_000_000;
+        let generation = self.generation;
+        let off = offset.to_string();
+        let query = q(&[("query", ""), ("songCount", "500"), ("songOffset", &off), ("artistCount", "0"), ("albumCount", "0")]);
+        self.api("search3", query, true, move |c, r| {
+            if generation != c.generation {
+                return c.index_busy = false;
+            }
+            // half a walk, or "ok" with no result in it: nothing is dropped
+            let Some(res) = r.as_ref().map(|r| &r["searchResult3"]).filter(|v| v.is_object()) else { return c.index_done(false) };
+            let day = crate::dj::memory::day(c.clock_ms);
+            let songs = match res.get("song") {
+                None => vec![], // the last page was full
+                Some(Value::Array(a)) => a.clone(),
+                Some(_) => return c.index_done(false),
+            };
+            let ix = &mut c.dj_brain().index;
+            for s in &songs {
+                ix.upsert(s, day);
+                ids.insert(text(&s["id"]));
+            }
+            if songs.len() == PAGE {
+                if c.mobile {
+                    return c.index_done(false); // on mobile data now: the rest waits for Wi-Fi
+                }
+                if offset + PAGE < MAX_SONGS {
+                    return c.index_page(offset + PAGE, ids);
+                }
+                // a server that never stops: keep what came, prune nothing, count it as walked
+            } else {
+                c.dj_brain().index.retain(&ids); // the end: songs the walk did not meet are gone
+            }
+            c.dj_brain().index.full_day = day;
+            c.index_done(true);
+        });
+    }
+
+    /// Newest albums first, a page of 50 at a time, until one the index already has (20 pages at most).
+    fn index_newest(&mut self, page: usize) {
+        const SIZE: usize = 50;
+        let generation = self.generation;
+        let off = (page * SIZE).to_string();
+        self.api("getAlbumList2", q(&[("type", "newest"), ("size", "50"), ("offset", &off)]), true, move |c, r| {
+            if generation != c.generation {
+                return c.index_busy = false;
+            }
+            let Some(r) = r else { return c.index_done(false) };
+            let albums = r["albumList2"]["album"].as_array().cloned().unwrap_or_default();
+            let ix = &c.dj_brain().index;
+            let mut todo = vec![];
+            let mut known = false;
+            for a in &albums {
+                let id = text(&a["id"]);
+                if ix.has_album(&id) {
+                    known = true;
+                    break;
+                }
+                todo.push(id);
+            }
+            let more = !known && albums.len() == SIZE && page + 1 < 20;
+            c.index_albums(todo, more.then_some(page + 1));
+        });
+    }
+
+    fn index_albums(&mut self, mut todo: Vec<String>, next_page: Option<usize>) {
+        if todo.is_empty() {
+            return match next_page {
+                Some(p) => self.index_newest(p),
+                None => self.index_done(true),
+            };
+        }
+        let id = todo.remove(0);
+        let generation = self.generation;
+        self.api("getAlbum", q(&[("id", &id)]), true, move |c, r| {
+            if generation != c.generation {
+                return c.index_busy = false;
+            }
+            let day = crate::dj::memory::day(c.clock_ms);
+            let ix = &mut c.dj_brain().index;
+            for s in r.as_ref().and_then(|r| r["album"]["song"].as_array()).into_iter().flatten() {
+                ix.upsert(s, day);
+            }
+            c.index_albums(todo, next_page);
+        });
     }
 }

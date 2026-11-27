@@ -770,6 +770,10 @@ Item {
             tryVerify(() => F.text(s.contentItem, "Dinlenenleri gönder") !== null)
             m.openSettings("DJ")
             tryVerify(() => F.text(s.contentItem, "DJ modu") !== null)
+            verify(F.text(s.contentItem, "Keşif") !== null)
+            const reset = F.text(s.contentItem, "DJ hafızasını sıfırla")
+            reset.clicked() // below the fold of the page
+            compare(Player.called("resetDjMemory").length, 1)
         }
         function test_settings_output_and_cache() {
             Player.audioDevices = [{ name: "pipewire/dac", description: "DAC" }]

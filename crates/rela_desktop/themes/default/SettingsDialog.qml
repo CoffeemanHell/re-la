@@ -180,12 +180,20 @@ Dialog {
                         onMoved: v => Player.setOption("radioLanguage", v)
                     }
                     LabeledSlider {
-                        label: qsTr("Tür bağlılığı")
+                        label: qsTr("Benzerlik gücü")
                         enabled: Player.dj
                         valueText: "%" + (Player.options.radioGenre || 0)
-                        hint: qsTr("Aynı türe (genre) ne kadar yakın kalınsın.")
+                        hint: qsTr("Çalan müziğe ne kadar yakın kalınsın. Yakın türler (Heavy Metal ~ Hard Rock) de sayılır.")
                         from: 0; to: 100; stepSize: 10; value: Player.options.radioGenre || 0
                         onMoved: v => Player.setOption("radioGenre", v)
+                    }
+                    LabeledSlider {
+                        label: qsTr("Keşif")
+                        enabled: Player.dj
+                        valueText: "%" + (Player.options.radioExplore || 0)
+                        hint: qsTr("Her partide yeni eklenen ya da az dinlenen şarkılara ayrılan pay.")
+                        from: 0; to: 50; stepSize: 10; value: Player.options.radioExplore || 0
+                        onMoved: v => Player.setOption("radioExplore", v)
                     }
                     LabeledSlider {
                         label: qsTr("Her seferde eklenen")
@@ -193,6 +201,10 @@ Dialog {
                         valueText: qsTr("%n şarkı", "", Player.options.radioBatch || 10)
                         from: 5; to: 30; stepSize: 5; value: Player.options.radioBatch || 10
                         onMoved: v => Player.setOption("radioBatch", v)
+                    }
+                    RowLayout {
+                        Hint { text: qsTr("Atlamalardan ve dinlemelerden öğrenileni siler. Kütüphane dizini kalır."); Layout.fillWidth: true }
+                        Button { text: qsTr("DJ hafızasını sıfırla"); icon.name: Util.icon("edit-clear-all"); onClicked: Player.resetDjMemory() }
                     }
                 }
 

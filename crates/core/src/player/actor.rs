@@ -140,9 +140,11 @@ fn wall_ms() -> f64 {
 impl Player {
     /// make_deck(index, sink): the front end's audio output; it reports through sink. The saved login (if any)
     /// connects at once.
+    /// `data_dir` keeps what must outlive a cleared cache (the DJ's memory).
     pub fn new(
         settings: Arc<dyn Settings>,
         cache_dir: PathBuf,
+        data_dir: PathBuf,
         make_deck: impl Fn(usize, DeckSink) -> Box<dyn Deck>,
         listener: Arc<dyn PlayerListener>,
     ) -> Player {
@@ -159,6 +161,7 @@ impl Player {
         let core = PlayerCore::new(
             settings.clone(),
             cache_dir.clone(),
+            data_dir,
             decks,
             Box::new(SyncPortImpl { client: sync.clone(), view }),
             Box::new(StationPortImpl(subwave.clone())),
@@ -385,6 +388,12 @@ fn flush(core: &mut PlayerCore, tx: &mpsc::UnboundedSender<Msg>, listener: &dyn 
                     let _ = tx.send(Msg::Run(Box::new(move |c| c.cache_done(ok))));
                 });
                 download.cache = Some(Download { task, part });
+            }
+            Job::Work { run } => {
+                tokio::task::spawn_blocking(move || {
+                    let then = run();
+                    let _ = tx.send(Msg::Run(then));
+                });
             }
             Job::CancelDownload => {
                 if let Some(d) = download.cache.take().filter(|_| core.caching) {

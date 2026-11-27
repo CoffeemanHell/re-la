@@ -346,13 +346,15 @@ pub struct Core {
 
 #[uniffi::export]
 impl Core {
-    /// Settings in `<files_dir>/settings.json`; queue and covers in cache_dir. A saved login connects at once.
+    /// Settings in `<files_dir>/settings.json`, the DJ's memory under files_dir; queue and covers in cache_dir. A saved
+    /// login connects at once.
     #[uniffi::constructor]
     pub fn new(files_dir: String, cache_dir: String, decks: Arc<dyn DeckFactory>, listener: Arc<dyn CoreListener>) -> Arc<Core> {
-        let settings: Arc<dyn Settings> = Arc::new(JsonSettings::open(PathBuf::from(files_dir).join("settings.json")));
+        let files_dir = PathBuf::from(files_dir);
+        let settings: Arc<dyn Settings> = Arc::new(JsonSettings::open(files_dir.join("settings.json")));
         let sink: Arc<Mutex<Option<DeckSink>>> = Arc::default();
         let keep = sink.clone();
-        let player = Player::new(settings, PathBuf::from(cache_dir), move |i, s| {
+        let player = Player::new(settings, PathBuf::from(cache_dir), files_dir, move |i, s| {
             *keep.lock().unwrap() = Some(s);
             Box::new(Out(decks.make_deck(i as u32)))
         }, Arc::new(Front(listener)));
@@ -470,6 +472,9 @@ impl Core {
     }
     pub fn clear_song_cache(&self) {
         self.player.call(|c| c.clear_song_cache());
+    }
+    pub fn reset_dj_memory(&self) {
+        self.player.call(|c| c.reset_dj_memory());
     }
     pub fn demo(&self) {
         self.player.call(|c| c.demo());

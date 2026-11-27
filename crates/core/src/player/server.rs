@@ -28,6 +28,9 @@ impl PlayerCore {
                 self.set_status(why);
             }
             Ok(l) => {
+                if !self.login.token.is_empty() && (l.server != self.login.server || l.user != self.login.user) {
+                    self.logout(); // someone else over a signed-in session (online or not): nothing of it carries over
+                }
                 self.fresh = true;
                 self.set_login(l);
                 self.connect_server();
@@ -59,6 +62,10 @@ impl PlayerCore {
         self.local_key.clear();
         self.settings.remove("token");
         self.queue = Arc::default(); // never the next user's, nor saved to their server
+        self.dj_flush();
+        self.brain = None;
+        self.last_full.clear();
+        self.index_next = 0.0; // the next account's index owes nothing to this one's schedule
         self.before.clear();
         self.extend_seq += 1;
         self.extending = false;
@@ -188,6 +195,7 @@ impl PlayerCore {
     /// caller waits on them (at most 1.5 s).
     pub fn persist_now(&mut self) -> Vec<Job> {
         self.persist_seq += 1; // the debounced save is this one now
+        self.dj_flush(); // the player is never dropped on quit
         let mut out: Vec<Job> = self.report_stopped().into_iter().collect();
         if self.online && !self.login.token.is_empty() && !self.following() && !self.queue.is_empty() {
             if let Some(client) = self.client.clone() {
@@ -256,6 +264,12 @@ impl PlayerCore {
 
     /// A follower's action, already allowed by the relay (allowControl) and checked for a stale queue (SyncClient).
     fn on_command(&mut self, op: &str, a: &Value) {
+        self.by_listener = true; // what they skip is not the DJ's to learn
+        self.run_command(op, a);
+        self.by_listener = false;
+    }
+
+    fn run_command(&mut self, op: &str, a: &Value) {
         let i = |k: &str| a[k].as_i64().unwrap_or(0);
         let songs = || a["songs"].as_array().cloned().unwrap_or_default();
         match op {

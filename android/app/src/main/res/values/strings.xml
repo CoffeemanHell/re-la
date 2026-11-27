@@ -158,8 +158,14 @@
     <string name="auto_continue_hint">Similar songs are added before the queue ends. DJ mode decides how they are picked.</string>
     <string name="dj_mode_hint">Off: Navidrome\'s similar songs are added as they are. On: picked with the weights below.</string>
     <string name="language_affinity">Language affinity</string>
-    <string name="genre_affinity">Genre affinity</string>
+    <string name="genre_affinity">Similarity strength</string>
     <string name="percent">%1$d%%</string>
+    <string name="genre_affinity_hint">How close to stay to what is playing. Related genres (Heavy Metal ~ Hard Rock) count too.</string>
+    <string name="discovery">Discovery</string>
+    <string name="discovery_hint">Share of each batch kept for new or rarely played songs.</string>
+    <string name="dj_memory">DJ memory</string>
+    <string name="dj_memory_hint">Forgets what was learned from skips and listens. The library index stays.</string>
+    <string name="reset">Reset</string>
     <string name="batch">Added each time</string>
     <string name="audio_experimental">Audio (experimental)</string>
     <string name="queue_total">Total %1$s</string>

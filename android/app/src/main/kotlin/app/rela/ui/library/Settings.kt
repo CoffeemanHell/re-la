@@ -241,8 +241,16 @@ fun SettingsPage(page: String) {
                         SwitchRow(str(R.string.dj_mode), str(R.string.dj_mode_hint), s.dj) { core?.setDj(it) }
                     }
                     item { SliderRow(str(R.string.language_affinity), num("radioLanguage", 0), 0..100, 10, s.dj, text = { str(R.string.percent, it) }) { set("radioLanguage", it) } }
-                    item { SliderRow(str(R.string.genre_affinity), num("radioGenre", 0), 0..100, 10, s.dj, text = { str(R.string.percent, it) }) { set("radioGenre", it) } }
+                    item { SliderRow(str(R.string.genre_affinity), num("radioGenre", 0), 0..100, 10, s.dj, str(R.string.genre_affinity_hint), text = { str(R.string.percent, it) }) { set("radioGenre", it) } }
+                    item { SliderRow(str(R.string.discovery), num("radioExplore", 20), 0..50, 10, s.dj, str(R.string.discovery_hint), text = { str(R.string.percent, it) }) { set("radioExplore", it) } }
                     item { SliderRow(str(R.string.batch), num("radioBatch", 10), 5..30, 5, s.dj, text = { plural(R.plurals.n_songs, it) }) { set("radioBatch", it) } }
+                    item {
+                        ListItem(
+                            headlineContent = { Text(str(R.string.dj_memory)) },
+                            supportingContent = { Text(str(R.string.dj_memory_hint)) },
+                            trailingContent = { OutlinedButton({ core?.resetDjMemory() }) { Text(str(R.string.reset)) } },
+                        )
+                    }
                     item { Header(str(R.string.audio_experimental)) }
                     item { AudioSwitch(str(R.string.float_output), str(R.string.float_output_hint), "floatOutput") }
                     item {

@@ -14,6 +14,18 @@ pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     std::fs::rename(tmp, path)
 }
 
+/// As write_atomic, readable by the owner alone (listening history).
+pub(crate) fn write_atomic_private(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let tmp = path.with_extension("tmp");
+    let _ = std::fs::remove_file(&tmp); // a stale one would keep its old mode
+    let mut open = std::fs::OpenOptions::new();
+    open.write(true).create_new(true);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut open, 0o600);
+    std::io::Write::write_all(&mut open.open(&tmp)?, bytes)?;
+    std::fs::rename(tmp, path)
+}
+
 pub(crate) fn touch(path: &Path) {
     if let Ok(f) = std::fs::File::options().write(true).open(path) {
         let _ = f.set_modified(SystemTime::now());

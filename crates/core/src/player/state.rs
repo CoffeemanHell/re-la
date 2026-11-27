@@ -3,10 +3,12 @@
 //! anchor = relay-clock ms at which the current track was at 0:00.
 use super::deck::Deck;
 use crate::queue::{
-    find_station, insert_songs, next_index, queue_window, scrobble_due, shuffle_upcoming, stream_quality_text, text,
+    find_station, insert_songs, next_index, queue_window, shuffle_upcoming, stream_quality_text, text,
     unshuffle,
 };
 use crate::queue::{RadioPlays, ReportGate};
+use crate::dj::Brain;
+use crate::dj::listen::{Heard, classify};
 use crate::settings::{Settings, migrate_settings};
 use crate::songs::SongCache;
 use crate::subsonic::{Failure, Login, Subsonic};
@@ -48,7 +50,12 @@ pub enum Job {
     CacheSong { client: Arc<Subsonic>, query: Vec<(String, String)>, path: PathBuf },
     /// Logout: the URLs (also CacheSong's) carry this login's token.
     CancelDownload,
+    /// Slow work off the player thread; what it returns runs on the player thread when done.
+    Work { run: Box<dyn FnOnce() -> Then + Send> },
 }
+
+/// What a `Job::Work` hands back to run on the player thread.
+pub type Then = Box<dyn FnOnce(&mut PlayerCore) + Send>;
 
 /// Which signal groups changed since the last take_changes.
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
@@ -188,6 +195,7 @@ pub(super) fn default_options() -> Map<String, Value> {
         "radioLanguage": 80,  // % of radio picks in the seed's language
         "radioGenre": 50,     // seed genre preference
         "radioBatch": 10,
+        "radioExplore": 20,   // % of each DJ batch kept for new or rarely played songs
         "closeToTray": false, // the tray: its icon, and closing the window keeps playing there
         "audioDevice": "auto", // the desktop's output device
         "offlineGb": 0,       // song cache limit; 0: no new songs
@@ -284,7 +292,6 @@ pub struct PlayerCore {
     pub(super) fresh: bool, // login from the form
     pub(super) login_failed: bool,
     pub(super) repeat: i64,
-    pub(super) skips: i32,  // songs skipped in a row before they counted as played
     pub(super) failed: i32, // songs in a row that failed to open
     pub(super) extending: bool,
     pub(super) extend_seq: u64,
@@ -300,12 +307,22 @@ pub struct PlayerCore {
     pub(super) changes: Changes,
     pub(super) replies: Vec<(u64, Option<Value>, bool)>,
     pub(super) rng: fastrand::Rng,
+    pub(super) data_dir: PathBuf,
+    pub(super) brain: Option<(String, Brain)>, // the DJ's, for the account it was opened for
+    pub(super) last_full: Vec<String>,         // genres of the song before, when it was heard in full
+    pub(super) memory_saved: f64,              // clock ms
+    pub(super) held_skip: Option<(String, u32, f64)>, // early skip (id, day, clock ms) that may yet start a search
+    pub(super) by_listener: bool,              // a command from someone in the room is running
+    pub(super) index_busy: bool,               // the DJ's library index is being walked
+    pub(super) index_next: f64,                // clock ms: no walk before it
+    pub(super) genres_seq: u64,                // the latest genre rebuild asked for
 }
 
 impl PlayerCore {
     pub fn new(
         settings: Arc<dyn Settings>,
         cache_dir: PathBuf,
+        data_dir: PathBuf,
         decks: [Box<dyn Deck>; 2],
         sync: Box<dyn SyncPort>,
         station_port: Box<dyn StationPort>,
@@ -386,7 +403,6 @@ impl PlayerCore {
             fresh: false,
             login_failed: false,
             repeat: s.get_i64("repeat", 0),
-            skips: 0,
             failed: 0,
             extending: false,
             extend_seq: 0,
@@ -402,6 +418,15 @@ impl PlayerCore {
             changes: Changes::default(),
             replies: vec![],
             rng: fastrand::Rng::new(),
+            data_dir,
+            brain: None,
+            last_full: vec![],
+            memory_saved: 0.0,
+            held_skip: None,
+            by_listener: false,
+            index_busy: false,
+            index_next: 0.0,
+            genres_seq: 0,
             settings,
             login,
         };
@@ -858,7 +883,6 @@ impl PlayerCore {
             start = 0;
         }
         self.queue = Arc::new(q);
-        self.skips = 0;
         self.extend_seq += 1; // picks for the old queue
         self.extending = false;
         self.extend_retry = 0.0;
@@ -995,22 +1019,11 @@ impl PlayerCore {
         if n < 0 || self.remote("next", json!({})) {
             return;
         }
-        let counted = scrobble_due(self.position(), self.duration());
-        self.skips = if self.station.is_empty() && self.valid(self.idx) && !counted { self.skips + 1 } else { 0 };
+        let turn = self.heard(false);
         self.end_station();
         self.load(n, 0.0);
-        // 2nd to 4th skip in a row: drop the DJ's upcoming picks; tick refills them with looser filters.
-        if self.dj && (2..=4).contains(&self.skips) {
-            let at = (self.idx + 1) as usize;
-            let mut kept = self.queue[..at].to_vec();
-            kept.extend(self.queue[at..].iter().filter(|s| !s["dj"].as_bool().unwrap_or(false)).cloned());
-            if kept.len() != self.queue.len() {
-                self.queue = Arc::new(kept);
-                self.extend_seq += 1; // a request still out was picked with the old filters
-                self.extending = false;
-                self.drop_prefetch();
-                self.state_changed();
-            }
+        if turn {
+            self.drop_dj_picks();
         }
         self.publish();
     }
@@ -1102,6 +1115,141 @@ impl PlayerCore {
     }
 
     /// Queue end: on = client-side picks, off = Navidrome's similar songs.
+    /// The DJ's brain for the signed-in account; another account's is saved and closed first.
+    pub(super) fn dj_brain(&mut self) -> &mut Brain {
+        let key = crate::disk::hashed(&format!("{}\n{}", self.login.server, self.login.user));
+        if self.brain.as_ref().is_none_or(|(k, _)| *k != key) {
+            self.dj_flush();
+            self.brain = None; // saved on drop
+            let b = Brain::open_lazy(&self.cache_dir.join("dj").join(&key), &self.data_dir.join("dj").join(&key));
+            self.brain = Some((key, b));
+            self.last_full.clear(); // the other account's listening
+            self.index_next = 0.0; // the other account's refresh deadline
+            self.dj_rebuild_genres();
+        }
+        &mut self.brain.as_mut().unwrap().1
+    }
+
+    /// Genre closeness from the index and memory as they are now, built off the player thread (a big or oddly
+    /// tagged library takes a while). It lands only if this account's brain is still open and nothing newer was asked.
+    pub(super) fn dj_rebuild_genres(&mut self) {
+        let day = crate::dj::memory::day(self.clock_ms);
+        let Some((key, b)) = self.brain.as_ref() else { return };
+        let build = b.genres_later(day);
+        self.genres_seq += 1;
+        let (key, seq) = (key.clone(), self.genres_seq);
+        self.jobs.push(Job::Work {
+            run: Box::new(move || {
+                let g = build();
+                Box::new(move |c: &mut PlayerCore| {
+                    if let Some((k, b)) = c.brain.as_mut()
+                        && *k == key
+                        && c.genres_seq == seq
+                    {
+                        b.genres = g;
+                    }
+                })
+            }),
+        });
+    }
+
+    /// The current song ends (`natural`: played to its end). The DJ learns from it, unless following someone or on a
+    /// station. True when its upcoming picks should make way: the listener just started looking for something else,
+    /// or a song caught them while they were.
+    pub(super) fn heard(&mut self, natural: bool) -> bool {
+        if !self.dj || self.following() || self.by_listener || !self.station.is_empty() || !self.valid(self.idx) {
+            return false;
+        }
+        if self.login.token.is_empty() {
+            return false; // no one signed in (demo): nobody's listening to learn
+        }
+        let song = self.queue[self.idx as usize].clone();
+        let id = text(&song["id"]);
+        let (pos, dur) = (self.position(), self.duration());
+        let wave = crate::waveform::cached(&self.cache_dir.join("waveforms"), &self.login.server, &id);
+        let h = classify(pos, dur, natural, wave.as_ref().map(|w| w.rms.as_slice()));
+        let ratio = if dur > 0.0 { pos / dur } else { 0.0 };
+        let (now, day) = (self.clock_ms, crate::dj::memory::day(self.clock_ms));
+        if self.held_skip.as_ref().is_some_and(|h| now - h.2 > 90_000.0) {
+            self.dj_flush_held(); // no search came of it
+        }
+        let b = self.dj_brain();
+        if b.index.get(&id).is_none() {
+            b.index.upsert(&song, day);
+        }
+        let Some(s) = b.index.get(&id).cloned() else { return false };
+        let was = b.session.searching(now);
+        let caught = b.session.hear(&s, h, now, ratio, &b.genres, &b.index);
+        let searching = b.session.searching(now);
+        if searching {
+            self.held_skip = None; // it was the start of a search: skips while looking for something else do not count
+        } else if h == Heard::EarlySkip {
+            if self.held_skip.is_some() {
+                self.dj_flush_held();
+            }
+            self.held_skip = Some((id.clone(), day, now)); // counts once 90 s pass without a search
+        } else {
+            b.memory.record(&id, h, day);
+        }
+        let last_full = std::mem::take(&mut self.last_full); // after dj_brain: another account's is gone
+        let b = self.dj_brain();
+        let genres: Vec<String> = s.genres.iter().map(|&g| b.index.word(g).to_string()).collect();
+        if h == Heard::Full {
+            for a in &last_full {
+                for g in genres.iter().filter(|g| *g != a) {
+                    b.memory.record_pair(a, g, day);
+                }
+            }
+        }
+        if now - self.memory_saved > 30_000.0 {
+            let _ = self.dj_brain().memory.save();
+            self.memory_saved = now;
+        }
+        if h == Heard::Full {
+            self.last_full = genres;
+        }
+        caught || (searching && !was)
+    }
+
+    pub(super) fn dj_flush_held(&mut self) {
+        if let (Some((id, day, _)), Some((_, b))) = (self.held_skip.take(), self.brain.as_mut()) {
+            b.memory.record(&id, Heard::EarlySkip, day);
+        }
+    }
+
+    /// A held skip counts now and the memory goes to disk (quit, logout, another account).
+    pub(super) fn dj_flush(&mut self) {
+        self.dj_flush_held();
+        if let Some((_, b)) = self.brain.as_mut() {
+            let _ = b.memory.save();
+        }
+    }
+
+    /// The DJ's upcoming picks go (the listener's own songs stay); tick refills the queue for the new direction.
+    pub(super) fn drop_dj_picks(&mut self) {
+        let at = ((self.idx + 1).max(0) as usize).min(self.queue.len());
+        let mut kept = self.queue[..at].to_vec();
+        kept.extend(self.queue[at..].iter().filter(|s| !s["dj"].as_bool().unwrap_or(false)).cloned());
+        self.extend_seq += 1; // a request still out was picked for the old direction
+        self.extending = false;
+        if kept.len() != self.queue.len() {
+            self.queue = Arc::new(kept);
+            self.drop_prefetch();
+            self.state_changed();
+        }
+    }
+
+    /// Forgets what the DJ learned from skips and listens; the library index stays.
+    pub fn reset_dj_memory(&mut self) {
+        let b = self.dj_brain();
+        b.memory.clear();
+        b.session = Default::default();
+        self.held_skip = None;
+        let _ = self.dj_brain().memory.save();
+        self.dj_rebuild_genres();
+        self.last_full.clear();
+    }
+
     pub fn set_dj(&mut self, on: bool) {
         self.dj = on;
         self.settings.set("dj", on.into());

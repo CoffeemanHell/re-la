@@ -154,7 +154,7 @@ impl T {
         sync.0.lock().unwrap().now = 1_000_000.0;
         let station = FakeStation::default();
         let decks: [Box<dyn Deck>; 2] = [Box::new(FakeDeck { i: 0, log: log.clone() }), Box::new(FakeDeck { i: 1, log: log.clone() })];
-        let mut c = PlayerCore::new(settings.clone(), dir.clone(), decks, Box::new(sync.clone()), Box::new(station.clone()));
+        let mut c = PlayerCore::new(settings.clone(), dir.clone(), dir.join("data"), decks, Box::new(sync.clone()), Box::new(station.clone()));
         c.clock_ms = 1_000_000.0;
         T { c, log, sync, station, settings, dir }
     }
@@ -241,6 +241,7 @@ impl T {
                         self.c.cache_done(true);
                     }
                     Job::CancelDownload => calls.push("cancel download".into()),
+                    Job::Work { run } => run()(&mut self.c),
                 }
             }
         }
@@ -1422,15 +1423,16 @@ fn a_song_shorter_than_the_crossfade_is_heard() {
 }
 
 #[test]
-fn a_gapless_move_ends_the_skip_streak() {
-    let mut t = T::new("gapless-skips");
+fn a_gapless_move_counts_as_heard() {
+    let mut t = T::new("gapless-heard");
+    t.c.set_dj(true);
     t.c.set_crossfade(0);
     t.c.play(songs(3), 0);
-    t.c.skips = 2;
     t.at(190.0);
     t.c.tick();
     ev(&mut t, 0, DeckEvent::StartFile);
-    assert_eq!((t.current(), t.c.skips), ("s1".into(), 0));
+    assert_eq!(t.current(), "s1");
+    assert!(t.c.dj_brain().memory.last_heard("s0").is_some());
 }
 
 #[test]
@@ -1612,4 +1614,453 @@ fn an_unusable_saved_address_fails_like_a_server_down() {
     let Job::Timer { then, .. } = job else { panic!("no call goes out") };
     then(&mut t.c);
     assert!(t.c.snapshot().login_failed && !t.c.snapshot().connecting);
+}
+
+// ------------------------------------------------------------------ the DJ learns
+
+fn dj_memory(t: &mut T) -> &crate::dj::memory::Memory {
+    &t.c.dj_brain().memory
+}
+
+fn skip_of(t: &mut T, id: &str) -> f32 {
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    dj_memory(t).skip(id, day)
+}
+
+#[test]
+fn skip_learns() {
+    let mut t = T::new("dj-skip");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(20.0); // 20 s of a 200 s song
+    t.c.next();
+    assert_eq!(skip_of(&mut t, "s0"), 0.0, "held: it may start a search");
+    t.advance(120_000.0);
+    t.at(195.0);
+    t.c.next(); // no search came of it: the skip counts
+    assert_eq!(skip_of(&mut t, "s0"), 1.0);
+}
+
+// a lone early skip still counts when the app quits right after it
+#[test]
+fn quit_saves_memory_and_a_held_skip() {
+    let mut t = T::new("dj-quit");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(195.0);
+    t.c.next();
+    t.at(20.0);
+    t.c.next();
+    let _ = t.c.persist_now();
+    let file = t.dir.join("data/dj").join(crate::disk::hashed("https://music.example.com\nana")).join("dj-memory.json");
+    let m = crate::dj::memory::Memory::open(file);
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    assert!(m.last_heard("s0").is_some());
+    assert_eq!(m.skip("s1", day), 1.0);
+}
+
+// a listener in the room pressing next is not the root skipping
+#[test]
+fn follower_next_learns_nothing() {
+    let mut t = T::new("dj-follower-cmd");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(5.0);
+    t.c.on_sync(&SyncEvent::CommandReceived { op: "next".into(), args: json!({}) });
+    t.at(5.0);
+    t.c.on_sync(&SyncEvent::CommandReceived { op: "next".into(), args: json!({}) });
+    assert_eq!(t.current(), "s2");
+    let now = t.c.clock_ms;
+    assert!(!t.c.dj_brain().session.searching(now));
+    t.advance(120_000.0);
+    t.at(195.0);
+    t.c.next();
+    assert_eq!(skip_of(&mut t, "s0") + skip_of(&mut t, "s1"), 0.0);
+}
+
+// late DJ replies for another account must not land in this account's index
+#[test]
+fn late_extend_reply_stays_out_of_the_next_account() {
+    let mut t = T::new("dj-late");
+    t.c.online = true;
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    let jobs = t.c.take_jobs();
+    t.c.logout();
+    t.c.login("https://music.example.com", "bob", "pw");
+    for j in jobs {
+        if let Job::Api { then, method, .. } = j {
+            let r = if method == "getSimilarSongs" { similar(&["late1", "late2"]).unwrap() } else { json!({"status": "ok"}) };
+            then(&mut t.c, Ok(r));
+        }
+    }
+    assert!(t.c.dj_brain().index.get("late1").is_none());
+}
+
+#[test]
+fn full_listen_learns_and_streak_does_not() {
+    let mut t = T::new("dj-streak");
+    t.c.set_dj(true);
+    t.c.play(songs(6), 0);
+    t.at(195.0); // heard to the end
+    t.c.next();
+    assert!(dj_memory(&mut t).last_heard("s0").is_some());
+    // three quick early skips: the 2nd turns search mode on, from then on nothing is written
+    for _ in 0..3 {
+        t.at(5.0);
+        t.c.next();
+    }
+    let now = t.c.clock_ms;
+    assert!(t.c.dj_brain().session.searching(now));
+    t.advance(120_000.0);
+    t.at(195.0);
+    t.c.next();
+    assert_eq!(skip_of(&mut t, "s1"), 0.0, "the skip that started the search is held back too");
+    assert_eq!(skip_of(&mut t, "s2"), 0.0);
+    assert_eq!(skip_of(&mut t, "s3"), 0.0);
+}
+
+#[test]
+fn catch_refills() {
+    let mut t = T::new("dj-catch");
+    t.c.set_dj(true);
+    let dj = |id: &str| {
+        let mut s = song(id);
+        s["dj"] = true.into();
+        s
+    };
+    t.c.play(vec![song("s0"), song("s1"), song("s2"), dj("d0"), dj("d1")], 0);
+    t.at(5.0);
+    t.c.next();
+    t.at(5.0);
+    t.c.next(); // search mode: the DJ's picks go
+    assert_eq!(t.ids(), ["s0", "s1", "s2"]);
+    t.c.add(vec![dj("d2"), dj("d3")], 3);
+    let seq = t.c.extend_seq;
+    t.at(110.0); // more than half of s2: it holds the listener
+    t.c.next();
+    let now = t.c.clock_ms;
+    assert!(!t.c.dj_brain().session.searching(now));
+    assert!(t.c.extend_seq > seq, "picks made while searching make way");
+}
+
+#[test]
+fn following_learns_nothing() {
+    let mut t = T::new("dj-follow");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.follow("root");
+    t.at(195.0);
+    t.c.next();
+    assert!(dj_memory(&mut t).last_heard("s0").is_none());
+}
+
+#[test]
+fn account_switch_keeps_memories_apart() {
+    let mut t = T::new("dj-account");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(195.0);
+    t.c.next();
+    assert!(dj_memory(&mut t).last_heard("s0").is_some());
+    t.c.logout();
+    t.c.login("https://music.example.com", "bob", "pw");
+    assert!(dj_memory(&mut t).last_heard("s0").is_none(), "bob starts empty");
+    let ana = t.dir.join("data/dj").join(crate::disk::hashed("https://music.example.com\nana")).join("dj-memory.json");
+    assert!(ana.exists(), "ana's memory was saved: {ana:?}");
+}
+
+#[test]
+fn silent_tail_not_skip() {
+    let mut t = T::new("dj-silence");
+    t.c.set_dj(true);
+    // s0: 200 s, music for the first half, then silence
+    let bins = 4096usize;
+    let mut body = (bins as u16).to_le_bytes().to_vec();
+    body.extend((0..bins).map(|i| if i < bins / 2 { 200u8 } else { 0 })); // peaks
+    body.extend((0..bins).map(|i| if i < bins / 2 { 100u8 } else { 0 })); // rms
+    let dir = t.dir.join("waveforms");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join(crate::disk::hashed("https://music.example.com\ns0")), body).unwrap();
+    t.c.play(songs(3), 0);
+    t.at(120.0); // 60 % in: the music ended at 50 %
+    t.c.next();
+    assert!(dj_memory(&mut t).last_heard("s0").is_some(), "counted as heard in full");
+}
+
+#[test]
+fn extra_from_index() {
+    let mut t = T::new("dj-extra");
+    t.c.online = true;
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    for id in ["i1", "i2", "i3"] {
+        let mut s = song(id);
+        s["artist"] = format!("X {id}").into();
+        t.c.dj_brain().index.upsert(&s, 1);
+    }
+    t.c.tick();
+    let calls = t.run(false, |m, q| match m {
+        "getSong" => ok(json!({"song": song(&q.iter().find(|(k, _)| k == "id").unwrap().1)})),
+        _ => None,
+    });
+    assert!(has_call(&calls, "getSong?id=i"), "{calls:?}");
+    assert!(t.ids().iter().any(|id| id.starts_with('i')), "{:?}", t.ids());
+}
+
+#[test]
+fn reset_dj_memory_forgets() {
+    let mut t = T::new("dj-reset");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(195.0);
+    t.c.next();
+    t.c.reset_dj_memory();
+    assert!(dj_memory(&mut t).last_heard("s0").is_none());
+}
+
+// the queue's last song played to its end, nothing after it
+#[test]
+fn last_song_to_the_end_learns() {
+    let mut t = T::new("dj-last");
+    t.c.set_dj(true);
+    t.c.set_option("autoContinue", json!(false));
+    t.c.play(songs(1), 0);
+    t.at(199.0);
+    let k = t.c.cur;
+    t.c.deck_event(k, DeckEvent::EndFile { reason: EndReason::Eof, error: String::new() });
+    assert!(!t.c.snapshot().playing);
+    assert!(dj_memory(&mut t).last_heard("s0").is_some());
+}
+
+// paused after one early skip: it counts once 90 s pass, without waiting for the next song
+#[test]
+fn held_skip_counts_on_tick() {
+    let mut t = T::new("dj-held-tick");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    t.c.toggle();
+    t.advance(91_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 1.0);
+}
+
+// genre closeness is built off the player thread; a result for an account that is gone does not land
+#[test]
+fn genres_built_aside_land_for_their_account_only() {
+    let mut t = T::new("dj-genres-aside");
+    t.c.set_dj(true);
+    let metal = |id: &str, g: &str| json!({"id": id, "artist": id, "genre": g});
+    t.c.dj_brain().index.upsert(&metal("m", "Heavy Metal"), 1);
+    t.c.dj_brain().index.upsert(&metal("r", "Hard Rock"), 1);
+    t.c.dj_brain().index.save().unwrap();
+    t.c.take_jobs();
+    t.c.dj_rebuild_genres();
+    let jobs = t.c.take_jobs();
+    assert!(t.c.dj_brain().genres.neighbors("Heavy Metal").is_empty(), "not built on the player thread");
+    t.c.logout();
+    t.c.login("https://music.example.com", "bob", "pw");
+    t.c.dj_brain();
+    for j in jobs {
+        if let Job::Work { run } = j {
+            run()(&mut t.c);
+        }
+    }
+    assert!(t.c.dj_brain().genres.neighbors("Heavy Metal").is_empty(), "ana's genres stay out of bob's brain");
+    t.c.logout();
+    t.c.login("https://music.example.com", "ana", "pw");
+    t.c.dj_brain();
+    for j in t.c.take_jobs() {
+        if let Job::Work { run } = j {
+            run()(&mut t.c);
+        }
+    }
+    assert!(t.c.dj_brain().genres.neighbors("Heavy Metal").iter().any(|(n, _)| n == "Hard Rock"));
+}
+
+// ------------------------------------------------------------------ the DJ's library index
+
+fn param<'a>(q: &'a [(String, String)], k: &str) -> &'a str {
+    q.iter().find(|(key, _)| key == k).map_or("", |(_, v)| v.as_str())
+}
+
+fn library(q: &[(String, String)], total: usize) -> Option<Value> {
+    let off: usize = param(q, "songOffset").parse().unwrap();
+    let n: usize = param(q, "songCount").parse().unwrap();
+    let songs: Vec<Value> = (off..total.min(off + n)).map(|i| song(&format!("L{i}"))).collect();
+    ok(json!({"searchResult3": {"song": songs}}))
+}
+
+fn indexing(name: &str) -> T {
+    let mut t = T::new(name);
+    t.c.online = true;
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    t
+}
+
+#[test]
+fn full_scan_pages() {
+    let mut t = indexing("ix-full");
+    t.c.tick();
+    let calls = t.run(false, |m, q| if m == "search3" { library(q, 520) } else { None });
+    assert!(has_call(&calls, "search3?query=&songCount=500&songOffset=0"), "{calls:?}");
+    assert!(has_call(&calls, "search3?query=&songCount=500&songOffset=500"), "{calls:?}");
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    let b = t.c.dj_brain();
+    assert!(b.index.get("L519").is_some() && b.index.get("L0").is_some());
+    assert_eq!(b.index.full_day, day);
+}
+
+#[test]
+fn no_full_scan_on_mobile() {
+    let mut t = indexing("ix-mobile");
+    t.c.set_mobile(true);
+    // songs seen in DJ pools land in the index, but it was never walked: still nothing on mobile data
+    t.c.dj_brain().index.upsert(&song("seen"), 1);
+    t.c.tick();
+    let calls = t.run(false, |m, q| if m == "search3" { library(q, 10) } else { None });
+    assert!(!has_call(&calls, "search3") && !has_call(&calls, "getAlbumList2"), "{calls:?}");
+}
+
+// Wi-Fi went away halfway through the walk: the next page waits
+#[test]
+fn full_scan_stops_on_mobile() {
+    let mut t = indexing("ix-to-mobile");
+    t.c.tick();
+    let jobs = t.c.take_jobs();
+    t.c.set_mobile(true);
+    for j in jobs {
+        if let Job::Api { then, method, query, .. } = j {
+            let r = if method == "search3" { library(&query, 1200).unwrap() } else { json!({"status": "ok"}) };
+            then(&mut t.c, Ok(r));
+        }
+    }
+    let calls = t.run(false, |m, q| if m == "search3" { library(q, 1200) } else { None });
+    assert!(!has_call(&calls, "search3"), "{calls:?}");
+    assert!(t.c.dj_brain().index.get("L499").is_some() && t.c.dj_brain().index.full_day == 0);
+}
+
+// another account's index does not wait for the last one's schedule
+#[test]
+fn next_account_indexes_now() {
+    let mut t = indexing("ix-account");
+    t.c.tick();
+    t.run(false, |m, q| if m == "search3" { library(q, 10) } else { None });
+    assert!(t.c.index_next > t.c.clock_ms);
+    t.c.logout();
+    t.c.login("https://music.example.com", "bob", "pw");
+    t.c.online = true;
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    let calls = t.run(false, |m, q| if m == "search3" { library(q, 10) } else { None });
+    assert!(has_call(&calls, "search3"), "{calls:?}");
+}
+
+// demo songs are nobody's listening
+#[test]
+fn demo_learns_nothing() {
+    let mut t = T::new("dj-demo");
+    t.c.set_dj(true);
+    t.c.demo();
+    let first = t.current();
+    t.at(t.c.duration() - 1.0);
+    t.c.next();
+    assert!(dj_memory(&mut t).last_heard(&first).is_none());
+}
+
+// offline too: someone else's sign-in does not inherit the queue the DJ would learn from
+#[test]
+fn login_as_another_while_offline_drops_the_queue() {
+    let mut t = T::new("relogin-offline");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    assert!(!t.c.online);
+    t.c.login("https://music.example.com", "ana", "pw");
+    assert_eq!(t.c.queue.len(), 3, "the same account keeps it");
+    t.c.login("https://music.example.com", "bob", "pw");
+    assert!(t.c.queue.is_empty());
+}
+
+// "ok" without the result is no library: nothing is pruned and the walk is not complete
+#[test]
+fn malformed_page_prunes_nothing() {
+    let mut t = indexing("ix-malformed");
+    t.c.dj_brain().index.upsert(&song("keep"), 1);
+    t.c.tick();
+    t.run(false, |m, _| if m == "search3" { ok(json!({})) } else { None });
+    let b = t.c.dj_brain();
+    assert!(b.index.get("keep").is_some() && b.index.full_day == 0);
+    t.c.index_next = 0.0;
+    t.c.tick();
+    t.run(false, |m, _| if m == "search3" { ok(json!({"searchResult3": {"song": "x"}})) } else { None });
+    let b = t.c.dj_brain();
+    assert!(b.index.get("keep").is_some() && b.index.full_day == 0);
+}
+
+// signing in as someone else while online: replies for the old account stay out of the new one's index
+#[test]
+fn login_while_online_fences_old_replies() {
+    let mut t = indexing("ix-relogin");
+    t.c.tick();
+    let jobs = t.c.take_jobs();
+    t.c.extending = true; // a DJ refill was out too
+    t.c.login("https://music.example.com", "bob", "pw");
+    for j in jobs {
+        if let Job::Api { then, method, query, .. } = j {
+            let r = if method == "search3" { library(&query, 10).unwrap() } else { json!({"status": "ok"}) };
+            then(&mut t.c, Ok(r));
+        }
+    }
+    assert!(t.c.dj_brain().index.get("L0").is_none());
+    assert!(t.c.queue.is_empty() && !t.c.extending, "ana's queue and pending refill do not carry over");
+}
+
+#[test]
+fn incremental_newest() {
+    let mut t = indexing("ix-newest");
+    t.set_now(20_000.0 * 86_400_000.0);
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    {
+        let b = t.c.dj_brain();
+        b.index.upsert(&json!({"id": "old", "albumId": "known"}), day);
+        b.index.full_day = day;
+    }
+    t.c.tick();
+    let calls = t.run(false, |m, q| match m {
+        "getAlbumList2" => ok(json!({"albumList2": {"album": [{"id": "new1"}, {"id": "new2"}, {"id": "known"}, {"id": "older"}]}})),
+        "getAlbum" => ok(json!({"album": {"song": [song(&format!("{}-s", param(q, "id")))]}})),
+        _ => None,
+    });
+    assert!(has_call(&calls, "getAlbumList2?type=newest&size=50&offset=0"), "{calls:?}");
+    let albums: Vec<&String> = calls.iter().filter(|c| c.starts_with("getAlbum?")).collect();
+    assert_eq!(albums, ["getAlbum?id=new1", "getAlbum?id=new2"]);
+    assert!(t.c.dj_brain().index.get("new2-s").is_some());
+    assert!(!has_call(&calls, "search3"));
+}
+
+#[test]
+fn weekly_full_drops_gone_songs_only_when_complete() {
+    let mut t = indexing("ix-weekly");
+    t.set_now(20_000.0 * 86_400_000.0);
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    {
+        let b = t.c.dj_brain();
+        b.index.upsert(&json!({"id": "gone"}), day);
+        b.index.full_day = day - 8;
+    }
+    // the walk breaks half way: nothing is dropped
+    t.c.tick();
+    t.run(false, |m, q| if m == "search3" && param(q, "songOffset") == "0" { library(q, 900) } else { None });
+    assert!(t.c.dj_brain().index.get("gone").is_some());
+    // a whole walk later: dropped
+    t.c.index_next = 0.0;
+    t.c.tick();
+    t.run(false, |m, q| if m == "search3" { library(q, 900) } else { None });
+    let b = t.c.dj_brain();
+    assert!(b.index.get("gone").is_none() && b.index.get("L899").is_some());
+    assert_eq!(b.index.full_day, day);
 }
