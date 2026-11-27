@@ -529,7 +529,11 @@ impl PlayerCore {
             // half a walk, or "ok" with no result in it: nothing is dropped
             let Some(res) = r.as_ref().map(|r| &r["searchResult3"]).filter(|v| v.is_object()) else { return c.index_done(false) };
             let day = crate::dj::memory::day(c.clock_ms);
-            let songs = res["song"].as_array().cloned().unwrap_or_default(); // none: the last page was full
+            let songs = match res.get("song") {
+                None => vec![], // the last page was full
+                Some(Value::Array(a)) => a.clone(),
+                Some(_) => return c.index_done(false),
+            };
             let ix = &mut c.dj_brain().index;
             for s in &songs {
                 ix.upsert(s, day);

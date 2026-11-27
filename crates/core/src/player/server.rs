@@ -28,8 +28,10 @@ impl PlayerCore {
                 self.set_status(why);
             }
             Ok(l) => {
+                if self.online && (l.server != self.login.server || l.user != self.login.user) {
+                    self.logout(); // someone else over a live session: nothing of the last one's carries over
+                }
                 self.fresh = true;
-                self.generation += 1; // replies still out were asked for the login before (when signing in over it)
                 self.set_login(l);
                 self.connect_server();
             }
