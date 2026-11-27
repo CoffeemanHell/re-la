@@ -1901,6 +1901,67 @@ fn reset_clears_feedback() {
 }
 
 #[test]
+fn undo_skip_forgets_it() {
+    let mut t = T::new("dj-undo");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(195.0);
+    t.c.next();
+    let before = t.c.dj_brain().session.clone();
+    t.at(20.0);
+    t.c.next();
+    assert_eq!(t.c.snapshot().skip_undo["id"], "s1");
+    t.c.undo_skip();
+    assert!(t.c.snapshot().skip_undo.is_null());
+    assert!(t.c.dj_brain().session == before, "the sitting as before the skip");
+    t.advance(100_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s1"), 0.0);
+}
+
+#[test]
+fn undo_notice_expires() {
+    let mut t = T::new("dj-undo-expires");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    assert!(!t.c.snapshot().skip_undo.is_null());
+    t.advance(8_100.0);
+    t.c.tick();
+    assert!(t.c.snapshot().skip_undo.is_null());
+    t.c.undo_skip(); // too late: the notice is gone
+    t.advance(100_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 1.0, "the skip still counts");
+}
+
+#[test]
+fn no_undo_while_searching() {
+    let mut t = T::new("dj-undo-search");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(20.0);
+    t.c.next();
+    t.at(20.0);
+    t.c.next();
+    assert!(t.c.snapshot().skip_undo.is_null(), "skips while looking around do not count: nothing to undo");
+}
+
+#[test]
+fn logout_drops_undo() {
+    let mut t = T::new("dj-undo-logout");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    t.c.logout();
+    assert!(t.c.snapshot().skip_undo.is_null());
+    t.c.undo_skip();
+    assert!(t.c.held_skip.is_none());
+}
+
+#[test]
 fn reset_dj_settings_restores() {
     let mut t = T::new("dj-settings-reset");
     t.c.set_option("djArtistMax", json!(4));

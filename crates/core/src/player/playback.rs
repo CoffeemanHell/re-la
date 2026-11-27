@@ -255,9 +255,10 @@ impl PlayerCore {
         {
             self.extend((want - ahead) as i32);
         }
-        if self.held_skip.as_ref().is_some_and(|h| self.clock_ms - h.2 > self.knobs().search_ms) {
+        if self.held_skip.as_ref().is_some_and(|h| self.clock_ms - h.at_ms > self.knobs().search_ms) {
             self.dj_flush_held(); // no search came of it (paused after one skip)
         }
+        self.expire_skip_undo();
         self.index_refresh();
 
         let k = self.cur;

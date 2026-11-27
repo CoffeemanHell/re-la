@@ -109,7 +109,21 @@ pub struct PlayerSnapshot {
     pub station: Map<String, Value>,
     pub shuffle: bool,
     pub repeat: i64,
+    /// {id, title} of an early skip that will count against the song unless taken back; null otherwise
+    pub skip_undo: Value,
 }
+
+/// An early skip that counts once `Knobs::search_ms` pass without a search: it may yet be the start of one, or be
+/// taken back.
+pub(super) struct Held {
+    pub(super) id: String,
+    pub(super) day: u32,
+    pub(super) at_ms: f64,
+    pub(super) before: crate::dj::session::Session, // the sitting before the skip, for an undo
+}
+
+/// How long the "undo skip" notice shows.
+pub(super) const UNDO_MS: f64 = 8_000.0;
 
 /// One deck as the core sees it.
 pub(super) struct DeckState {
@@ -314,7 +328,8 @@ pub struct PlayerCore {
     pub(super) brain: Option<(String, Brain)>, // the DJ's, for the account it was opened for
     pub(super) last_full: Vec<String>,         // genres of the song before, when it was heard in full
     pub(super) memory_saved: f64,              // clock ms
-    pub(super) held_skip: Option<(String, u32, f64)>, // early skip (id, day, clock ms) that may yet start a search
+    pub(super) held_skip: Option<Held>,
+    pub(super) skip_undo: Value, // what the "undo skip" notice offers, while it shows
     pub(super) by_listener: bool,              // a command from someone in the room is running
     pub(super) index_busy: bool,               // the DJ's library index is being walked
     pub(super) index_next: f64,                // clock ms: no walk before it
@@ -426,6 +441,7 @@ impl PlayerCore {
             last_full: vec![],
             memory_saved: 0.0,
             held_skip: None,
+            skip_undo: Value::Null,
             by_listener: false,
             index_busy: false,
             index_next: 0.0,
@@ -498,6 +514,7 @@ impl PlayerCore {
             station: self.station.clone(),
             shuffle: self.shuffle,
             repeat: self.repeat,
+            skip_undo: self.skip_undo.clone(),
         }
     }
 
@@ -1187,7 +1204,7 @@ impl PlayerCore {
         let h = classify(pos, dur, natural, wave.as_ref().map(|w| w.rms.as_slice()), &k);
         let ratio = if dur > 0.0 { pos / dur } else { 0.0 };
         let (now, day) = (self.clock_ms, crate::dj::memory::day(self.clock_ms));
-        if self.held_skip.as_ref().is_some_and(|h| now - h.2 > k.search_ms) {
+        if self.held_skip.as_ref().is_some_and(|h| now - h.at_ms > k.search_ms) {
             self.dj_flush_held(); // no search came of it
         }
         let b = self.dj_brain();
@@ -1198,15 +1215,18 @@ impl PlayerCore {
         let h = if h == Heard::EarlySkip && b.memory.feedback(&id) < 0 { Heard::Neutral } else { h };
         let Some(s) = b.index.get(&id).cloned() else { return false };
         let was = b.session.searching(now, &k);
+        let before = b.session.clone();
         let caught = b.session.hear(&s, h, now, ratio, &b.genres, &b.index, &k);
         let searching = b.session.searching(now, &k);
         if searching {
             self.held_skip = None; // it was the start of a search: skips while looking for something else do not count
+            self.set_skip_undo(Value::Null);
         } else if h == Heard::EarlySkip {
             if self.held_skip.is_some() {
                 self.dj_flush_held();
             }
-            self.held_skip = Some((id.clone(), day, now)); // counts once search_ms pass without a search
+            self.held_skip = Some(Held { id: id.clone(), day, at_ms: now, before });
+            self.set_skip_undo(json!({"id": id, "title": text(&song["title"])}));
         } else {
             b.memory.record(&id, h, day, &k);
         }
@@ -1232,9 +1252,38 @@ impl PlayerCore {
 
     pub(super) fn dj_flush_held(&mut self) {
         let k = self.knobs();
-        if let (Some((id, day, _)), Some((_, b))) = (self.held_skip.take(), self.brain.as_mut()) {
-            b.memory.record(&id, Heard::EarlySkip, day, &k);
+        if let (Some(h), Some((_, b))) = (self.held_skip.take(), self.brain.as_mut()) {
+            b.memory.record(&h.id, Heard::EarlySkip, h.day, &k);
         }
+        self.set_skip_undo(Value::Null);
+    }
+
+    fn set_skip_undo(&mut self, v: Value) {
+        if self.skip_undo != v {
+            self.skip_undo = v;
+            self.state_changed();
+        }
+    }
+
+    /// The notice's time is up (tick).
+    pub(super) fn expire_skip_undo(&mut self) {
+        if !self.skip_undo.is_null() && self.held_skip.as_ref().is_none_or(|h| self.clock_ms - h.at_ms > UNDO_MS) {
+            self.set_skip_undo(Value::Null);
+        }
+    }
+
+    /// Takes back the early skip the notice offers: it will not count, and the sitting is as before it.
+    pub fn undo_skip(&mut self) {
+        if self.skip_undo.is_null() {
+            return;
+        }
+        let key = self.brain_key();
+        if let (Some(h), Some((k, b))) = (self.held_skip.take(), self.brain.as_mut())
+            && *k == key
+        {
+            b.session = h.before;
+        }
+        self.set_skip_undo(Value::Null);
     }
 
     /// A held skip counts now and the memory goes to disk (quit, logout, another account).
@@ -1289,6 +1338,7 @@ impl PlayerCore {
         b.memory.clear();
         b.session = Default::default();
         self.held_skip = None;
+        self.set_skip_undo(Value::Null);
         let _ = self.dj_brain().memory.save();
         self.dj_rebuild_genres();
         self.last_full.clear();

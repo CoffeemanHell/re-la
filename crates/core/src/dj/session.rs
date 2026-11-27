@@ -35,7 +35,7 @@ pub fn tags(s: &Song, index: &Index) -> Vec<Tag> {
     t
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq)]
 pub struct Session {
     w: HashMap<Tag, f32>,
     skips: Vec<f64>, // early skips, clock ms
