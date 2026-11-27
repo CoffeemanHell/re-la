@@ -17,7 +17,7 @@ class FacadeViewTest {
             online = true, offline = false, cacheBytes = 0uL, signedIn = true, loginFailed = false, status = "", user = "u", connecting = false, queueLength = 3u,
             index = index, currentJson = "{}", playing = playing, crossfade = 0, dj = false, stationJson = station,
             shuffle = false, repeat = 0, volume = 100.0, position = position, duration = duration, signalPath = "",
-            bitrate = 0, streamInfo = "", optionsJson = "{}", theme = "",
+            bitrate = 0, streamInfo = "", optionsJson = "{}", theme = "", skipUndoJson = "null",
         )
 
     private val queue = Song.list(

@@ -44,6 +44,7 @@ Listening together needs the relay running next to Navidrome. See [relay/README.
 - [Using re-la](docs/usage.md)
 - [Themes](docs/themes.md)
 - [Development](docs/development.md)
+- [Roadmap](docs/roadmap.md)
 
 ## Thanks
 

@@ -3,6 +3,7 @@
 import QtQuick
 import QtQuick.Controls.Basic
 import QtQuick.Layouts
+import shared
 import Rela
 
 Item {
@@ -37,7 +38,10 @@ Item {
             Layout.fillWidth: true
             spacing: 1
             Mono { text: row.w ? row.w.up(row.song.title) : ""; Layout.fillWidth: true; font.bold: row.isCurrent; color: row.inQueue && row.index < Player.index ? App.theme.muted : App.theme.fg }
-            Mono { text: row.w ? row.w.up(row.song.artist) : ""; color: App.theme.muted; font.pixelSize: 9; Layout.fillWidth: true }
+            Mono { // a DJ pick in the queue says why it came
+                text: row.w ? row.w.up(row.song.artist) + (row.inQueue && row.song.djWhy ? "  ·  " + DjKnobs.upper(row.song.djWhy) : "") : ""
+                color: App.theme.muted; font.pixelSize: 9; Layout.fillWidth: true; elide: Text.ElideRight
+            }
         }
         Mono { text: (row.song.suffix || "").toUpperCase(); color: App.theme.muted; font.pixelSize: 9; visible: !hov.hovered }
         Mono { text: row.w ? row.w.fmt(row.song.duration) : ""; color: App.theme.muted; font.pixelSize: 10; visible: !hov.hovered }

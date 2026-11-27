@@ -2,7 +2,7 @@
 use super::deck::{DeckEvent, EndReason};
 use super::state::PlayerCore;
 use crate::queue::{Drift, drift_action, play_report, scrobble_due, similar_append, text};
-use crate::dj::{Weights, extra_ids, pick};
+use crate::dj::{Knobs, extra_ids, pick};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::f64::consts::PI;
@@ -200,6 +200,10 @@ impl PlayerCore {
 
     pub fn tick(&mut self) {
         self.report_playback();
+        // before the early returns: a station or an empty queue does not keep a skip held
+        let search_ms = self.knobs().search_ms;
+        self.dj_flush_older(search_ms); // no search came of those (paused after a skip)
+        self.expire_skip_undo();
         if !self.station.is_empty() {
             // live stream: no timeline, crossfade or prefetch
             let info = self.stream_info();
@@ -254,9 +258,6 @@ impl PlayerCore {
             && self.clock_ms >= self.extend_retry
         {
             self.extend((want - ahead) as i32);
-        }
-        if self.held_skip.as_ref().is_some_and(|h| self.clock_ms - h.2 > 90_000.0) {
-            self.dj_flush_held(); // no search came of it (paused after one skip)
         }
         self.index_refresh();
 
@@ -425,10 +426,9 @@ impl PlayerCore {
             similar: HashSet<String>,
             pending: usize,
         }
-        let opt = |k: &str, def: i64| self.options.get(k).and_then(Value::as_i64).unwrap_or(def) as i32;
-        let w = Weights { language: opt("radioLanguage", 80), genre: opt("radioGenre", 50), explore: opt("radioExplore", 20), batch: need };
+        let w = Knobs { batch: need, ..self.knobs() };
         let (now, day) = (self.clock_ms, crate::dj::memory::day(self.clock_ms));
-        let searching = self.dj_brain().session.searching(now);
+        let searching = self.dj_brain().session.searching(now, &w);
         let at = ((self.idx + 1).max(0) as usize).min(self.queue.len());
         let history = self.queue[..at].to_vec();
         let extra = extra_ids(&self.brain.as_ref().unwrap().1, &history, &w, searching, day, &mut self.rng);
@@ -448,7 +448,7 @@ impl PlayerCore {
         }
         fetch.lock().unwrap().pending = calls.len();
         for (method, params, key, is_similar) in calls {
-            let (fetch, finish) = (fetch.clone(), finish.clone());
+            let (fetch, finish, w) = (fetch.clone(), finish.clone(), w.clone());
             self.api(method, params, true, move |c, r| {
                 let mut f = fetch.lock().unwrap();
                 let got = match r {

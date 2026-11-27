@@ -28,6 +28,11 @@ pub fn readable(method: &str) -> bool {
     !method.is_empty() && method.chars().all(|c| c.is_ascii_alphanumeric()) && (method.starts_with("get") || method == "search3")
 }
 
+/// What a theme may ask for: a Subsonic call above, or the DJ's own answers, which the core makes itself.
+pub fn askable(method: &str, write: bool) -> bool {
+    if write { writable(method) } else { readable(method) || matches!(method, "djState" | "djFeedback") }
+}
+
 /// Methods QML may call through Player.set: favorites and playlist edits, nothing else.
 pub fn writable(method: &str) -> bool {
     matches!(method, "star" | "unstar" | "createPlaylist" | "updatePlaylist" | "deletePlaylist" | "setRating" | "createShare")
@@ -450,6 +455,18 @@ mod tests {
     }
     fn ids(q: &[Value]) -> String {
         q.iter().map(|s| s["id"].as_str().unwrap_or("")).collect::<Vec<_>>().join(",")
+    }
+
+    #[test]
+    fn askable_lets_the_djs_own_reads_through() {
+        for m in ["djState", "djFeedback", "getAlbum"] {
+            assert!(askable(m, false), "{m}");
+        }
+        for m in ["djState", "djFeedback"] {
+            assert!(!askable(m, true), "{m}");
+            assert!(!readable(m), "{m}: not a Subsonic call");
+        }
+        assert!(askable("star", true) && !askable("star", false));
     }
 
     #[test]

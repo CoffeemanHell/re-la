@@ -57,8 +57,12 @@ Dialog {
         spacing: 10
     }
 
+    property alias stateDialog: stateDialog
+    readonly property DjData dj: DjData { parent: d.contentItem } // a parent: Player.get answers only such owners
+    DjStateDialog { id: stateDialog; w: d.w }
+
     objectName: "settings"
-    onAboutToShow: Player.refreshAudioDevices() // not opened: that waits for the style's opening animation
+    onAboutToShow: { Player.refreshAudioDevices(); d.dj.refreshFeedback() } // not opened: that waits for the style's opening animation
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(760, d.w.width - 40); height: Math.min(560, d.w.height - 40)
@@ -165,46 +169,62 @@ Dialog {
 
                 Page {
                     name: "DJ"
+                    onVisibleChanged: if (visible) d.dj.refreshFeedback()
                     SwitchRow {
                         label: qsTr("DJ modu")
                         hint: qsTr("Kapalıyken Navidrome'un benzer şarkıları olduğu gibi eklenir. Açıkken aşağıdaki ağırlıklarla, geniş bir havuzdan seçilir.")
                         checked: Player.dj
                         onToggled: on => Player.dj = on
                     }
-                    LabeledSlider {
-                        label: qsTr("Dil bağlılığı")
+                    component Knob: LabeledSlider {
+                        required property var modelData
+                        objectName: "knob_" + modelData.key
                         enabled: Player.dj
-                        valueText: "%" + (Player.options.radioLanguage || 0)
-                        hint: qsTr("Eklenen şarkıların ne kadarı çalan şarkıyla aynı dilde olsun. Türkçe bir şarkıdan başlarsan %80 → 10 şarkının 8'i Türkçe.")
-                        from: 0; to: 100; stepSize: 10; value: Player.options.radioLanguage || 0
-                        onMoved: v => Player.setOption("radioLanguage", v)
+                        label: modelData.label
+                        hint: modelData.hint
+                        from: modelData.from; to: modelData.to; stepSize: modelData.step
+                        value: Player.options[modelData.key] ?? modelData.from
+                        valueText: DjKnobs.text(modelData, Player.options[modelData.key] ?? modelData.from)
+                        onMoved: v => Player.setOption(modelData.key, Math.round(v))
                     }
-                    LabeledSlider {
-                        label: qsTr("Benzerlik gücü")
-                        enabled: Player.dj
-                        valueText: "%" + (Player.options.radioGenre || 0)
-                        hint: qsTr("Çalan müziğe ne kadar yakın kalınsın. Yakın türler (Heavy Metal ~ Hard Rock) de sayılır.")
-                        from: 0; to: 100; stepSize: 10; value: Player.options.radioGenre || 0
-                        onMoved: v => Player.setOption("radioGenre", v)
+                    Repeater { model: DjKnobs.main; delegate: Knob {} }
+                    Switch { id: advanced; objectName: "djAdvanced"; text: qsTr("Gelişmiş ayarlar"); enabled: Player.dj }
+                    Repeater { model: DjKnobs.advanced; delegate: Knob { visible: advanced.checked } }
+                    RowLayout {
+                        Hint { text: qsTr("DJ ayarlarını ilk hâline getirir."); Layout.fillWidth: true }
+                        Button { text: qsTr("Varsayılanlara dön"); icon.name: Util.icon("edit-undo"); onClicked: Player.resetDjSettings() }
                     }
-                    LabeledSlider {
-                        label: qsTr("Keşif")
-                        enabled: Player.dj
-                        valueText: "%" + (Player.options.radioExplore || 0)
-                        hint: qsTr("Her partide yeni eklenen ya da az dinlenen şarkılara ayrılan pay.")
-                        from: 0; to: 50; stepSize: 10; value: Player.options.radioExplore || 0
-                        onMoved: v => Player.setOption("radioExplore", v)
-                    }
-                    LabeledSlider {
-                        label: qsTr("Her seferde eklenen")
-                        enabled: Player.dj
-                        valueText: qsTr("%n şarkı", "", Player.options.radioBatch || 10)
-                        from: 5; to: 30; stepSize: 5; value: Player.options.radioBatch || 10
-                        onMoved: v => Player.setOption("radioBatch", v)
+                    Plain { text: qsTr("Geri bildirimlerin"); font.weight: Font.DemiBold; Layout.topMargin: 6 }
+                    Hint { visible: !d.dj.feedback.length; text: qsTr("Henüz yok. Bir şarkının menüsünden \"Bunun gibi daha çok\" ya da \"Bunu daha az çal\" diyebilirsin.") }
+                    Repeater {
+                        model: d.dj.feedback
+                        delegate: RowLayout {
+                            id: fb
+                            required property var modelData
+                            Layout.fillWidth: true
+                            Plain { text: fb.modelData.dir > 0 ? "▲" : "▼"; color: fb.modelData.dir > 0 ? palette.highlight : palette.placeholderText }
+                            ColumnLayout {
+                                Layout.fillWidth: true; spacing: 0
+                                Plain { text: fb.modelData.title; elide: Text.ElideRight; Layout.fillWidth: true }
+                                Hint {
+                                    readonly property string dir: fb.modelData.dir > 0 ? qsTr("Daha çok") : qsTr("Daha az")
+                                    text: fb.modelData.artist ? qsTr("%1 · %2").arg(dir).arg(fb.modelData.artist) : dir
+                                }
+                            }
+                            Button {
+                                objectName: "fbRemove_" + fb.modelData.id
+                                text: qsTr("Kaldır")
+                                onClicked: d.dj.toggle(fb.modelData, fb.modelData.dir)
+                            }
+                        }
                     }
                     RowLayout {
-                        Hint { text: qsTr("Atlamalardan ve dinlemelerden öğrenileni siler. Kütüphane dizini kalır."); Layout.fillWidth: true }
-                        Button { text: qsTr("DJ hafızasını sıfırla"); icon.name: Util.icon("edit-clear-all"); onClicked: Player.resetDjMemory() }
+                        Hint { text: qsTr("DJ'nin son seçimde tarttığı şarkılar ve puanları."); Layout.fillWidth: true }
+                        Button { text: qsTr("DJ durumu"); icon.name: Util.icon("view-statistics"); onClicked: stateDialog.show() }
+                    }
+                    RowLayout {
+                        Hint { text: qsTr("Atlamaları, dinlemeleri ve geri bildirimlerini siler. Kütüphane dizini kalır."); Layout.fillWidth: true }
+                        Button { text: qsTr("DJ hafızasını sıfırla"); icon.name: Util.icon("edit-clear-all"); onClicked: { Player.resetDjMemory(); d.dj.feedback = [] } }
                     }
                 }
 

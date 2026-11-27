@@ -333,7 +333,14 @@ ApplicationWindow {
                     }
                     Mono { text: String(Math.round(Player.volume)).padStart(3, "0"); color: App.theme.muted }
                 }
-                Mono { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: win.up(win.notice || Player.status); color: App.theme.muted; font.pixelSize: 9 }
+                Mono { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; visible: !Player.skipUndo.id; text: win.up(win.notice || Player.status); color: App.theme.muted; font.pixelSize: 9 }
+                RowLayout { // a skip the DJ will hold against the song, for a few seconds: take it back
+                    Layout.alignment: Qt.AlignRight
+                    visible: !!Player.skipUndo.id
+                    spacing: 8
+                    Mono { text: qsTr("ATLAMA EKSİ SAYILACAK"); color: App.theme.muted; font.pixelSize: 9 }
+                    Pill { text: qsTr("GERİ AL"); implicitHeight: 20; onClicked: Player.undoSkip() }
+                }
             }
         }
     }
@@ -418,6 +425,7 @@ ApplicationWindow {
 
     // --settings opens the panel at start (handy while designing a theme with --demo)
     Component.onCompleted: {
+        if (ToolTip.toolTip.contentItem) ToolTip.toolTip.contentItem.textFormat = Text.PlainText // tips carry song names: never markup
         geoReady = true
         start()
         if (Qt.application.arguments.indexOf("--settings") >= 0) openSettings("Genel")

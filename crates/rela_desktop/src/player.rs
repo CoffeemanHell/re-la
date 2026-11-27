@@ -39,6 +39,7 @@ pub mod ffi {
         #[qproperty(bool, exclusive, READ, WRITE = set_exclusive, NOTIFY = state_changed)]
         #[qproperty(bool, dj, READ, WRITE = set_dj, NOTIFY = state_changed)] // queue end: on = client-side picks, off = similar songs
         #[qproperty(QMap_QString_QVariant, station, READ, NOTIFY = state_changed)] // {id, name} of the playing internet radio
+        #[qproperty(QMap_QString_QVariant, skip_undo, cxx_name = "skipUndo", READ, NOTIFY = state_changed)] // {id, title} of a skip the DJ will count unless taken back; empty otherwise
         #[qproperty(bool, shuffle, READ, WRITE = set_shuffle, NOTIFY = state_changed)]
         #[qproperty(i32, repeat, READ, WRITE = set_repeat, NOTIFY = state_changed)] // 0 off, 1 all, 2 one
         #[qproperty(f64, volume, READ, WRITE = set_volume, NOTIFY = volume_changed)]
@@ -126,6 +127,16 @@ pub mod ffi {
         #[cxx_name = "resetDjMemory"]
         fn reset_dj_memory(self: &RustPlayer);
         #[qinvokable]
+        #[cxx_name = "resetDjSettings"]
+        fn reset_dj_settings(self: &RustPlayer);
+        #[qinvokable]
+        /// "more like this" (1), "less like this" (-1), neither (0)
+        #[cxx_name = "djFeedbackJson"]
+        fn dj_feedback_json(self: &RustPlayer, song_json: &QString, dir: i32);
+        #[qinvokable]
+        #[cxx_name = "undoSkip"]
+        fn undo_skip(self: &RustPlayer);
+        #[qinvokable]
         fn login(self: &RustPlayer, server: &QString, user: &QString, password: &QString);
         #[qinvokable]
         fn logout(self: &RustPlayer);
@@ -211,6 +222,7 @@ pub struct PlayerRust {
     exclusive: bool,
     dj: bool,
     station: QMap<QMapPair_QString_QVariant>,
+    skip_undo: QMap<QMapPair_QString_QVariant>,
     shuffle: bool,
     repeat: i32,
     volume: f64,
@@ -297,6 +309,7 @@ impl ffi::RustPlayer {
             r.exclusive = s.exclusive;
             r.dj = s.dj;
             r.station = to_qvariant_map(&Value::Object(s.station));
+            r.skip_undo = to_qvariant_map(&s.skip_undo);
             r.shuffle = s.shuffle;
             r.repeat = s.repeat as i32;
             let song = s.current["id"].as_str().unwrap_or_default();
@@ -419,6 +432,16 @@ impl ffi::RustPlayer {
     fn reset_dj_memory(&self) {
         player().call(|c| c.reset_dj_memory());
     }
+    fn reset_dj_settings(&self) {
+        player().call(|c| c.reset_dj_settings());
+    }
+    fn dj_feedback_json(&self, song_json: &QString, dir: i32) {
+        let song = json_value(song_json);
+        player().call(move |c| c.dj_feedback(song, dir.clamp(-1, 1) as i8));
+    }
+    fn undo_skip(&self) {
+        player().call(|c| c.undo_skip());
+    }
     fn login(&self, server: &QString, user: &QString, password: &QString) {
         let (s, u, p) = (server.to_string(), user.to_string(), password.to_string());
         player().call(move |c| c.login(&s, &u, &p));
@@ -428,8 +451,7 @@ impl ffi::RustPlayer {
     }
     fn request(&self, id: i32, method: &QString, params_json: &QString, write: bool) -> bool {
         let m = method.to_string();
-        let allowed = if write { rela_core::queue::writable(&m) } else { rela_core::queue::readable(&m) };
-        if !allowed {
+        if !rela_core::queue::askable(&m, write) {
             return false;
         }
         let params = match json_value(params_json) {
@@ -545,5 +567,27 @@ mod tests {
         let mut hold = Some(SeekHold { to: 99.0, at: t0, song: "a".into() });
         assert_eq!(held(&mut hold, 2.0, "b", t0 + Duration::from_millis(16)), 2.0);
         assert!(hold.is_none());
+    }
+
+    // every Player function a theme test calls exists on the real Player: in qml/Player.qml or as a Q_INVOKABLE here
+    #[test]
+    fn the_fake_player_offers_nothing_the_real_one_lacks() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let read = |p: &str| std::fs::read_to_string(dir.join(p)).unwrap();
+        let fns = |qml: &str| -> Vec<String> {
+            qml.lines().filter_map(|l| l.trim().strip_prefix("function ")).map(|l| l.split('(').next().unwrap().trim().to_string()).collect()
+        };
+        let (fake, wrapper, rust) = (fns(&read("tests/qml/Rela/Player.qml")), fns(&read("qml/Player.qml")), read("src/player.rs"));
+        let lines: Vec<&str> = rust.lines().map(str::trim).collect();
+        // a Q_INVOKABLE: #[qinvokable], then maybe #[cxx_name = "x"], then fn x_or_snake
+        let invokable = |name: &str| {
+            lines.windows(3).any(|w| {
+                w[0] == "#[qinvokable]"
+                    && (w[1] == format!("#[cxx_name = \"{name}\"]") || w[1].starts_with(&format!("fn {name}(")))
+            })
+        };
+        let test_only = ["reset", "rec", "called", "answer", "release"];
+        let missing: Vec<&String> = fake.iter().filter(|f| !test_only.contains(&f.as_str()) && !wrapper.contains(f) && !invokable(f)).collect();
+        assert!(missing.is_empty(), "not callable from QML on the real Player: {missing:?}");
     }
 }

@@ -43,6 +43,8 @@ Menu {
         text: qsTr("SANATÇI RADYOSU"); visible: m.kind === "artist"; enabled: m.ctl
         onTriggered: Player.get(m, "getSimilarSongs2", { id: m.item.id, count: 50 }, r => { if (!m.act.fail(r)) Player.play(r.similarSongs2.song || [], 0) })
     }
+    Act { text: qsTr("BUNUN GİBİ DAHA ÇOK"); visible: m.isSong && Player.dj; onTriggered: m.act.djFeedback(1) }
+    Act { text: qsTr("BUNU DAHA AZ ÇAL"); visible: m.isSong && Player.dj; onTriggered: m.act.djFeedback(-1) }
     Sep { visible: m.kind !== "artist" }
     Act { text: qsTr("PLAYLIST'E EKLE…"); visible: m.isSong || m.kind === "album"; onTriggered: m.act.withSongs(s => { m.plMenu.songs = s; m.plMenu.popup() }) }
     Act { text: qsTr("İNDİR…"); visible: m.kind !== "artist"; onTriggered: m.w.download(m.item, m.kind) }

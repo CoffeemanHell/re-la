@@ -22,6 +22,10 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.Surface
@@ -32,6 +36,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshots.SnapshotStateList
@@ -51,12 +56,15 @@ import androidx.navigationevent.NavigationEvent
 import androidx.navigationevent.compose.LocalNavigationEventDispatcherOwner
 import app.rela.R
 import app.rela.core.Rela
+import app.rela.core.json
+import app.rela.core.text
 import app.rela.playback.queueSong
 import app.rela.str
 import app.rela.ui.library.Album
 import app.rela.ui.library.Albums
 import app.rela.ui.library.Artist
 import app.rela.ui.library.Artists
+import app.rela.ui.library.DjState
 import app.rela.ui.library.Favorites
 import app.rela.ui.library.Genre
 import app.rela.ui.library.Genres
@@ -79,6 +87,7 @@ sealed interface Screen {
     data object Settings : Screen
     /** A settings category: look, player, bar, playback, data, account. */
     data class SettingsPage(val page: String) : Screen
+    data object DjState : Screen
     data object NowPlaying : Screen
     /** [type]: a getAlbumList2 order; null = the one last picked on the Albümler tab. */
     data class Albums(val type: String? = null) : Screen
@@ -188,9 +197,18 @@ private fun Shell(nav: SnapshotStateList<Screen>) {
     val s by Rela.player.collectAsStateWithLifecycle()
     val queue by Rela.queue.collectAsStateWithLifecycle()
     val playing = nav.lastOrNull() == Screen.NowPlaying
+    // a skip the DJ will hold against the song: offered back while the core keeps it (a few seconds)
+    val snack = remember { SnackbarHostState() }
+    val undo = s?.skipUndoJson.orEmpty()
+    LaunchedEffect(undo) {
+        if (json(undo)["id"].text().isEmpty()) return@LaunchedEffect
+        val r = snack.showSnackbar(str(R.string.dj_skip_counts), str(R.string.dj_undo), duration = SnackbarDuration.Indefinite)
+        if (r == SnackbarResult.ActionPerformed) Rela.core?.undoSkip()
+    }
     CompositionLocalProvider(LocalNav provides nav) {
         Scaffold(
             contentWindowInsets = WindowInsets(0), // each screen's top bar takes the status bar
+            snackbarHost = { SnackbarHost(snack) },
             bottomBar = {
                 if (!playing) Column {
                     s?.let { st -> MiniPlayer(st, queueSong(st, queue)) { nav.open(Screen.NowPlaying) } }
@@ -237,6 +255,7 @@ private fun Shell(nav: SnapshotStateList<Screen>) {
                     entry<Screen.Together> { Together() }
                     entry<Screen.Settings> { Settings() }
                     entry<Screen.SettingsPage> { SettingsPage(it.page) }
+                    entry<Screen.DjState> { DjState() }
                     entry<Screen.Radio> { Radio() }
                     entry<Screen.NowPlaying>(
                         metadata = NavDisplay.transitionSpec {

@@ -95,6 +95,90 @@
     <message><source>Çalınma</source><translation>Plays</translation></message>
 </context>
 <context>
+    <name>DjKnobs</name>
+    <message><source>%%1</source><translation>%1%</translation></message>
+    <message><source>Dil bağlılığı</source><translation>Language affinity</translation></message>
+    <message><source>Eklenen şarkıların ne kadarı çalan şarkıyla aynı dilde olsun. Türkçe bir şarkıdan başlarsan %80 → 10 şarkının 8&apos;i Türkçe.</source><translation>How many of the added songs share the playing song&apos;s language. Start from a Turkish song at 80% → 8 of 10 songs are Turkish.</translation></message>
+    <message><source>Benzerlik gücü</source><translation>Similarity strength</translation></message>
+    <message><source>Çalan müziğe ne kadar yakın kalınsın. Yakın türler (Heavy Metal ~ Hard Rock) de sayılır.</source><translation>How close to stay to what is playing. Related genres (Heavy Metal ~ Hard Rock) count too.</translation></message>
+    <message><source>Keşif</source><translation>Discovery</translation></message>
+    <message><source>Her partide yeni eklenen ya da az dinlenen şarkılara ayrılan pay.</source><translation>Share of each batch kept for new or rarely played songs.</translation></message>
+    <message><source>Her seferde eklenen</source><translation>Added each time</translation></message>
+    <message><source>Atlama eksi sayılır</source><translation>A skip counts against a song</translation></message>
+    <message><source>Şarkının bu kadarı çalmadan atlarsan şarkıya eksi yazılır.</source><translation>Skipping before this much of a song has played counts against it.</translation></message>
+    <message><source>Sevilmeyen şarkı: eksi sayısı</source><translation>Disliked song: skips</translation></message>
+    <message><source>Bu kadar eksiden sonra şarkı sevilmiyor sayılır ve çok seyrek çalar.</source><translation>After this many, a song counts as disliked and plays very rarely.</translation></message>
+    <message><source>Sevilmeyen şarkı: farklı gün</source><translation>Disliked song: different days</translation></message>
+    <message><source>Eksiler en az bu kadar farklı günde gelmiş olmalı: kötü bir akşam yetmez.</source><translation>The skips must come on at least this many different days: one bad evening is not enough.</translation></message>
+    <message><source>Hafıza süresi</source><translation>Memory</translation></message>
+    <message><source>Bir eksinin yarıya inmesi için geçen süre.</source><translation>How long it takes a skip to fade to half.</translation></message>
+    <message><source>Tekrar etmeme</source><translation>Hold back repeats</translation></message>
+    <message><source>Bu kadar gün içinde dinlediğin şarkılar geri planda kalır. 0: kapalı.</source><translation>Songs you heard within this many days stay in the background. 0: off.</translation></message>
+    <message><source>Aynı sanatçıdan en fazla</source><translation>Songs per artist, at most</translation></message>
+    <message><source>Son 10 şarkı ve sıradakiler içinde.</source><translation>Among the last 10 songs and those coming up.</translation></message>
+    <message><source>Sürpriz şarkı</source><translation>Surprise songs</translation></message>
+    <message><source>Her partide puana bakılmadan seçilen şarkıların payı.</source><translation>Share of each batch picked without looking at scores.</translation></message>
+    <message><source>Eksi atlama süresi</source><translation>Skip window</translation></message>
+    <message><source>Bundan sonraki atlamalar eksi sayılmaz.</source><translation>Skips after this do not count against a song.</translation></message>
+    <message><source>Tam dinlenmiş sayılır</source><translation>Counts as heard in full</translation></message>
+    <message><source>Şarkının bu kadarı çaldıysa sonuna kadar dinlenmiş sayılır.</source><translation>A song played this far counts as heard to the end.</translation></message>
+    <message><source>Arayış: atlama sayısı</source><translation>Looking around: skips</translation></message>
+    <message><source>Bu kadar hızlı atlama &quot;başka bir şey arıyorum&quot; demek: bu atlamalar eksi sayılmaz, DJ daha çok keşfeder.</source><translation>This many quick skips mean &quot;I want something else&quot;: they do not count against the songs, and the DJ explores more.</translation></message>
+    <message><source>Arayış: süre</source><translation>Looking around: time</translation></message>
+    <message><source>Atlamalar bu süre içinde gelmeli. Tek bir atlama da bu kadar bekler, sonra eksi sayılır.</source><translation>The skips must come within this time. A single skip waits this long too, then counts.</translation></message>
+    <message><source>Oturum sonu</source><translation>End of a sitting</translation></message>
+    <message><source>Bu kadar dinlemezsen DJ oturumun zevkini unutur.</source><translation>After this long without listening, the DJ forgets the sitting&apos;s taste.</translation></message>
+    <message><source>Oturum zevkinin kalıcılığı</source><translation>Sitting taste kept</translation></message>
+    <message><source>Her şarkıdan sonra oturum zevkinin ne kadarı kalır.</source><translation>How much of the sitting&apos;s taste is left after each song.</translation></message>
+    <message><source>Yeni sayılma süresi</source><translation>New for</translation></message>
+    <message><source>Kütüphaneye bu kadar gün önce eklenen şarkılar yeni sayılır.</source><translation>Songs added to the library within this many days count as new.</translation></message>
+    <message><source>Benzer şarkı bonusu</source><translation>Similar song bonus</translation></message>
+    <message><source>Navidrome&apos;un benzer dediği şarkılara eklenen puan (×100).</source><translation>Score added to songs Navidrome calls similar (×100).</translation></message>
+    <message><source>Uzun zevkin ağırlığı</source><translation>Long-term taste weight</translation></message>
+    <message><source>Çok dinlediğin sanatçı ve türlerin puandaki payı (×100).</source><translation>Share of the score from artists and genres you play a lot (×100).</translation></message>
+    <message><source>Seçim rastgeleliği</source><translation>Randomness</translation></message>
+    <message><source>Düşük: hep en yüksek puanlılar. Yüksek: puanlar birbirine yaklaşır (×100).</source><translation>Low: always the top scores. High: scores count for less (×100).</translation></message>
+    <message numerus="yes"><source>%n gün</source><translation><numerusform>%n day</numerusform><numerusform>%n days</numerusform></translation></message>
+    <message numerus="yes"><source>%n sn</source><translation><numerusform>%n s</numerusform><numerusform>%n s</numerusform></translation></message>
+    <message numerus="yes"><source>%n dk</source><translation><numerusform>%n min</numerusform><numerusform>%n min</numerusform></translation></message>
+    <message numerus="yes"><source>%n şarkı</source><translation><numerusform>%n song</numerusform><numerusform>%n songs</numerusform></translation></message>
+</context>
+<context>
+    <name>DjStateDialog</name>
+    <message><source>Puan</source><translation>Score</translation></message>
+    <message><source>Uyum</source><translation>Fit</translation></message>
+    <message><source>Zevk</source><translation>Taste</translation></message>
+    <message><source>Benzer</source><translation>Similar</translation></message>
+    <message><source>Yeni</source><translation>New</translation></message>
+    <message><source>Tekrar</source><translation>Repeat</translation></message>
+    <message><source>Geri b.</source><translation>Feedback</translation></message>
+    <message><source>DJ durumu</source><translation>DJ state</translation></message>
+    <message><source>Yenile</source><translation>Refresh</translation></message>
+    <message><source>Arayış modunda: atlamalar eksi sayılmıyor, DJ daha çok keşfediyor.</source><translation>Looking around: skips do not count against songs, and the DJ explores more.</translation></message>
+    <message><source>Çıkış noktası: %1</source><translation>Starting from: %1</translation></message>
+    <message><source>Bu oturum: %1</source><translation>This sitting: %1</translation></message>
+    <message><source>DJ henüz seçim yapmadı</source><translation>The DJ has not picked anything yet</translation></message>
+    <message><source>Şarkı</source><translation>Song</translation></message>
+    <message><source>Sevilmiyor</source><translation>Disliked</translation></message>
+    <message><source>Eksi: %1</source><translation>Skips: %1</translation></message>
+    <message numerus="yes"><source>%n gün önce dinlendi</source><translation><numerusform>Heard %n day ago</numerusform><numerusform>Heard %n days ago</numerusform></translation></message>
+    <message><source>Seçilmedi</source><translation>Not picked</translation></message>
+    <message><source>PUAN</source><translation>SCORE</translation></message>
+    <message><source>UYUM</source><translation>FIT</translation></message>
+    <message><source>ZEVK</source><translation>TASTE</translation></message>
+    <message><source>BENZER</source><translation>SIMILAR</translation></message>
+    <message><source>YENİ</source><translation>NEW</translation></message>
+    <message><source>TEKRAR</source><translation>REPEAT</translation></message>
+    <message><source>GERİ B.</source><translation>FEEDBACK</translation></message>
+    <message><source>DJ DURUMU</source><translation>DJ STATE</translation></message>
+    <message><source>YENİLE</source><translation>REFRESH</translation></message>
+    <message><source>ARAYIŞ MODUNDA: ATLAMALAR EKSİ SAYILMIYOR, DJ DAHA ÇOK KEŞFEDİYOR.</source><translation>LOOKING AROUND: SKIPS DO NOT COUNT AGAINST SONGS, AND THE DJ EXPLORES MORE.</translation></message>
+    <message><source>ÇIKIŞ NOKTASI: %1</source><translation>STARTING FROM: %1</translation></message>
+    <message><source>BU OTURUM: %1</source><translation>THIS SITTING: %1</translation></message>
+    <message><source>DJ HENÜZ SEÇİM YAPMADI</source><translation>THE DJ HAS NOT PICKED ANYTHING YET</translation></message>
+    <message><source>ŞARKI</source><translation>SONG</translation></message>
+</context>
+<context>
     <name>Favorite</name>
     <message><source>İşlem başarısız</source><translation>Action failed</translation></message>
 </context>
@@ -209,6 +293,9 @@
     <message><source>Favorilere eklendi</source><translation>Added to favorites</translation></message>
     <message><source>Link kopyalandı</source><translation>Link copied</translation></message>
     <message><source>İşlem başarısız</source><translation>Action failed</translation></message>
+    <message><source>DJ benzerlerini daha çok çalacak</source><translation>The DJ will play more like this</translation></message>
+    <message><source>DJ bunu daha az çalacak</source><translation>The DJ will play this less</translation></message>
+    <message><source>Geri bildirim kaldırıldı</source><translation>Feedback removed</translation></message>
 </context>
 <context>
     <name>ItemMenu</name>
@@ -244,6 +331,10 @@
     <message><source>İndir…</source><translation>Download…</translation></message>
     <message><source>ŞARKI RADYOSU</source><translation>SONG RADIO</translation></message>
     <message><source>Şarkı radyosu</source><translation>Song radio</translation></message>
+    <message><source>Bunun gibi daha çok</source><translation>More like this</translation></message>
+    <message><source>Bunu daha az çal</source><translation>Less like this</translation></message>
+    <message><source>BUNUN GİBİ DAHA ÇOK</source><translation>MORE LIKE THIS</translation></message>
+    <message><source>BUNU DAHA AZ ÇAL</source><translation>LESS LIKE THIS</translation></message>
 </context>
 <context>
     <name>KeyCapture</name>
@@ -338,6 +429,10 @@
     <message><source>← GERİ</source><translation>← BACK</translation></message>
     <message><source>● CANLI</source><translation>● LIVE</translation></message>
     <message><source>● Canlı</source><translation>● Live</translation></message>
+    <message><source>Atlama eksi sayılacak</source><translation>This skip will count against the song</translation></message>
+    <message><source>Geri al</source><translation>Undo</translation></message>
+    <message><source>ATLAMA EKSİ SAYILACAK</source><translation>THIS SKIP WILL COUNT AGAINST THE SONG</translation></message>
+    <message><source>GERİ AL</source><translation>UNDO</translation></message>
 </context>
 <context>
     <name>NowPlayingData</name>
@@ -376,6 +471,10 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>İşlem başarısız</source><translation>Action failed</translation></message>
     <message><source>● CANLI</source><translation>● LIVE</translation></message>
     <message><source>● Canlı</source><translation>● Live</translation></message>
+    <message><source>Bunun gibi daha çok</source><translation>More like this</translation></message>
+    <message><source>Bunu daha az çal</source><translation>Less like this</translation></message>
+    <message><source>▲ DAHA ÇOK</source><translation>▲ MORE</translation></message>
+    <message><source>▼ DAHA AZ</source><translation>▼ LESS</translation></message>
 </context>
 <context>
     <name>PlaylistData</name>
@@ -480,9 +579,7 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>0 = boşluksuz (gapless) ve bit-perfect geçiş.</source><translation>0 = gapless and bit-perfect transition.</translation></message>
     <message><source>ALBÜM VE SANATÇI KARTLARININ GENİŞLİĞİ.</source><translation>WIDTH OF THE ALBUM AND ARTIST CARDS.</translation></message>
     <message><source>AYARLAR</source><translation>SETTINGS</translation></message>
-    <message><source>ÇALAN MÜZİĞE NE KADAR YAKIN KALINSIN. YAKIN TÜRLER (HEAVY METAL ~ HARD ROCK) DE SAYILIR.</source><translation>HOW CLOSE TO STAY TO WHAT IS PLAYING. RELATED GENRES (HEAVY METAL ~ HARD ROCK) COUNT TOO.</translation></message>
     <message><source>Albüm ve sanatçı kartlarının genişliği.</source><translation>Width of the album and artist cards.</translation></message>
-    <message><source>Çalan müziğe ne kadar yakın kalınsın. Yakın türler (Heavy Metal ~ Hard Rock) de sayılır.</source><translation>How close to stay to what is playing. Related genres (Heavy Metal ~ Hard Rock) count too.</translation></message>
     <message><source>BOYUT SINIRI</source><translation>SIZE LIMIT</translation></message>
     <message><source>Bağlı değil</source><translation>Not connected</translation></message>
     <message><source>Boyut sınırı</source><translation>Size limit</translation></message>
@@ -491,28 +588,22 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>DJ modu</source><translation>DJ mode</translation></message>
     <message><source>DOLUNCA EN UZUN SÜREDİR DİNLENMEYEN SİLİNİR.</source><translation>WHEN FULL, THE SONG NOT PLAYED FOR THE LONGEST IS DELETED.</translation></message>
     <message><source>Değiştirmek için kısayola bas, sonra yeni tuşlara. Vazgeçmek: Esc.</source><translation>To change one, click the shortcut, then press the new keys. To cancel: Esc.</translation></message>
-    <message><source>Dil bağlılığı</source><translation>Language affinity</translation></message>
     <message><source>Dinlediklerin Navidrome&apos;a (ve sunucuda bağlıysa Last.fm / ListenBrainz&apos;e) gider.</source><translation>What you listen to goes to Navidrome (and to Last.fm / ListenBrainz if the server is linked to them).</translation></message>
     <message><source>Dinlediğin ve sıradaki şarkılar diske iner. Sunucuya ulaşılamayınca uygulama son kuyrukla açılır, inen şarkılar çalar. Kendin atladığın bir şarkı bir kez çalarken, bir kez de önbellek için iner.</source><translation>The songs you play and the upcoming ones are saved to disk. When the server can&apos;t be reached, the app opens with the last queue and plays the saved songs. A song you skip to yourself downloads twice: once to play, once for the cache.</translation></message>
     <message><source>Dinlenenleri gönder</source><translation>Scrobble plays</translation></message>
     <message><source>Diskte: %1</source><translation>On disk: %1</translation></message>
     <message><source>Dolunca en uzun süredir dinlenmeyen silinir.</source><translation>When full, the song not played for the longest is deleted.</translation></message>
-    <message><source>DİL BAĞLILIĞI</source><translation>LANGUAGE AFFINITY</translation></message>
     <message><source>DİNLEDİKLERİN NAVIDROME&apos;A (VE SUNUCUDA BAĞLIYSA LAST.FM / LISTENBRAINZ&apos;E) GİDER.</source><translation>WHAT YOU LISTEN TO GOES TO NAVIDROME (AND TO LAST.FM / LISTENBRAINZ IF THE SERVER IS LINKED TO THEM).</translation></message>
     <message><source>DİNLEDİĞİN VE SIRADAKİ ŞARKILAR DİSKE İNER. SUNUCUYA ULAŞILAMAYINCA UYGULAMA SON KUYRUKLA AÇILIR, İNEN ŞARKILAR ÇALAR. KENDİN ATLADIĞIN BİR ŞARKI BİR KEZ ÇALARKEN, BİR KEZ DE ÖNBELLEK İÇİN İNER.</source><translation>THE SONGS YOU PLAY AND THE UPCOMING ONES ARE SAVED TO DISK. WHEN THE SERVER CAN&apos;T BE REACHED, THE APP OPENS WITH THE LAST QUEUE AND PLAYS THE SAVED SONGS. A SONG YOU SKIP TO YOURSELF DOWNLOADS TWICE: ONCE TO PLAY, ONCE FOR THE CACHE.</translation></message>
     <message><source>DİNLENENLERİ GÖNDER</source><translation>SCROBBLE PLAYS</translation></message>
     <message><source>DİSKTE: %1</source><translation>ON DISK: %1</translation></message>
-    <message><source>EKLENEN ŞARKILARIN NE KADARI ÇALAN ŞARKIYLA AYNI DİLDE OLSUN. TÜRKÇE BİR ŞARKIDAN BAŞLARSAN %80 → 10 ŞARKININ 8&apos;İ TÜRKÇE.</source><translation>HOW MANY OF THE ADDED SONGS SHARE THE PLAYING SONG&apos;S LANGUAGE. START FROM A TURKISH SONG AT 80% → 8 OF 10 SONGS ARE TURKISH.</translation></message>
     <message><source>EXCLUSIVE MODDA KAPALI: SES KARTINI TEK DECK TUTABİLİR.</source><translation>OFF IN EXCLUSIVE MODE: ONLY ONE DECK CAN HOLD THE SOUND CARD.</translation></message>
-    <message><source>Eklenen şarkıların ne kadarı çalan şarkıyla aynı dilde olsun. Türkçe bir şarkıdan başlarsan %80 → 10 şarkının 8&apos;i Türkçe.</source><translation>How many of the added songs share the playing song&apos;s language. Start from a Turkish song at 80% → 8 of 10 songs are Turkish.</translation></message>
     <message><source>Exclusive modda kapalı: ses kartını tek deck tutabilir.</source><translation>Off in exclusive mode: only one deck can hold the sound card.</translation></message>
     <message><source>GENEL</source><translation>GENERAL</translation></message>
     <message><source>Genel</source><translation>General</translation></message>
     <message><source>HAKKINDA</source><translation>ABOUT</translation></message>
-    <message><source>HER SEFERDE EKLENEN</source><translation>ADDED EACH TIME</translation></message>
     <message><source>HESAP</source><translation>ACCOUNT</translation></message>
     <message><source>Hakkında</source><translation>About</translation></message>
-    <message><source>Her seferde eklenen</source><translation>Added each time</translation></message>
     <message><source>Hesap</source><translation>Account</translation></message>
     <message><source>IZGARA BOYUTU</source><translation>GRID SIZE</translation></message>
     <message><source>Izgara boyutu</source><translation>Grid size</translation></message>
@@ -548,8 +639,6 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>Temizle</source><translation>Clear</translation></message>
     <message><source>Tepside simge durur; pencereyi kapatınca müzik durmaz. Çıkış: simgeye sağ tık. Kapalıyken pencereyi kapatmak uygulamadan çıkar.</source><translation>An icon stays in the tray; closing the window doesn&apos;t stop the music. To quit: right-click the icon. When off, closing the window quits the app.</translation></message>
     <message><source>Tuşlara bas…</source><translation>Press keys…</translation></message>
-    <message><source>BENZERLİK GÜCÜ</source><translation>SIMILARITY STRENGTH</translation></message>
-    <message><source>Benzerlik gücü</source><translation>Similarity strength</translation></message>
     <message><source>Uygulamanın görünümü.</source><translation>How the app looks.</translation></message>
     <message><source>YAPI TARİHİ: %1</source><translation>BUILT: %1</translation></message>
     <message><source>Yapı tarihi: %1</source><translation>Built: %1</translation></message>
@@ -569,14 +658,32 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>Şarkının yarısı (en fazla 4 dakikası) çalınca bir dinleme sayılır.</source><translation>A play counts once half of the song (at most 4 minutes) has played.</translation></message>
     <message><source>Şimdi çalıyor bilgisini gönder</source><translation>Send now playing</translation></message>
     <message><source>ŞİMDİ ÇALIYOR BİLGİSİNİ GÖNDER</source><translation>SEND NOW PLAYING</translation></message>
-    <message><source>KEŞİF</source><translation>DISCOVERY</translation></message>
-    <message><source>Keşif</source><translation>Discovery</translation></message>
-    <message><source>HER PARTİDE YENİ EKLENEN YA DA AZ DİNLENEN ŞARKILARA AYRILAN PAY.</source><translation>SHARE OF EACH BATCH KEPT FOR NEW OR RARELY PLAYED SONGS.</translation></message>
-    <message><source>Her partide yeni eklenen ya da az dinlenen şarkılara ayrılan pay.</source><translation>Share of each batch kept for new or rarely played songs.</translation></message>
-    <message><source>ATLAMALARDAN VE DİNLEMELERDEN ÖĞRENİLENİ SİLER. KÜTÜPHANE DİZİNİ KALIR.</source><translation>FORGETS WHAT WAS LEARNED FROM SKIPS AND LISTENS. THE LIBRARY INDEX STAYS.</translation></message>
-    <message><source>Atlamalardan ve dinlemelerden öğrenileni siler. Kütüphane dizini kalır.</source><translation>Forgets what was learned from skips and listens. The library index stays.</translation></message>
     <message><source>DJ HAFIZASINI SIFIRLA</source><translation>RESET DJ MEMORY</translation></message>
     <message><source>DJ hafızasını sıfırla</source><translation>Reset DJ memory</translation></message>
+    <message><source>Gelişmiş ayarlar</source><translation>Advanced settings</translation></message>
+    <message><source>DJ ayarlarını ilk hâline getirir.</source><translation>Puts the DJ settings back as they came.</translation></message>
+    <message><source>Varsayılanlara dön</source><translation>Back to defaults</translation></message>
+    <message><source>Geri bildirimlerin</source><translation>Your feedback</translation></message>
+    <message><source>Henüz yok. Bir şarkının menüsünden &quot;Bunun gibi daha çok&quot; ya da &quot;Bunu daha az çal&quot; diyebilirsin.</source><translation>None yet. A song&apos;s menu has &quot;More like this&quot; and &quot;Less like this&quot;.</translation></message>
+    <message><source>Daha çok</source><translation>More</translation></message>
+    <message><source>Daha az</source><translation>Less</translation></message>
+    <message><source>Kaldır</source><translation>Remove</translation></message>
+    <message><source>DJ&apos;nin son seçimde tarttığı şarkılar ve puanları.</source><translation>The songs the DJ weighed for its last pick, with their scores.</translation></message>
+    <message><source>DJ durumu</source><translation>DJ state</translation></message>
+    <message><source>Atlamaları, dinlemeleri ve geri bildirimlerini siler. Kütüphane dizini kalır.</source><translation>Forgets skips, listens and your feedback. The library index stays.</translation></message>
+    <message><source>GELİŞMİŞ AYARLAR</source><translation>ADVANCED SETTINGS</translation></message>
+    <message><source>AÇIK</source><translation>ON</translation></message>
+    <message><source>DJ AYARLARINI İLK HÂLİNE GETİRİR.</source><translation>PUTS THE DJ SETTINGS BACK AS THEY CAME.</translation></message>
+    <message><source>VARSAYILANLARA DÖN</source><translation>BACK TO DEFAULTS</translation></message>
+    <message><source>GERİ BİLDİRİMLERİN</source><translation>YOUR FEEDBACK</translation></message>
+    <message><source>HENÜZ YOK. BİR ŞARKININ MENÜSÜNDEN &quot;BUNUN GİBİ DAHA ÇOK&quot; YA DA &quot;BUNU DAHA AZ ÇAL&quot; DİYEBİLİRSİN.</source><translation>NONE YET. A SONG&apos;S MENU HAS &quot;MORE LIKE THIS&quot; AND &quot;LESS LIKE THIS&quot;.</translation></message>
+    <message><source>DAHA ÇOK</source><translation>MORE</translation></message>
+    <message><source>DAHA AZ</source><translation>LESS</translation></message>
+    <message><source>%1 · %2</source><translation>%1 · %2</translation></message>
+    <message><source>KALDIR</source><translation>REMOVE</translation></message>
+    <message><source>DJ&apos;NİN SON SEÇİMDE TARTTIĞI ŞARKILAR VE PUANLARI.</source><translation>THE SONGS THE DJ WEIGHED FOR ITS LAST PICK, WITH THEIR SCORES.</translation></message>
+    <message><source>DJ DURUMU</source><translation>DJ STATE</translation></message>
+    <message><source>ATLAMALARI, DİNLEMELERİ VE GERİ BİLDİRİMLERİNİ SİLER. KÜTÜPHANE DİZİNİ KALIR.</source><translation>FORGETS SKIPS, LISTENS AND YOUR FEEDBACK. THE LIBRARY INDEX STAYS.</translation></message>
 </context>
 <context>
     <name>Share</name>

@@ -38,8 +38,12 @@ Dialog {
         spacing: 16
     }
 
+    property alias stateDialog: stateDialog
+    readonly property DjData dj: DjData { parent: d.contentItem } // a parent: Player.get answers only such owners
+    DjStateDialog { id: stateDialog; w: d.w }
+
     objectName: "settings"
-    onAboutToShow: Player.refreshAudioDevices() // not opened: that waits for the style's opening animation
+    onAboutToShow: { Player.refreshAudioDevices(); d.dj.refreshFeedback() } // not opened: that waits for the style's opening animation
     anchors.centerIn: Overlay.overlay
     modal: true
     width: Math.min(760, d.w.width - 40); height: Math.min(560, d.w.height - 40)
@@ -150,47 +154,67 @@ Dialog {
 
                 Page {
                     name: "DJ"
+                    onVisibleChanged: if (visible) d.dj.refreshFeedback()
                     SwitchRow {
                         label: qsTr("DJ MODU")
                         hint: qsTr("KAPALIYKEN NAVIDROME'UN BENZER ŞARKILARI OLDUĞU GİBİ EKLENİR. AÇIKKEN AŞAĞIDAKİ AĞIRLIKLARLA, GENİŞ BİR HAVUZDAN SEÇİLİR.")
                         checked: Player.dj
                         onToggled: on => Player.dj = on
                     }
-                    Setting {
+                    component Knob: Setting {
+                        id: kn
+                        required property var modelData
+                        readonly property real at: Player.options[modelData.key] ?? modelData.from
+                        objectName: "knob_" + modelData.key
                         enabled: Player.dj
-                        label: qsTr("DİL BAĞLILIĞI")
-                        valueText: "%" + (Player.options.radioLanguage || 0)
-                        hint: qsTr("EKLENEN ŞARKILARIN NE KADARI ÇALAN ŞARKIYLA AYNI DİLDE OLSUN. TÜRKÇE BİR ŞARKIDAN BAŞLARSAN %80 → 10 ŞARKININ 8'İ TÜRKÇE.")
-                        dots: 11; value: (Player.options.radioLanguage || 0) / 100
-                        onPicked: v => Player.setOption("radioLanguage", Math.round(v * 10) * 10)
+                        label: DjKnobs.upper(modelData.label)
+                        hint: DjKnobs.upper(modelData.hint)
+                        valueText: DjKnobs.upper(DjKnobs.text(modelData, at))
+                        dots: (modelData.to - modelData.from) / modelData.step + 1
+                        value: (at - modelData.from) / (modelData.to - modelData.from)
+                        onPicked: v => Player.setOption(modelData.key, modelData.from + Math.round(v * (modelData.to - modelData.from) / modelData.step) * modelData.step)
                     }
-                    Setting {
-                        enabled: Player.dj
-                        label: qsTr("BENZERLİK GÜCÜ")
-                        valueText: "%" + (Player.options.radioGenre || 0)
-                        hint: qsTr("ÇALAN MÜZİĞE NE KADAR YAKIN KALINSIN. YAKIN TÜRLER (HEAVY METAL ~ HARD ROCK) DE SAYILIR.")
-                        dots: 11; value: (Player.options.radioGenre || 0) / 100
-                        onPicked: v => Player.setOption("radioGenre", Math.round(v * 10) * 10)
+                    Repeater { model: DjKnobs.main; delegate: Knob {} }
+                    RowLayout {
+                        Mono { text: qsTr("GELİŞMİŞ AYARLAR"); Layout.fillWidth: true }
+                        Pill { id: advanced; objectName: "djAdvanced"; checkable: true; on: checked; enabled: Player.dj; text: checked ? qsTr("AÇIK") : qsTr("KAPALI") }
                     }
-                    Setting {
-                        enabled: Player.dj
-                        label: qsTr("KEŞİF")
-                        valueText: "%" + (Player.options.radioExplore || 0)
-                        hint: qsTr("HER PARTİDE YENİ EKLENEN YA DA AZ DİNLENEN ŞARKILARA AYRILAN PAY.")
-                        dots: 6; value: (Player.options.radioExplore || 0) / 50
-                        onPicked: v => Player.setOption("radioExplore", Math.round(v * 5) * 10)
-                    }
-                    Setting {
-                        enabled: Player.dj
-                        label: qsTr("HER SEFERDE EKLENEN")
-                        valueText: qsTr("%n ŞARKI", "", Player.options.radioBatch || 10)
-                        dots: 6; value: ((Player.options.radioBatch || 10) - 5) / 25
-                        onPicked: v => Player.setOption("radioBatch", 5 + Math.round(v * 5) * 5)
-                    }
-                    Hint { text: qsTr("ATLAMALARDAN VE DİNLEMELERDEN ÖĞRENİLENİ SİLER. KÜTÜPHANE DİZİNİ KALIR.") }
+                    Repeater { model: DjKnobs.advanced; delegate: Knob { visible: advanced.checked } }
+                    Hint { text: qsTr("DJ AYARLARINI İLK HÂLİNE GETİRİR.") }
                     RowLayout {
                         Item { Layout.fillWidth: true }
-                        Pill { text: qsTr("DJ HAFIZASINI SIFIRLA"); onClicked: Player.resetDjMemory() }
+                        Pill { text: qsTr("VARSAYILANLARA DÖN"); onClicked: Player.resetDjSettings() }
+                    }
+                    Mono { text: qsTr("GERİ BİLDİRİMLERİN"); Layout.topMargin: 8 }
+                    Hint { visible: !d.dj.feedback.length; text: qsTr("HENÜZ YOK. BİR ŞARKININ MENÜSÜNDEN \"BUNUN GİBİ DAHA ÇOK\" YA DA \"BUNU DAHA AZ ÇAL\" DİYEBİLİRSİN.") }
+                    Repeater {
+                        model: d.dj.feedback
+                        delegate: RowLayout {
+                            id: fb
+                            required property var modelData
+                            Layout.fillWidth: true
+                            spacing: 12
+                            Mono { text: fb.modelData.dir > 0 ? "▲" : "▼"; color: fb.modelData.dir > 0 ? App.theme.accent : App.theme.muted }
+                            ColumnLayout {
+                                Layout.fillWidth: true; spacing: 2
+                                Mono { text: (fb.modelData.title || "").toUpperCase(); elide: Text.ElideRight; Layout.fillWidth: true }
+                                Hint {
+                                    readonly property string dir: fb.modelData.dir > 0 ? qsTr("DAHA ÇOK") : qsTr("DAHA AZ")
+                                    text: fb.modelData.artist ? qsTr("%1 · %2").arg(dir).arg(fb.modelData.artist.toUpperCase()) : dir
+                                }
+                            }
+                            Pill { objectName: "fbRemove_" + fb.modelData.id; text: qsTr("KALDIR"); onClicked: d.dj.toggle(fb.modelData, fb.modelData.dir) }
+                        }
+                    }
+                    Hint { text: qsTr("DJ'NİN SON SEÇİMDE TARTTIĞI ŞARKILAR VE PUANLARI."); Layout.topMargin: 8 }
+                    RowLayout {
+                        Item { Layout.fillWidth: true }
+                        Pill { text: qsTr("DJ DURUMU"); onClicked: stateDialog.show() }
+                    }
+                    Hint { text: qsTr("ATLAMALARI, DİNLEMELERİ VE GERİ BİLDİRİMLERİNİ SİLER. KÜTÜPHANE DİZİNİ KALIR.") }
+                    RowLayout {
+                        Item { Layout.fillWidth: true }
+                        Pill { text: qsTr("DJ HAFIZASINI SIFIRLA"); onClicked: { Player.resetDjMemory(); d.dj.feedback = [] } }
                     }
                 }
 

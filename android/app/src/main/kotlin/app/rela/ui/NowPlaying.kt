@@ -242,6 +242,8 @@ private fun Player() {
                     },
                     style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 )
+                val why = song?.str("djWhy").orEmpty() // why the DJ picked it
+                if (!live && why.isNotEmpty()) Text(why, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (live) {
                     val dj = now!!["dj"].text()
                     if (dj.isNotEmpty()) Text(
@@ -389,6 +391,10 @@ private fun More(song: Song?, fav: Fav?, live: Boolean, dj: Boolean, onFade: () 
                 { Text(str(R.string.dj_mode)) }, { close(); Rela.core?.setDj(!dj) },
                 leadingIcon = { Text("DJ", fontWeight = FontWeight.Bold) }, trailingIcon = { if (dj) Icon(painterResource(R.drawable.ic_check), null) },
             )
+            if (dj && song != null) {
+                DropdownMenuItem({ Text(str(R.string.dj_more)) }, { close(); Rela.core?.djFeedback(song.json.toString(), 1) }, leadingIcon = { Text("▲") })
+                DropdownMenuItem({ Text(str(R.string.dj_less)) }, { close(); Rela.core?.djFeedback(song.json.toString(), -1) }, leadingIcon = { Text("▼") })
+            }
         }
         if (song != null) HorizontalDivider()
     }
@@ -558,7 +564,7 @@ private fun QueueList(s: PlayerState, queue: List<Song>) {
                     Text(song.title, color = if (now) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                         fontWeight = if (now) FontWeight.SemiBold else null, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 },
-                supportingContent = { Text(listOf(song.artist, clock(song.duration)).filter { it.isNotEmpty() }.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                supportingContent = { Text(listOf(song.artist, song.str("djWhy").ifEmpty { clock(song.duration) }).filter { it.isNotEmpty() }.joinToString(" · "), maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 leadingContent = { Cover(song.coverArt, 40.dp, Modifier.size(40.dp)) },
                 trailingContent = {
                     Row(verticalAlignment = Alignment.CenterVertically) {

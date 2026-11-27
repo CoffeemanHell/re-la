@@ -1,15 +1,12 @@
-//! This sitting's taste: tags of what was just heard (+) or left early (−), fading with each song. Two early skips in
-//! 90 s mean the listener is looking for something else: until a song holds them, nothing goes to long memory and the
-//! DJ explores more. The song that holds them becomes the new direction.
+//! This sitting's taste: tags of what was just heard (+) or left early (−), fading with each song. A few early skips
+//! close together (`Knobs::search_skips` in `search_ms`) mean the listener is looking for something else: until a song
+//! holds them, nothing goes to long memory and the DJ explores more. The song that holds them becomes the new direction.
 
+use crate::dj::Knobs;
 use crate::dj::genres::Genres;
 use crate::dj::index::{Index, Song};
 use crate::dj::listen::Heard;
 use std::collections::HashMap;
-
-const FADE: f32 = 0.7;
-const SEARCH_WINDOW_MS: f64 = 90_000.0;
-const IDLE_MS: f64 = 30.0 * 60_000.0;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Tag {
@@ -38,7 +35,7 @@ pub fn tags(s: &Song, index: &Index) -> Vec<Tag> {
     t
 }
 
-#[derive(Default)]
+#[derive(Default, Clone, PartialEq)]
 pub struct Session {
     w: HashMap<Tag, f32>,
     skips: Vec<f64>, // early skips, clock ms
@@ -55,13 +52,13 @@ impl Session {
         self.w.is_empty()
     }
 
-    /// Two early skips within 90 s turn it on; a song that holds the listener (or 30 min of nothing) turns it off.
-    pub fn searching(&self, at_ms: f64) -> bool {
-        self.search && !self.idle(at_ms)
+    /// Early skips close together turn it on; a song that holds the listener (or a long while of nothing) turns it off.
+    pub fn searching(&self, at_ms: f64, k: &Knobs) -> bool {
+        self.search && !self.idle(at_ms, k)
     }
 
-    fn idle(&self, at_ms: f64) -> bool {
-        self.last_ms > 0.0 && at_ms - self.last_ms > IDLE_MS
+    fn idle(&self, at_ms: f64, k: &Knobs) -> bool {
+        self.last_ms > 0.0 && at_ms - self.last_ms > k.idle_ms
     }
 
     fn add(&mut self, s: &Song, v: f32, genres: &Genres, index: &Index) {
@@ -77,10 +74,16 @@ impl Session {
         }
     }
 
+    /// A strong push towards (v > 0) or away from (v < 0) songs like this one: "more / less like this".
+    pub fn nudge(&mut self, s: &Song, v: f32, genres: &Genres, index: &Index) {
+        self.add(s, v, genres, index);
+    }
+
     /// A song ended this way at `ratio` of it. True when it caught a searching listener: the DJ's upcoming picks
     /// should make way for ones like it.
-    pub fn hear(&mut self, s: &Song, h: Heard, at_ms: f64, ratio: f64, genres: &Genres, index: &Index) -> bool {
-        if self.idle(at_ms) {
+    #[allow(clippy::too_many_arguments)]
+    pub fn hear(&mut self, s: &Song, h: Heard, at_ms: f64, ratio: f64, genres: &Genres, index: &Index, k: &Knobs) -> bool {
+        if self.idle(at_ms, k) {
             *self = Session::default();
         }
         self.last_ms = at_ms;
@@ -91,7 +94,7 @@ impl Session {
             self.add(s, 3.0, genres, index);
             return true;
         }
-        self.w.values_mut().for_each(|v| *v *= FADE);
+        self.w.values_mut().for_each(|v| *v *= k.fade);
         let v = match h {
             Heard::Full => 1.0,
             Heard::EarlySkip => -1.0,
@@ -101,9 +104,9 @@ impl Session {
             self.add(s, v, genres, index);
         }
         if h == Heard::EarlySkip {
-            self.skips.retain(|&t| (0.0..=SEARCH_WINDOW_MS).contains(&(at_ms - t))); // the clock may step back
+            self.skips.retain(|&t| (0.0..=k.search_ms).contains(&(at_ms - t))); // the clock may step back
             self.skips.push(at_ms);
-            if self.skips.len() >= 2 {
+            if self.skips.len() >= k.search_skips {
                 self.search = true;
             }
         }
@@ -111,17 +114,38 @@ impl Session {
     }
 
     /// Starts from the last songs when nothing was heard yet this sitting (oldest first).
-    pub fn seed(&mut self, recent: &[&Song], genres: &Genres, index: &Index) {
+    pub fn seed(&mut self, recent: &[&Song], genres: &Genres, index: &Index, k: &Knobs) {
         self.w.clear();
         for s in recent {
-            self.w.values_mut().for_each(|v| *v *= FADE);
+            self.w.values_mut().for_each(|v| *v *= k.fade);
             self.add(s, 1.0, genres, index);
         }
     }
 
     /// How well a song fits this sitting, -1..1.
     pub fn fit(&self, s: &Song, index: &Index) -> f32 {
-        tags(s, index).iter().map(|t| self.weight(*t)).sum::<f32>().tanh()
+        self.fit_best(s, index).0
+    }
+
+    /// The fit, and the tag that helps it most that a listener would name (not a BPM or mood).
+    pub fn fit_best(&self, s: &Song, index: &Index) -> (f32, Option<Tag>) {
+        let (mut sum, mut best) = (0.0f32, None::<(f32, Tag)>);
+        for t in tags(s, index) {
+            let w = self.weight(t);
+            sum += w;
+            if w > 0.0 && !matches!(t, Tag::Bpm(_) | Tag::Mood(_)) && best.is_none_or(|(b, _)| w > b) {
+                best = Some((w, t));
+            }
+        }
+        (sum.tanh(), best.map(|(_, t)| t))
+    }
+
+    /// The strongest tags of this sitting, strongest first.
+    pub fn top(&self, n: usize) -> Vec<(Tag, f32)> {
+        let mut v: Vec<(Tag, f32)> = self.w.iter().map(|(t, w)| (*t, *w)).filter(|(_, w)| *w != 0.0).collect();
+        v.sort_by(|a, b| b.1.abs().total_cmp(&a.1.abs()));
+        v.truncate(n);
+        v
     }
 }
 
@@ -131,6 +155,10 @@ mod tests {
     use crate::dj::genres::UserGenres;
     use crate::dj::listen::Heard::*;
     use serde_json::json;
+
+    fn kn() -> Knobs {
+        Knobs::default()
+    }
 
     fn setup() -> (Index, Genres) {
         let p = std::env::temp_dir().join(format!("re-la-djses-{}-{}", std::process::id(), fastrand::u64(..)));
@@ -150,9 +178,9 @@ mod tests {
     fn fade() {
         let (ix, g) = setup();
         let mut s = Session::default();
-        s.hear(ix.get("a").unwrap(), Full, 1000.0, 1.0, &g, &ix);
+        s.hear(ix.get("a").unwrap(), Full, 1000.0, 1.0, &g, &ix, &kn());
         assert!((s.weight(genre(&ix, "Qqa")) - 1.0).abs() < 1e-5);
-        s.hear(ix.get("b").unwrap(), Full, 2000.0, 1.0, &g, &ix);
+        s.hear(ix.get("b").unwrap(), Full, 2000.0, 1.0, &g, &ix, &kn());
         assert!((s.weight(genre(&ix, "Qqa")) - 0.7).abs() < 1e-5);
         assert!(s.fit(ix.get("b").unwrap(), &ix) > s.fit(ix.get("a").unwrap(), &ix));
     }
@@ -161,24 +189,24 @@ mod tests {
     fn search_mode() {
         let (ix, g) = setup();
         let mut s = Session::default();
-        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix);
-        s.hear(ix.get("b").unwrap(), EarlySkip, 60_000.0, 0.1, &g, &ix);
-        assert!(s.searching(60_000.0));
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix, &kn());
+        s.hear(ix.get("b").unwrap(), EarlySkip, 60_000.0, 0.1, &g, &ix, &kn());
+        assert!(s.searching(60_000.0, &kn()));
         let mut s = Session::default();
-        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix);
-        s.hear(ix.get("b").unwrap(), EarlySkip, 101_000.0, 0.1, &g, &ix);
-        assert!(!s.searching(101_000.0));
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix, &kn());
+        s.hear(ix.get("b").unwrap(), EarlySkip, 101_000.0, 0.1, &g, &ix, &kn());
+        assert!(!s.searching(101_000.0, &kn()));
     }
 
     #[test]
     fn catch() {
         let (ix, g) = setup();
         let mut s = Session::default();
-        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix);
-        s.hear(ix.get("a").unwrap(), EarlySkip, 2000.0, 0.1, &g, &ix);
-        assert!(!s.hear(ix.get("hm").unwrap(), Neutral, 3000.0, 0.4, &g, &ix), "not held yet");
-        assert!(s.hear(ix.get("b").unwrap(), Neutral, 4000.0, 0.5, &g, &ix));
-        assert!(!s.searching(4000.0));
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix, &kn());
+        s.hear(ix.get("a").unwrap(), EarlySkip, 2000.0, 0.1, &g, &ix, &kn());
+        assert!(!s.hear(ix.get("hm").unwrap(), Neutral, 3000.0, 0.4, &g, &ix, &kn()), "not held yet");
+        assert!(s.hear(ix.get("b").unwrap(), Neutral, 4000.0, 0.5, &g, &ix, &kn()));
+        assert!(!s.searching(4000.0, &kn()));
         assert!((s.weight(genre(&ix, "Qqb")) - 3.0).abs() < 1e-5);
         assert_eq!(s.weight(genre(&ix, "Qqa")), 0.0);
     }
@@ -187,7 +215,7 @@ mod tests {
     fn genre_spread() {
         let (ix, g) = setup();
         let mut s = Session::default();
-        s.hear(ix.get("hm").unwrap(), Full, 1000.0, 1.0, &g, &ix);
+        s.hear(ix.get("hm").unwrap(), Full, 1000.0, 1.0, &g, &ix, &kn());
         assert!(s.weight(genre(&ix, "Hard Rock")) > 0.0);
     }
 
@@ -195,8 +223,8 @@ mod tests {
     fn idle_reset() {
         let (ix, g) = setup();
         let mut s = Session::default();
-        s.hear(ix.get("a").unwrap(), Full, 1000.0, 1.0, &g, &ix);
-        s.hear(ix.get("b").unwrap(), Full, 1000.0 + 31.0 * 60_000.0, 1.0, &g, &ix);
+        s.hear(ix.get("a").unwrap(), Full, 1000.0, 1.0, &g, &ix, &kn());
+        s.hear(ix.get("b").unwrap(), Full, 1000.0 + 31.0 * 60_000.0, 1.0, &g, &ix, &kn());
         assert_eq!(s.weight(genre(&ix, "Qqa")), 0.0);
         assert!(!s.is_empty());
     }
@@ -205,13 +233,13 @@ mod tests {
     fn search_ends_when_idle_or_clock_steps_back() {
         let (ix, g) = setup();
         let mut s = Session::default();
-        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix);
-        s.hear(ix.get("b").unwrap(), EarlySkip, 2000.0, 0.1, &g, &ix);
-        assert!(s.searching(2000.0) && !s.searching(2000.0 + 31.0 * 60_000.0));
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix, &kn());
+        s.hear(ix.get("b").unwrap(), EarlySkip, 2000.0, 0.1, &g, &ix, &kn());
+        assert!(s.searching(2000.0, &kn()) && !s.searching(2000.0 + 31.0 * 60_000.0, &kn()));
         let mut s = Session::default();
-        s.hear(ix.get("a").unwrap(), EarlySkip, 1_000_000.0, 0.1, &g, &ix);
-        s.hear(ix.get("b").unwrap(), EarlySkip, 500_000.0, 0.1, &g, &ix);
-        assert!(!s.searching(500_000.0));
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1_000_000.0, 0.1, &g, &ix, &kn());
+        s.hear(ix.get("b").unwrap(), EarlySkip, 500_000.0, 0.1, &g, &ix, &kn());
+        assert!(!s.searching(500_000.0, &kn()));
     }
 
     #[test]
@@ -219,7 +247,41 @@ mod tests {
         let (ix, g) = setup();
         let mut s = Session::default();
         assert!(s.is_empty());
-        s.seed(&[ix.get("a").unwrap(), ix.get("b").unwrap()], &g, &ix);
+        s.seed(&[ix.get("a").unwrap(), ix.get("b").unwrap()], &g, &ix, &kn());
         assert!(s.weight(genre(&ix, "Qqb")) > s.weight(genre(&ix, "Qqa")) && s.weight(genre(&ix, "Qqa")) > 0.0);
+    }
+
+    #[test]
+    fn three_skips_to_search() {
+        let (ix, g) = setup();
+        let k = Knobs { search_skips: 3, ..Knobs::default() };
+        let mut s = Session::default();
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix, &k);
+        s.hear(ix.get("b").unwrap(), EarlySkip, 2000.0, 0.1, &g, &ix, &k);
+        assert!(!s.searching(2000.0, &k));
+        s.hear(ix.get("a").unwrap(), EarlySkip, 3000.0, 0.1, &g, &ix, &k);
+        assert!(s.searching(3000.0, &k));
+    }
+
+    #[test]
+    fn search_sec_idle_and_fade() {
+        let (ix, g) = setup();
+        let short = Knobs { search_ms: 30_000.0, ..Knobs::default() };
+        let mut s = Session::default();
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix, &short);
+        s.hear(ix.get("b").unwrap(), EarlySkip, 61_000.0, 0.1, &g, &ix, &short);
+        assert!(!s.searching(61_000.0, &short), "60 s apart is not close with a 30 s window");
+
+        let idle = Knobs { idle_ms: 10.0 * 60_000.0, ..Knobs::default() };
+        let mut s = Session::default();
+        s.hear(ix.get("a").unwrap(), Full, 1000.0, 1.0, &g, &ix, &idle);
+        s.hear(ix.get("b").unwrap(), Full, 1000.0 + 11.0 * 60_000.0, 1.0, &g, &ix, &idle);
+        assert_eq!(s.weight(genre(&ix, "Qqa")), 0.0);
+
+        let fade = Knobs { fade: 0.5, ..Knobs::default() };
+        let mut s = Session::default();
+        s.hear(ix.get("a").unwrap(), Full, 1000.0, 1.0, &g, &ix, &fade);
+        s.hear(ix.get("b").unwrap(), Full, 2000.0, 1.0, &g, &ix, &fade);
+        assert!((s.weight(genre(&ix, "Qqa")) - 0.5).abs() < 1e-5);
     }
 }

@@ -360,6 +360,22 @@ impl PlayerCore {
     /// Player.get (write false) / Player.set (write true). false: not allowed, the theme gets null at once. Otherwise
     /// the reply comes through take_replies: (id, reply or None for null, false when the login changed meanwhile).
     pub fn request(&mut self, id: u64, method: &str, params: Map<String, Value>, write: bool) -> bool {
+        // the DJ's own answers: local, offline too
+        if !write && method == "djState" {
+            let v = self.dj_open().and_then(|b| b.last_pick.as_ref()).map_or_else(|| json!({}), |w| json!(w));
+            self.replies.push((id, Some(v), true));
+            return true;
+        }
+        if !write && method == "djFeedback" {
+            // saved choices: open the DJ for them (signed in), it may not be open yet this run
+            let list = if self.login.token.is_empty() { None } else { Some(self.dj_brain().memory.feedback_list()) }.unwrap_or_default();
+            let v = list
+                .into_iter()
+                .map(|f| json!({"id": f.id, "title": if f.title.is_empty() { &f.id } else { &f.title }, "artist": f.artist, "dir": f.dir, "day": f.day}))
+                .collect::<Vec<_>>();
+            self.replies.push((id, Some(json!(v)), true));
+            return true;
+        }
         if !(if write { writable(method) } else { readable(method) }) {
             return false;
         }

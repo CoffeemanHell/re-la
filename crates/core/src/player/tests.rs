@@ -1,5 +1,6 @@
 //! The player logic against a fake deck, a fake relay and canned Subsonic answers.
 use super::*;
+use crate::dj::Knobs;
 use crate::sync::SyncEvent;
 use md5::Digest;
 use crate::settings::{JsonSettings, Settings};
@@ -939,6 +940,52 @@ fn extend_dj_marks_picks() {
     assert!(q[1..].iter().all(|s| s["dj"] == true));
 }
 
+/// The DJ fills the queue after one song from a pool of 30 songs by 30 artists.
+fn dj_picks_from_pool(t: &mut T) {
+    t.c.online = true;
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    let pool: Vec<Value> = (0..30)
+        .map(|i| {
+            let mut s = song(&format!("p{i}"));
+            s["artist"] = format!("Artist {i}").into();
+            s
+        })
+        .collect();
+    t.run(false, |m, _| match m {
+        "getSimilarSongs" => ok(json!({"similarSongs": {"song": pool[..5]}})),
+        "getRandomSongs" => ok(json!({"randomSongs": {"song": pool[5..]}})),
+        _ => None,
+    });
+}
+
+#[test]
+fn dj_state_answers_offline() {
+    let mut t = T::new("dj-state");
+    assert!(t.c.request(7, "djState", Map::new(), false));
+    assert_eq!(t.c.take_replies(), [(7, Some(json!({})), true)], "nothing picked yet");
+    dj_picks_from_pool(&mut t);
+    let q = t.c.snapshot().queue;
+    assert!(q[1..].iter().all(|s| !s["djWhy"].as_str().unwrap_or("").is_empty()), "{q:?}");
+    t.c.online = false;
+    assert!(t.c.request(8, "djState", Map::new(), false));
+    let r = t.c.take_replies();
+    let rows = r[0].1.as_ref().unwrap()["rows"].as_array().unwrap().clone();
+    assert_eq!(rows.len(), 30);
+    assert_eq!(rows.iter().filter(|r| !r["picked"].is_null()).count(), 10);
+    assert!(rows.windows(2).all(|w| w[0]["total"].as_f64() >= w[1]["total"].as_f64()), "by score");
+}
+
+#[test]
+fn dj_state_cleared_on_logout() {
+    let mut t = T::new("dj-state-logout");
+    dj_picks_from_pool(&mut t);
+    t.c.logout();
+    t.c.request(9, "djState", Map::new(), false);
+    assert_eq!(t.c.take_replies(), [(9, Some(json!({})), true)]);
+}
+
 #[test]
 fn late_extend_after_new_play_dropped() {
     let mut t = T::new("extend-late");
@@ -1624,7 +1671,7 @@ fn dj_memory(t: &mut T) -> &crate::dj::memory::Memory {
 
 fn skip_of(t: &mut T, id: &str) -> f32 {
     let day = crate::dj::memory::day(t.c.clock_ms);
-    dj_memory(t).skip(id, day)
+    dj_memory(t).skip(id, day, &Knobs::default())
 }
 
 #[test]
@@ -1656,7 +1703,7 @@ fn quit_saves_memory_and_a_held_skip() {
     let m = crate::dj::memory::Memory::open(file);
     let day = crate::dj::memory::day(t.c.clock_ms);
     assert!(m.last_heard("s0").is_some());
-    assert_eq!(m.skip("s1", day), 1.0);
+    assert_eq!(m.skip("s1", day, &Knobs::default()), 1.0);
 }
 
 // a listener in the room pressing next is not the root skipping
@@ -1671,7 +1718,7 @@ fn follower_next_learns_nothing() {
     t.c.on_sync(&SyncEvent::CommandReceived { op: "next".into(), args: json!({}) });
     assert_eq!(t.current(), "s2");
     let now = t.c.clock_ms;
-    assert!(!t.c.dj_brain().session.searching(now));
+    assert!(!t.c.dj_brain().session.searching(now, &Knobs::default()));
     t.advance(120_000.0);
     t.at(195.0);
     t.c.next();
@@ -1712,7 +1759,7 @@ fn full_listen_learns_and_streak_does_not() {
         t.c.next();
     }
     let now = t.c.clock_ms;
-    assert!(t.c.dj_brain().session.searching(now));
+    assert!(t.c.dj_brain().session.searching(now, &Knobs::default()));
     t.advance(120_000.0);
     t.at(195.0);
     t.c.next();
@@ -1741,7 +1788,7 @@ fn catch_refills() {
     t.at(110.0); // more than half of s2: it holds the listener
     t.c.next();
     let now = t.c.clock_ms;
-    assert!(!t.c.dj_brain().session.searching(now));
+    assert!(!t.c.dj_brain().session.searching(now, &Knobs::default()));
     assert!(t.c.extend_seq > seq, "picks made while searching make way");
 }
 
@@ -1818,6 +1865,232 @@ fn reset_dj_memory_forgets() {
     t.c.next();
     t.c.reset_dj_memory();
     assert!(dj_memory(&mut t).last_heard("s0").is_none());
+}
+
+#[test]
+fn less_like_this_skips_without_penalty() {
+    let mut t = T::new("dj-less");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(10.0);
+    t.c.dj_feedback(song("s0"), -1);
+    assert_eq!(t.c.idx, 1, "on to the next song");
+    assert_eq!(skip_of(&mut t, "s0"), 0.0);
+    assert_eq!(dj_memory(&mut t).feedback("s0"), -1);
+    assert!(t.c.held_skip.is_empty());
+}
+
+// "less like this" near the end: the advance it makes is no full listen
+#[test]
+fn less_like_this_at_the_end_is_no_listen() {
+    let mut t = T::new("dj-less-end");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(195.0);
+    t.c.dj_feedback(song("s0"), -1);
+    assert_eq!(t.c.idx, 1);
+    assert!(dj_memory(&mut t).last_heard("s0").is_none());
+}
+
+// "less like this" on the last song: nothing to move on to, so it stops, and no skip counts
+#[test]
+fn less_like_this_on_the_last_song_stops() {
+    let mut t = T::new("dj-less-last");
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    t.at(10.0);
+    t.c.dj_feedback(song("s0"), -1);
+    assert!(!t.c.playing);
+    assert_eq!(skip_of(&mut t, "s0"), 0.0);
+}
+
+// three skips needed to start looking around: none of the three counts
+#[test]
+fn longer_search_streak_counts_no_skip() {
+    let mut t = T::new("dj-search-3");
+    t.c.set_dj(true);
+    t.c.set_option("djSearchSkips", json!(3));
+    t.c.play(songs(5), 0);
+    for _ in 0..3 {
+        t.at(20.0);
+        t.c.next();
+    }
+    let now = t.c.clock_ms;
+    let k = t.c.knobs();
+    assert!(t.c.dj_brain().session.searching(now, &k));
+    t.advance(100_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 0.0);
+    assert_eq!(skip_of(&mut t, "s1"), 0.0);
+}
+
+// the list is saved data: it shows before anything opened the DJ this run (DJ off, offline start)
+#[test]
+fn feedback_list_before_the_dj_opens() {
+    let mut t = T::new("dj-feedback-cold");
+    t.c.dj_feedback(song("x1"), 1);
+    t.c.brain = None; // as at start: saved, nothing open
+    assert!(t.c.request(6, "djFeedback", Map::new(), false));
+    let r = t.c.take_replies();
+    assert_eq!(r[0].1.as_ref().unwrap().as_array().map(Vec::len), Some(1));
+}
+
+// "less like this" while looking around: the song does not become the new direction
+#[test]
+fn less_like_this_is_not_a_catch() {
+    let mut t = T::new("dj-less-search");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(20.0);
+    t.c.next();
+    t.at(20.0);
+    t.c.next();
+    let now = t.c.clock_ms;
+    assert!(t.c.dj_brain().session.searching(now, &Knobs::default()));
+    t.at(130.0); // past half: would hold a searching listener
+    t.c.dj_feedback(song("s2"), -1);
+    let b = t.c.dj_brain();
+    let a = b.index.word_id("A").unwrap();
+    assert!(b.session.weight(crate::dj::session::Tag::Artist(a)) < 0.0, "{}", b.session.weight(crate::dj::session::Tag::Artist(a)));
+}
+
+#[test]
+fn feedback_list_names() {
+    let mut t = T::new("dj-feedback-list");
+    t.c.set_dj(true);
+    t.c.dj_feedback(song("x1"), 1);
+    assert!(t.c.request(5, "djFeedback", Map::new(), false));
+    let r = t.c.take_replies();
+    let list = r[0].1.as_ref().unwrap().as_array().unwrap().clone();
+    assert_eq!(list.len(), 1);
+    assert_eq!((list[0]["id"].as_str(), list[0]["title"].as_str(), list[0]["artist"].as_str(), list[0]["dir"].as_i64()), (Some("x1"), Some("T x1"), Some("A"), Some(1)));
+}
+
+#[test]
+fn reset_clears_feedback() {
+    let mut t = T::new("dj-feedback-reset");
+    t.c.dj_feedback(song("x1"), 1);
+    t.c.reset_dj_memory();
+    assert_eq!(dj_memory(&mut t).feedback("x1"), 0);
+}
+
+#[test]
+fn undo_skip_forgets_it() {
+    let mut t = T::new("dj-undo");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(195.0);
+    t.c.next();
+    let before = t.c.dj_brain().session.clone();
+    t.at(20.0);
+    t.c.next();
+    assert_eq!(t.c.snapshot().skip_undo["id"], "s1");
+    t.c.undo_skip();
+    assert!(t.c.snapshot().skip_undo.is_null());
+    assert!(t.c.dj_brain().session == before, "the sitting as before the skip");
+    t.advance(100_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s1"), 0.0);
+}
+
+#[test]
+fn undo_notice_expires() {
+    let mut t = T::new("dj-undo-expires");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    assert!(!t.c.snapshot().skip_undo.is_null());
+    t.advance(8_100.0);
+    t.c.tick();
+    assert!(t.c.snapshot().skip_undo.is_null());
+    t.c.undo_skip(); // too late: the notice is gone
+    t.advance(100_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 1.0, "the skip still counts");
+}
+
+// "more like this" between the skip and its undo stays
+#[test]
+fn undo_keeps_later_feedback() {
+    let mut t = T::new("dj-undo-feedback");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    let mut b = song("x1");
+    b["artist"] = "B".into();
+    t.c.dj_feedback(b, 1);
+    t.c.undo_skip();
+    let br = t.c.dj_brain();
+    let a = br.index.word_id("B").unwrap();
+    assert!(br.session.weight(crate::dj::session::Tag::Artist(a)) > 0.0);
+}
+
+// a station started after the skip: its ticks still take the notice down
+#[test]
+fn undo_notice_expires_on_a_station() {
+    let mut t = T::new("dj-undo-station");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    t.c.station.insert("id".into(), json!("st"));
+    t.advance(8_100.0);
+    t.c.tick();
+    assert!(t.c.snapshot().skip_undo.is_null());
+}
+
+// no tick came in time: a late undo still takes nothing back
+#[test]
+fn late_undo_does_nothing() {
+    let mut t = T::new("dj-undo-late");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    t.advance(8_100.0);
+    t.c.undo_skip();
+    t.advance(100_000.0);
+    t.c.tick();
+    assert_eq!(skip_of(&mut t, "s0"), 1.0, "the skip still counts");
+}
+
+#[test]
+fn no_undo_while_searching() {
+    let mut t = T::new("dj-undo-search");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(20.0);
+    t.c.next();
+    t.at(20.0);
+    t.c.next();
+    assert!(t.c.snapshot().skip_undo.is_null(), "skips while looking around do not count: nothing to undo");
+}
+
+#[test]
+fn logout_drops_undo() {
+    let mut t = T::new("dj-undo-logout");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(20.0);
+    t.c.next();
+    t.c.logout();
+    assert!(t.c.snapshot().skip_undo.is_null());
+    t.c.undo_skip();
+    assert!(t.c.held_skip.is_empty());
+}
+
+#[test]
+fn reset_dj_settings_restores() {
+    let mut t = T::new("dj-settings-reset");
+    t.c.set_option("djArtistMax", json!(4));
+    t.c.set_option("radioExplore", json!(40));
+    t.c.take_changes();
+    t.c.reset_dj_settings();
+    assert_eq!(t.c.options["djArtistMax"], json!(2));
+    assert_eq!(t.c.options["radioExplore"], json!(20));
+    assert!(t.c.take_changes().options);
 }
 
 // the queue's last song played to its end, nothing after it

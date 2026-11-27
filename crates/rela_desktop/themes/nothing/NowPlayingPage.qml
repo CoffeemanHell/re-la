@@ -7,6 +7,9 @@ import Rela
 
 NowPlayingData {
     id: root
+    DjData { id: djData }
+    Connections { target: Player; function onDjChanged() { if (Player.dj) djData.refreshFeedback() } }
+    Component.onCompleted: if (Player.dj) djData.refreshFeedback()
 
     Mono {
         objectName: "strip"
@@ -66,11 +69,25 @@ NowPlayingData {
                 text: root.w.up(qsTr("DJ %1").arg(root.sw.dj) + (root.sw.show ? " · " + root.sw.show : "")) + " · " + qsTr("%n DİNLEYİCİ", "", root.sw.listeners || 0)
             }
             Mono { visible: root.live && !Subwave.online; text: qsTr("BAĞLANTI YOK"); color: App.theme.accent }
+            Mono { // why the DJ picked it
+                Layout.maximumWidth: parent.width; elide: Text.ElideRight
+                visible: !Player.station.id && !!root.cur.djWhy
+                text: DjKnobs.upper(root.cur.djWhy); color: App.theme.muted; font.pixelSize: 10
+            }
             RowLayout {
                 visible: !Player.station.id && !!root.cur.id
                 spacing: 12
                 Heart { item: root.cur }
                 Stars { item: root.cur }
+                component Fb: Pill {
+                    required property int dir
+                    visible: Player.dj
+                    on: djData.dirOf(root.cur.id) === dir
+                    implicitHeight: 24
+                    onClicked: djData.toggle(root.cur, dir)
+                }
+                Fb { objectName: "djMore"; dir: 1; text: qsTr("▲ DAHA ÇOK") }
+                Fb { objectName: "djLess"; dir: -1; text: qsTr("▼ DAHA AZ") }
             }
             Item { Layout.fillHeight: true }
         }

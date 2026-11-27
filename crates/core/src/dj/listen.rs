@@ -1,5 +1,7 @@
 //! What a song's end says: heard in full, left early, or nothing to learn from.
 
+use crate::dj::Knobs;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Heard {
     Full,
@@ -46,7 +48,7 @@ fn silent_at(rms: &[f32], frac: f64, dur: f64) -> bool {
 
 /// A song left at `pos` of `dur` seconds (`natural_end`: it played to the end). With its waveform, leaving in a
 /// silence or after the music counts as heard in full.
-pub fn classify(pos: f64, dur: f64, natural_end: bool, rms: Option<&[f32]>) -> Heard {
+pub fn classify(pos: f64, dur: f64, natural_end: bool, rms: Option<&[f32]>, k: &Knobs) -> Heard {
     if natural_end {
         return Heard::Full;
     }
@@ -63,9 +65,9 @@ pub fn classify(pos: f64, dur: f64, natural_end: bool, rms: Option<&[f32]>) -> H
         }
     }
     let ratio = frac / end;
-    if ratio >= 0.9 {
+    if ratio >= k.full_share {
         Heard::Full
-    } else if ratio < 0.3 && pos < 180.0 {
+    } else if ratio < k.skip_share && pos < k.skip_max_sec {
         Heard::EarlySkip
     } else {
         Heard::Neutral
@@ -111,21 +113,38 @@ mod tests {
     #[test]
     fn silent_intro_skip_is_early() {
         let w = wave(&[(512, 4096)]); // 200 s song, first ~25 s silent
-        assert_eq!(classify(10.0, 200.0, false, Some(&w)), Heard::EarlySkip);
-        assert_eq!(classify(0.0, 200.0, false, Some(&w)), Heard::EarlySkip);
+        assert_eq!(classify(10.0, 200.0, false, Some(&w), &Knobs::default()), Heard::EarlySkip);
+        assert_eq!(classify(0.0, 200.0, false, Some(&w), &Knobs::default()), Heard::EarlySkip);
     }
 
     #[test]
     fn classify_cases() {
         let tail = wave(&[(0, 2048)]);
-        assert_eq!(classify(10.0, 300.0, true, None), Heard::Full);
-        assert_eq!(classify(160.0, 300.0, false, Some(&tail)), Heard::Full); // the music is over
+        assert_eq!(classify(10.0, 300.0, true, None, &Knobs::default()), Heard::Full);
+        assert_eq!(classify(160.0, 300.0, false, Some(&tail), &Knobs::default()), Heard::Full); // the music is over
         let gap = wave(&[(0, 1000), (1500, 4096)]);
-        assert_eq!(classify(300.0 * 1200.0 / 4096.0, 300.0, false, Some(&gap)), Heard::Full); // skipped in silence
-        assert_eq!(classify(30.0, 300.0, false, None), Heard::EarlySkip);
-        assert_eq!(classify(150.0, 300.0, false, None), Heard::Neutral);
-        assert_eq!(classify(181.0, 300.0, false, None), Heard::Neutral);
-        assert_eq!(classify(280.0, 300.0, false, None), Heard::Full);
-        assert_eq!(classify(5.0, 0.0, false, None), Heard::Neutral);
+        assert_eq!(classify(300.0 * 1200.0 / 4096.0, 300.0, false, Some(&gap), &Knobs::default()), Heard::Full); // skipped in silence
+        assert_eq!(classify(30.0, 300.0, false, None, &Knobs::default()), Heard::EarlySkip);
+        assert_eq!(classify(150.0, 300.0, false, None, &Knobs::default()), Heard::Neutral);
+        assert_eq!(classify(181.0, 300.0, false, None, &Knobs::default()), Heard::Neutral);
+        assert_eq!(classify(280.0, 300.0, false, None, &Knobs::default()), Heard::Full);
+        assert_eq!(classify(5.0, 0.0, false, None, &Knobs::default()), Heard::Neutral);
+    }
+
+    #[test]
+    fn skip_share_moves_early_skip() {
+        let mut k = Knobs::default();
+        assert_eq!(classify(100.0, 300.0, false, None, &k), Heard::Neutral);
+        k.skip_share = 0.5;
+        assert_eq!(classify(100.0, 300.0, false, None, &k), Heard::EarlySkip);
+    }
+
+    #[test]
+    fn skip_max_sec_and_full_share() {
+        let k = Knobs::default();
+        assert_eq!(classify(100.0, 400.0, false, None, &k), Heard::EarlySkip);
+        assert_eq!(classify(100.0, 400.0, false, None, &Knobs { skip_max_sec: 60.0, ..Knobs::default() }), Heard::Neutral);
+        assert_eq!(classify(250.0, 300.0, false, None, &k), Heard::Neutral);
+        assert_eq!(classify(250.0, 300.0, false, None, &Knobs { full_share: 0.8, ..Knobs::default() }), Heard::Full);
     }
 }

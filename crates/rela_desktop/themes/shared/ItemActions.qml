@@ -38,6 +38,11 @@ QtObject {
             w.notify(qsTr("Link kopyalandı"))
         })
     }
+    // the DJ: more (1) or less (-1) like this song, 0 takes it back
+    function djFeedback(dir) {
+        Player.djFeedback(item, dir)
+        w.notify(dir > 0 ? qsTr("DJ benzerlerini daha çok çalacak") : dir < 0 ? qsTr("DJ bunu daha az çalacak") : qsTr("Geri bildirim kaldırıldı"))
+    }
     function star() {
         const on = !!item.starred
         const key = kind === "album" ? "albumId" : kind === "artist" ? "artistId" : "id"
