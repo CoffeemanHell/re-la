@@ -5,11 +5,13 @@ pub mod genres;
 pub mod index;
 pub mod memory;
 pub mod session;
+pub mod why;
 
 pub use knobs::Knobs;
 use genres::{Genres, UserGenres};
 use index::{Index, Song};
 use memory::Memory;
+use serde::Serialize;
 use serde_json::Value;
 use session::Session;
 use std::collections::{HashMap, HashSet};
@@ -21,6 +23,8 @@ pub struct Brain {
     pub memory: Memory,
     pub genres: Genres,
     pub session: Session,
+    /// what the last pick weighed, for a state page
+    pub last_pick: Option<Weighed>,
     user: UserGenres,
 }
 
@@ -37,7 +41,7 @@ impl Brain {
         let index = Index::open(cache.join("dj-index.json"));
         let memory = Memory::open(data.join("dj-memory.json"));
         let user = UserGenres::load(&data.join("dj-genres.json"));
-        Brain { index, memory, genres: Genres::default(), session: Session::default(), user }
+        Brain { index, memory, genres: Genres::default(), session: Session::default(), last_pick: None, user }
     }
 
     pub fn rebuild_genres(&mut self, day: u32, k: &Knobs) {
@@ -67,6 +71,75 @@ pub fn slots(batch: i32, explore: i32, wildcard: f64, searching: bool, rng: &mut
     let joker = ((batch as f64 * wildcard + r).floor() as usize).min(batch);
     let both = ((batch as f64 * (wildcard + share) + r).floor() as usize).min(batch);
     (both - joker, joker, batch - both)
+}
+
+/// What a candidate's score is made of.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Parts {
+    /// fits this sitting
+    pub fit: f64,
+    /// long-term taste for its artist or genre
+    pub taste: f64,
+    /// Navidrome calls it similar to the song playing
+    pub similar: f64,
+    /// new in the library or barely played
+    pub fresh: f64,
+    /// heard lately (≤ 0)
+    pub recent: f64,
+    /// "more like this"
+    pub feedback: f64,
+    pub disliked: bool,
+}
+
+impl Parts {
+    pub fn total(&self) -> f64 {
+        let s = self.fit + self.taste + self.similar + self.fresh + self.recent + self.feedback;
+        if self.disliked { disliked_score(s) } else { s }
+    }
+}
+
+/// What a pick weighed: the best candidates and every pick, by score (JSON for the themes).
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct Weighed {
+    pub searching: bool,
+    pub seed: Seed,
+    /// the sitting's strongest tags
+    pub session: Vec<SessionTag>,
+    pub rows: Vec<Row>,
+}
+
+#[derive(Serialize, Clone, Debug, Default)]
+pub struct Seed {
+    pub title: String,
+    pub artist: String,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct SessionTag {
+    pub tag: String,
+    pub weight: f32,
+}
+
+#[derive(Serialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Row {
+    pub id: String,
+    pub title: String,
+    pub artist: String,
+    pub total: f64,
+    pub fit: f64,
+    pub taste: f64,
+    pub similar: f64,
+    pub fresh: f64,
+    pub recent: f64,
+    pub feedback: f64,
+    pub disliked: bool,
+    /// faded early skips
+    pub skip: f32,
+    pub last_heard_days: Option<u32>,
+    pub why: Option<String>,
+    /// "explore" | "wildcard" | "normal"; None when not picked
+    pub picked: Option<&'static str>,
 }
 
 /// A disliked song keeps a chance: a good score shrinks, a poor one never grows.
@@ -128,29 +201,36 @@ impl Taste {
         Taste { artist, genre }
     }
 
-    fn score(&self, s: &Song, index: &Index, genres: &Genres) -> f32 {
-        let a = s.artists.iter().filter_map(|a| self.artist.get(a)).copied().fold(0.0f32, f32::max);
-        let g = s
-            .genres
-            .iter()
-            .map(|&g| {
-                let own = self.genre.get(&g).copied().unwrap_or(0.0);
-                let near = genres
-                    .neighbors(index.word(g))
-                    .iter()
-                    .filter_map(|(n, sim)| Some(sim * self.genre.get(&index.word_id(n)?)?))
-                    .fold(0.0f32, f32::max);
-                own.max(near)
-            })
-            .fold(0.0f32, f32::max);
-        let mut t = 0.5 * a + 0.5 * g;
+    /// The score, and the word id of the artist or genre that gives most of it.
+    fn score_best(&self, s: &Song, index: &Index, genres: &Genres) -> (f32, Option<u32>) {
+        let best = |v: &mut Option<(f32, u32)>, x: f32, id: u32| {
+            if x > 0.0 && v.is_none_or(|(b, _)| x > b) {
+                *v = Some((x, id));
+            }
+        };
+        let (mut a, mut g) = (None, None);
+        for &id in &s.artists {
+            best(&mut a, self.artist.get(&id).copied().unwrap_or(0.0), id);
+        }
+        for &id in &s.genres {
+            let own = self.genre.get(&id).copied().unwrap_or(0.0);
+            let near = genres
+                .neighbors(index.word(id))
+                .iter()
+                .filter_map(|(n, sim)| Some(sim * self.genre.get(&index.word_id(n)?)?))
+                .fold(0.0f32, f32::max);
+            best(&mut g, own.max(near), id);
+        }
+        let (av, gv) = (a.map_or(0.0, |x| x.0), g.map_or(0.0, |x| x.0));
+        let name = if av >= gv { a } else { g }.map(|x| x.1);
+        let mut t = 0.5 * av + 0.5 * gv;
         if s.starred {
             t += 0.5;
         }
         if s.rating > 0 {
             t += (f32::from(s.rating) - 3.0) / 2.0;
         }
-        t
+        (t, name)
     }
 }
 
@@ -188,7 +268,24 @@ pub fn pick(
     for m in pool {
         brain.index.upsert(m, day);
     }
-    let brain = &*brain;
+    let (out, state) = weigh(brain, pool, history, upcoming, similar, k, searching, day, rng);
+    brain.last_pick = Some(state);
+    out
+}
+
+/// `pick` once the index knows every song: the picks, and what was weighed.
+#[allow(clippy::too_many_arguments)]
+fn weigh(
+    brain: &Brain,
+    pool: &[Value],
+    history: &[Value],
+    upcoming: &[Value],
+    similar: &HashSet<String>,
+    k: &Knobs,
+    searching: bool,
+    day: u32,
+    rng: &mut fastrand::Rng,
+) -> (Vec<Value>, Weighed) {
     let ix = &brain.index;
     let mut tmp = Session::default();
     let session = taste_now(brain, history, &mut tmp, k);
@@ -209,8 +306,12 @@ pub fn pick(
     let have: HashSet<&str> = history.iter().chain(upcoming).map(|m| text(&m["id"])).collect();
     struct C<'a> {
         song: &'a Value,
+        s: &'a Song,
         artists: Vec<String>,
+        parts: Parts,
         score: f64,
+        fit_tag: Option<session::Tag>,
+        taste_of: Option<u32>,
         fresh: bool,
         same_lang: bool,
     }
@@ -224,17 +325,30 @@ pub fn pick(
         }
         let Some(s) = ix.get(id) else { continue };
         let age = day.saturating_sub(s.created_day) as f32;
-        let mut score = fit_k * f64::from(session.fit(s, ix)) + k.taste * f64::from(taste.score(s, ix, &brain.genres));
-        if similar.contains(id) {
-            score += k.similar;
-        }
+        let (fit, fit_tag) = session.fit_best(s, ix);
+        let (taste_score, taste_of) = taste.score_best(s, ix, &brain.genres);
         let new = if k.new_days == 0 { 0.0 } else { (1.0 - age / k.new_days as f32).max(0.0) };
-        score += f64::from(0.6 / (1.0 + s.play_count as f32).sqrt() + 0.5 * new);
-        score += repeat_penalty(brain.memory.last_heard(id).map(|d| day.saturating_sub(d)), k);
-        if brain.memory.disliked(id, day, k) {
-            score = disliked_score(score);
-        }
-        cands.push(C { song: m, artists: performers(m), score, fresh: fresh(s, day, k), same_lang: seed_lang != 0 && ix.lang(s) == seed_lang });
+        let parts = Parts {
+            fit: fit_k * f64::from(fit),
+            taste: k.taste * f64::from(taste_score),
+            similar: if similar.contains(id) { k.similar } else { 0.0 },
+            fresh: f64::from(0.6 / (1.0 + s.play_count as f32).sqrt() + 0.5 * new),
+            recent: repeat_penalty(brain.memory.last_heard(id).map(|d| day.saturating_sub(d)), k),
+            feedback: 0.0,
+            disliked: brain.memory.disliked(id, day, k),
+        };
+        let score = parts.total();
+        cands.push(C {
+            song: m,
+            s,
+            artists: performers(m),
+            parts,
+            score,
+            fit_tag,
+            taste_of,
+            fresh: fresh(s, day, k),
+            same_lang: seed_lang != 0 && ix.lang(s) == seed_lang,
+        });
     }
 
     let (n_explore, n_joker, _) = slots(k.batch, k.explore, k.wildcard, searching, rng); // normal picks fill the rest
@@ -299,25 +413,80 @@ pub fn pick(
         }
     }
     let mut d = Draw { used: vec![false; cands.len()], per_artist, same: 0, quota, artist_max: k.artist_max, temperature: k.temperature };
-    let mut chosen = vec![];
+    let mut chosen: Vec<(usize, u8)> = vec![];
     for _ in 0..n_explore {
         match draw(0, &cands, &mut d, rng) {
-            Some(i) => chosen.push(i),
+            Some(i) => chosen.push((i, 0)),
             None => break, // nothing new or barely played: normal picks fill in
         }
     }
     for _ in 0..n_joker {
-        chosen.extend(draw(1, &cands, &mut d, rng));
+        chosen.extend(draw(1, &cands, &mut d, rng).map(|i| (i, 1)));
     }
     while chosen.len() < k.batch.max(0) as usize {
         match draw(2, &cands, &mut d, rng) {
-            Some(i) => chosen.push(i),
+            Some(i) => chosen.push((i, 2)),
             None => break,
         }
     }
-    let mut out: Vec<Value> = chosen.iter().map(|&i| cands[i].song.clone()).collect();
+
+    let en = crate::i18n::english();
+    let seed = history.last();
+    let seed_title = seed.map_or("", |m| text(&m["title"]));
+    let mut kinds: Vec<Option<u8>> = vec![None; cands.len()];
+    for &(i, kind) in &chosen {
+        kinds[i] = Some(kind);
+    }
+    // the state page shows the best ROWS and every pick: enough to see why, cheap enough for every pick
+    const ROWS: usize = 200;
+    let mut order: Vec<usize> = (0..cands.len()).collect();
+    order.sort_by(|&a, &b| cands[b].score.total_cmp(&cands[a].score));
+    let mut rows = Vec::with_capacity(ROWS.min(cands.len()) + chosen.len());
+    let mut out = vec![];
+    for (rank, &i) in order.iter().enumerate() {
+        let c = &cands[i];
+        if rank >= ROWS && kinds[i].is_none() {
+            continue;
+        }
+        let last = brain.memory.last_heard(&c.s.id).map(|d| day.saturating_sub(d));
+        let why = kinds[i].map(|kind| {
+            let fit_tag = c.fit_tag.map(|t| why::tag_label(t, ix, en));
+            let taste_name = c.taste_of.map(|w| ix.word(w).to_string());
+            let age = day.saturating_sub(c.s.created_day);
+            why::sentence(en, kind, &c.parts, fit_tag, taste_name, seed_title, age, last, k.new_days)
+        });
+        if let Some(w) = &why {
+            let mut song = c.song.clone();
+            song["djWhy"] = w.clone().into();
+            out.push(song);
+        }
+        let p = &c.parts;
+        rows.push(Row {
+            id: c.s.id.clone(),
+            title: text(&c.song["title"]).to_string(),
+            artist: text(&c.song["artist"]).to_string(),
+            total: c.score,
+            fit: p.fit,
+            taste: p.taste,
+            similar: p.similar,
+            fresh: p.fresh,
+            recent: p.recent,
+            feedback: p.feedback,
+            disliked: p.disliked,
+            skip: brain.memory.skip(&c.s.id, day, k),
+            last_heard_days: last,
+            why,
+            picked: kinds[i].map(|kind| ["explore", "wildcard", "normal"][kind as usize]),
+        });
+    }
+    let state = Weighed {
+        searching,
+        seed: Seed { title: seed_title.to_string(), artist: seed.map_or("", |m| text(&m["artist"])).to_string() },
+        session: session.top(10).into_iter().map(|(t, weight)| SessionTag { tag: why::tag_label(t, ix, en), weight }).collect(),
+        rows,
+    };
     rng.shuffle(&mut out);
-    out
+    (out, state)
 }
 
 /// Ids from the index worth adding to the pool: up to 2·batch new or barely played songs and 2·batch others, those
@@ -651,5 +820,34 @@ mod tests {
         let s = b.index.get("n").unwrap();
         assert!(fresh(s, DAY, &Knobs::default()));
         assert!(!fresh(s, DAY, &Knobs { new_days: 0, ..Knobs::default() }));
+    }
+
+    #[test]
+    fn parts_total() {
+        let p = Parts { fit: 0.5, taste: 0.25, similar: 0.8, fresh: 0.3, recent: -0.4, feedback: 1.0, disliked: false };
+        assert!((p.total() - 2.45).abs() < 1e-9);
+        assert!((Parts { disliked: true, ..p }.total() - 2.45 * 0.3).abs() < 1e-9);
+        let poor = Parts { recent: -1.0, disliked: true, ..Parts::default() };
+        assert_eq!(poor.total(), -2.0);
+    }
+
+    #[test]
+    fn picked_songs_carry_why() {
+        let pool: Vec<Value> = (0..20).map(|i| song(&format!("p{i}"), "S", &format!("A{i}"), "Qqg")).collect();
+        let history = vec![song("h", "Seed Song", "H", "Qqg")];
+        let mut b = brain();
+        let similar: HashSet<String> = HashSet::from(["p0".into(), "p1".into()]);
+        let p = pick(&mut b, &pool, &history, &[], &similar, &w(0, 20, 5), false, DAY, &mut fastrand::Rng::with_seed(6));
+        assert_eq!(p.len(), 5);
+        assert!(p.iter().all(|m| !m["djWhy"].as_str().unwrap_or("").is_empty()), "{p:?}");
+        let state = serde_json::to_value(b.last_pick.as_ref().unwrap()).unwrap();
+        let rows = state["rows"].as_array().unwrap();
+        assert_eq!(rows.len(), 20);
+        assert_eq!(rows.iter().filter(|r| !r["picked"].is_null()).count(), 5);
+        assert_eq!(state["seed"]["title"], "Seed Song");
+        for r in rows {
+            let sum: f64 = ["fit", "taste", "similar", "fresh", "recent", "feedback"].iter().map(|k| r[k].as_f64().unwrap()).sum();
+            assert!((sum - r["total"].as_f64().unwrap()).abs() < 1e-9, "{r}");
+        }
     }
 }

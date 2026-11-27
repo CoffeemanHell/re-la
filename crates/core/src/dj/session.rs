@@ -35,7 +35,7 @@ pub fn tags(s: &Song, index: &Index) -> Vec<Tag> {
     t
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Session {
     w: HashMap<Tag, f32>,
     skips: Vec<f64>, // early skips, clock ms
@@ -119,7 +119,28 @@ impl Session {
 
     /// How well a song fits this sitting, -1..1.
     pub fn fit(&self, s: &Song, index: &Index) -> f32 {
-        tags(s, index).iter().map(|t| self.weight(*t)).sum::<f32>().tanh()
+        self.fit_best(s, index).0
+    }
+
+    /// The fit, and the tag that helps it most that a listener would name (not a BPM or mood).
+    pub fn fit_best(&self, s: &Song, index: &Index) -> (f32, Option<Tag>) {
+        let (mut sum, mut best) = (0.0f32, None::<(f32, Tag)>);
+        for t in tags(s, index) {
+            let w = self.weight(t);
+            sum += w;
+            if w > 0.0 && !matches!(t, Tag::Bpm(_) | Tag::Mood(_)) && best.is_none_or(|(b, _)| w > b) {
+                best = Some((w, t));
+            }
+        }
+        (sum.tanh(), best.map(|(_, t)| t))
+    }
+
+    /// The strongest tags of this sitting, strongest first.
+    pub fn top(&self, n: usize) -> Vec<(Tag, f32)> {
+        let mut v: Vec<(Tag, f32)> = self.w.iter().map(|(t, w)| (*t, *w)).filter(|(_, w)| *w != 0.0).collect();
+        v.sort_by(|a, b| b.1.abs().total_cmp(&a.1.abs()));
+        v.truncate(n);
+        v
     }
 }
 

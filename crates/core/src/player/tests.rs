@@ -940,6 +940,52 @@ fn extend_dj_marks_picks() {
     assert!(q[1..].iter().all(|s| s["dj"] == true));
 }
 
+/// The DJ fills the queue after one song from a pool of 30 songs by 30 artists.
+fn dj_picks_from_pool(t: &mut T) {
+    t.c.online = true;
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    let pool: Vec<Value> = (0..30)
+        .map(|i| {
+            let mut s = song(&format!("p{i}"));
+            s["artist"] = format!("Artist {i}").into();
+            s
+        })
+        .collect();
+    t.run(false, |m, _| match m {
+        "getSimilarSongs" => ok(json!({"similarSongs": {"song": pool[..5]}})),
+        "getRandomSongs" => ok(json!({"randomSongs": {"song": pool[5..]}})),
+        _ => None,
+    });
+}
+
+#[test]
+fn dj_state_answers_offline() {
+    let mut t = T::new("dj-state");
+    assert!(t.c.request(7, "djState", Map::new(), false));
+    assert_eq!(t.c.take_replies(), [(7, Some(json!({})), true)], "nothing picked yet");
+    dj_picks_from_pool(&mut t);
+    let q = t.c.snapshot().queue;
+    assert!(q[1..].iter().all(|s| !s["djWhy"].as_str().unwrap_or("").is_empty()), "{q:?}");
+    t.c.online = false;
+    assert!(t.c.request(8, "djState", Map::new(), false));
+    let r = t.c.take_replies();
+    let rows = r[0].1.as_ref().unwrap()["rows"].as_array().unwrap().clone();
+    assert_eq!(rows.len(), 30);
+    assert_eq!(rows.iter().filter(|r| !r["picked"].is_null()).count(), 10);
+    assert!(rows.windows(2).all(|w| w[0]["total"].as_f64() >= w[1]["total"].as_f64()), "by score");
+}
+
+#[test]
+fn dj_state_cleared_on_logout() {
+    let mut t = T::new("dj-state-logout");
+    dj_picks_from_pool(&mut t);
+    t.c.logout();
+    t.c.request(9, "djState", Map::new(), false);
+    assert_eq!(t.c.take_replies(), [(9, Some(json!({})), true)]);
+}
+
 #[test]
 fn late_extend_after_new_play_dropped() {
     let mut t = T::new("extend-late");

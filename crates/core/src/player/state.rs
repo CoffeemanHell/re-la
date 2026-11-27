@@ -1117,15 +1117,23 @@ impl PlayerCore {
         self.state_changed();
     }
 
-    /// Queue end: on = client-side picks, off = Navidrome's similar songs.
     /// The DJ's numbers as the options set them now.
     pub(super) fn knobs(&self) -> crate::dj::Knobs {
         crate::dj::Knobs::from_options(&self.options)
     }
 
+    fn brain_key(&self) -> String {
+        crate::disk::hashed(&format!("{}\n{}", self.login.server, self.login.user))
+    }
+
+    /// The signed-in account's brain if it is open (nothing is opened for a look).
+    pub(super) fn dj_open(&self) -> Option<&Brain> {
+        self.brain.as_ref().filter(|(k, _)| *k == self.brain_key()).map(|(_, b)| b)
+    }
+
     /// The DJ's brain for the signed-in account; another account's is saved and closed first.
     pub(super) fn dj_brain(&mut self) -> &mut Brain {
-        let key = crate::disk::hashed(&format!("{}\n{}", self.login.server, self.login.user));
+        let key = self.brain_key();
         if self.brain.as_ref().is_none_or(|(k, _)| *k != key) {
             self.dj_flush();
             self.brain = None; // saved on drop
@@ -1268,6 +1276,7 @@ impl PlayerCore {
         }
     }
 
+    /// Queue end: on = client-side picks, off = Navidrome's similar songs.
     pub fn set_dj(&mut self, on: bool) {
         self.dj = on;
         self.settings.set("dj", on.into());
