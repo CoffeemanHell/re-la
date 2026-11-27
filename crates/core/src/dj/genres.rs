@@ -188,7 +188,9 @@ impl Genres {
                 // "Various Artists" on two genres says nothing about them
                 f.artists.extend(s.artists.iter().filter(|&&a| !crate::dj::index::nobody(index.word(a))));
             }
-            for i in 0..names.len() {
+            // a song under more genres than BUCKET pairs none of them (pairs grow with the square)
+            let paired = if names.len() <= BUCKET { names.len() } else { 0 };
+            for i in 0..paired {
                 for j in i + 1..names.len() {
                     if names[i] != names[j] {
                         *g.together.entry(key(&names[i], &names[j])).or_default() += 1.0;
@@ -426,6 +428,16 @@ mod tests {
         let g = Genres::build(&ix, &[], &UserGenres::default());
         assert!(g.neighbors("Qqx Jazz").iter().any(|(x, _)| x == "Jazz"), "{:?}", g.neighbors("Qqx Jazz"));
         assert!(g.neighbors("Qqa").is_empty(), "{:?}", g.neighbors("Qqa"));
+    }
+
+    // one song under 60 odd tags pairs none of them
+    #[test]
+    fn many_tags_on_one_song_capped() {
+        let gs: Vec<Value> = (0..60).map(|i| json!({"name": format!("Qq{i} Xa{i}")})).collect();
+        let mut ix = index(&[]);
+        ix.upsert(&json!({"id": "s", "genres": gs}), 1);
+        let g = Genres::build(&ix, &[], &UserGenres::default());
+        assert!(g.neighbors("Qq0 Xa0").is_empty(), "{:?}", g.neighbors("Qq0 Xa0"));
     }
 
     // a word shared by thousands of odd tags gives no pairs, so building stays cheap

@@ -164,7 +164,7 @@ mod tests {
     // forgotten on disk at once: no later write has to succeed (or happen) for it to stay forgotten
     #[test]
     fn clear_forgets_on_disk() {
-        let p = tmp("clear");
+        let p = tmp("clear-on-disk");
         let mut m = Memory::open(p.clone());
         two_days(&mut m);
         m.save().unwrap();
