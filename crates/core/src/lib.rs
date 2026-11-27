@@ -1,6 +1,7 @@
 //! re-la's core, shared by the desktop app (cxx-qt) and Android (UniFFI): no Qt, no Android in here.
 #![forbid(unsafe_code)]
 pub mod covers;
+pub mod dj;
 mod disk;
 pub mod i18n;
 pub mod player;
