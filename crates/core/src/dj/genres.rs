@@ -151,6 +151,10 @@ pub struct Genres {
     neighbors: HashMap<String, Vec<(String, f32)>>, // by canonical name; every library spelling of each neighbor
 }
 
+/// Genres in one candidate group before it stops pairing all of them: keeps the pairs (and the rebuild on the player
+/// thread) from growing with the square of a large or oddly tagged library.
+const BUCKET: usize = 50;
+
 fn key(a: &str, b: &str) -> (String, String) {
     if a <= b { (a.to_string(), b.to_string()) } else { (b.to_string(), a.to_string()) }
 }
@@ -225,8 +229,8 @@ impl Genres {
                 by_up.entry(x).or_default().push((n, d));
             }
         }
-        // a word shared by more unknown genres than this says little and would make pairs by the million
-        by_token.retain(|_, (unknown, _)| unknown.len() <= 50);
+        // a word shared by more unknown genres than BUCKET says little
+        by_token.retain(|_, (unknown, _)| unknown.len() <= BUCKET);
         for (unknown, known) in by_token.values() {
             if let Some(b) = known {
                 unknown.iter().for_each(|a| _ = cand.insert(key(a, b)));
@@ -241,12 +245,15 @@ impl Genres {
                 }
             }
         };
-        by_artist.values().for_each(|l| add_all(l));
+        // an artist under more genres than BUCKET says little about any two of them
+        by_artist.values().filter(|l| l.len() <= BUCKET).for_each(|l| add_all(l));
         by_token.values().for_each(|(unknown, _)| add_all(unknown));
         for l in by_up.values() {
+            // a big family (every rock genre under "rock"): only parents and siblings, not cousins
+            let far = if l.len() <= BUCKET { 3 } else { 2 };
             for i in 0..l.len() {
                 for j in i + 1..l.len() {
-                    if l[i].1 + l[j].1 <= 3 && l[i].0 != l[j].0 {
+                    if l[i].1 + l[j].1 <= far && l[i].0 != l[j].0 {
                         cand.insert(key(l[i].0, l[j].0));
                     }
                 }
@@ -432,6 +439,24 @@ mod tests {
         }
         let g = Genres::build(&ix, &[], &UserGenres::default());
         assert!(g.neighbors("Qq0 Zork").is_empty(), "{:?}", g.neighbors("Qq0 Zork"));
+    }
+
+    // worst case: every genre of the tree in the library, one artist tagged with 500 of them
+    // cargo test --offline -p rela-core --release budget_whole_tree -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn budget_whole_tree() {
+        let t = tree();
+        let mut seen = HashSet::new();
+        let names: Vec<&String> = t.by_name.iter().filter(|(_, v)| seen.insert(v[0])).map(|(n, _)| n).collect();
+        let mut ix = index(&[]);
+        for (i, n) in names.iter().enumerate() {
+            let artist = if i < 500 { "Collector".to_string() } else { format!("A{}", i % 2000) };
+            ix.upsert(&json!({"id": format!("w{i}"), "artist": artist, "genre": n}), 1);
+        }
+        let start = std::time::Instant::now();
+        let g = Genres::build(&ix, &[], &UserGenres::default());
+        println!("{} genres: build {:?}, {} with neighbors", names.len(), start.elapsed(), g.neighbors.len());
     }
 
     #[test]

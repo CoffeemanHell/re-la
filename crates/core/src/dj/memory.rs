@@ -136,9 +136,10 @@ impl Memory {
         Ok(())
     }
 
+    /// Forgets everything, on disk too: the file goes now rather than waiting for a write that may fail.
     pub fn clear(&mut self) {
         self.file = File { v: 1, ..Default::default() };
-        self.dirty = true;
+        self.dirty = std::fs::remove_file(&self.path).is_err_and(|e| e.kind() != std::io::ErrorKind::NotFound);
     }
 }
 
@@ -158,6 +159,17 @@ mod tests {
         for d in [1, 1, 2, 2] {
             m.record("x", EarlySkip, d);
         }
+    }
+
+    // forgotten on disk at once: no later write has to succeed (or happen) for it to stay forgotten
+    #[test]
+    fn clear_forgets_on_disk() {
+        let p = tmp("clear");
+        let mut m = Memory::open(p.clone());
+        two_days(&mut m);
+        m.save().unwrap();
+        m.clear();
+        assert!(Memory::open(p).skip("x", 2) == 0.0);
     }
 
     #[test]
