@@ -162,6 +162,20 @@
     <message><source>Eksi: %1</source><translation>Skips: %1</translation></message>
     <message numerus="yes"><source>%n gün önce dinlendi</source><translation><numerusform>Heard %n day ago</numerusform><numerusform>Heard %n days ago</numerusform></translation></message>
     <message><source>Seçilmedi</source><translation>Not picked</translation></message>
+    <message><source>PUAN</source><translation>SCORE</translation></message>
+    <message><source>UYUM</source><translation>FIT</translation></message>
+    <message><source>ZEVK</source><translation>TASTE</translation></message>
+    <message><source>BENZER</source><translation>SIMILAR</translation></message>
+    <message><source>YENİ</source><translation>NEW</translation></message>
+    <message><source>TEKRAR</source><translation>REPEAT</translation></message>
+    <message><source>GERİ B.</source><translation>FEEDBACK</translation></message>
+    <message><source>DJ DURUMU</source><translation>DJ STATE</translation></message>
+    <message><source>YENİLE</source><translation>REFRESH</translation></message>
+    <message><source>ARAYIŞ MODUNDA: ATLAMALAR EKSİ SAYILMIYOR, DJ DAHA ÇOK KEŞFEDİYOR.</source><translation>LOOKING AROUND: SKIPS DO NOT COUNT AGAINST SONGS, AND THE DJ EXPLORES MORE.</translation></message>
+    <message><source>ÇIKIŞ NOKTASI: %1</source><translation>STARTING FROM: %1</translation></message>
+    <message><source>BU OTURUM: %1</source><translation>THIS SITTING: %1</translation></message>
+    <message><source>DJ HENÜZ SEÇİM YAPMADI</source><translation>THE DJ HAS NOT PICKED ANYTHING YET</translation></message>
+    <message><source>ŞARKI</source><translation>SONG</translation></message>
 </context>
 <context>
     <name>Favorite</name>
@@ -318,6 +332,8 @@
     <message><source>Şarkı radyosu</source><translation>Song radio</translation></message>
     <message><source>Bunun gibi daha çok</source><translation>More like this</translation></message>
     <message><source>Bunu daha az çal</source><translation>Less like this</translation></message>
+    <message><source>BUNUN GİBİ DAHA ÇOK</source><translation>MORE LIKE THIS</translation></message>
+    <message><source>BUNU DAHA AZ ÇAL</source><translation>LESS LIKE THIS</translation></message>
 </context>
 <context>
     <name>KeyCapture</name>
@@ -414,6 +430,8 @@
     <message><source>● Canlı</source><translation>● Live</translation></message>
     <message><source>Atlama eksi sayılacak</source><translation>This skip will count against the song</translation></message>
     <message><source>Geri al</source><translation>Undo</translation></message>
+    <message><source>ATLAMA EKSİ SAYILACAK</source><translation>THIS SKIP WILL COUNT AGAINST THE SONG</translation></message>
+    <message><source>GERİ AL</source><translation>UNDO</translation></message>
 </context>
 <context>
     <name>NowPlayingData</name>
@@ -454,6 +472,8 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>● Canlı</source><translation>● Live</translation></message>
     <message><source>Bunun gibi daha çok</source><translation>More like this</translation></message>
     <message><source>Bunu daha az çal</source><translation>Less like this</translation></message>
+    <message><source>▲ DAHA ÇOK</source><translation>▲ MORE</translation></message>
+    <message><source>▼ DAHA AZ</source><translation>▼ LESS</translation></message>
 </context>
 <context>
     <name>PlaylistData</name>
@@ -558,7 +578,6 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>0 = boşluksuz (gapless) ve bit-perfect geçiş.</source><translation>0 = gapless and bit-perfect transition.</translation></message>
     <message><source>ALBÜM VE SANATÇI KARTLARININ GENİŞLİĞİ.</source><translation>WIDTH OF THE ALBUM AND ARTIST CARDS.</translation></message>
     <message><source>AYARLAR</source><translation>SETTINGS</translation></message>
-    <message><source>ÇALAN MÜZİĞE NE KADAR YAKIN KALINSIN. YAKIN TÜRLER (HEAVY METAL ~ HARD ROCK) DE SAYILIR.</source><translation>HOW CLOSE TO STAY TO WHAT IS PLAYING. RELATED GENRES (HEAVY METAL ~ HARD ROCK) COUNT TOO.</translation></message>
     <message><source>Albüm ve sanatçı kartlarının genişliği.</source><translation>Width of the album and artist cards.</translation></message>
     <message><source>BOYUT SINIRI</source><translation>SIZE LIMIT</translation></message>
     <message><source>Bağlı değil</source><translation>Not connected</translation></message>
@@ -573,18 +592,15 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>Dinlenenleri gönder</source><translation>Scrobble plays</translation></message>
     <message><source>Diskte: %1</source><translation>On disk: %1</translation></message>
     <message><source>Dolunca en uzun süredir dinlenmeyen silinir.</source><translation>When full, the song not played for the longest is deleted.</translation></message>
-    <message><source>DİL BAĞLILIĞI</source><translation>LANGUAGE AFFINITY</translation></message>
     <message><source>DİNLEDİKLERİN NAVIDROME&apos;A (VE SUNUCUDA BAĞLIYSA LAST.FM / LISTENBRAINZ&apos;E) GİDER.</source><translation>WHAT YOU LISTEN TO GOES TO NAVIDROME (AND TO LAST.FM / LISTENBRAINZ IF THE SERVER IS LINKED TO THEM).</translation></message>
     <message><source>DİNLEDİĞİN VE SIRADAKİ ŞARKILAR DİSKE İNER. SUNUCUYA ULAŞILAMAYINCA UYGULAMA SON KUYRUKLA AÇILIR, İNEN ŞARKILAR ÇALAR. KENDİN ATLADIĞIN BİR ŞARKI BİR KEZ ÇALARKEN, BİR KEZ DE ÖNBELLEK İÇİN İNER.</source><translation>THE SONGS YOU PLAY AND THE UPCOMING ONES ARE SAVED TO DISK. WHEN THE SERVER CAN&apos;T BE REACHED, THE APP OPENS WITH THE LAST QUEUE AND PLAYS THE SAVED SONGS. A SONG YOU SKIP TO YOURSELF DOWNLOADS TWICE: ONCE TO PLAY, ONCE FOR THE CACHE.</translation></message>
     <message><source>DİNLENENLERİ GÖNDER</source><translation>SCROBBLE PLAYS</translation></message>
     <message><source>DİSKTE: %1</source><translation>ON DISK: %1</translation></message>
-    <message><source>EKLENEN ŞARKILARIN NE KADARI ÇALAN ŞARKIYLA AYNI DİLDE OLSUN. TÜRKÇE BİR ŞARKIDAN BAŞLARSAN %80 → 10 ŞARKININ 8&apos;İ TÜRKÇE.</source><translation>HOW MANY OF THE ADDED SONGS SHARE THE PLAYING SONG&apos;S LANGUAGE. START FROM A TURKISH SONG AT 80% → 8 OF 10 SONGS ARE TURKISH.</translation></message>
     <message><source>EXCLUSIVE MODDA KAPALI: SES KARTINI TEK DECK TUTABİLİR.</source><translation>OFF IN EXCLUSIVE MODE: ONLY ONE DECK CAN HOLD THE SOUND CARD.</translation></message>
     <message><source>Exclusive modda kapalı: ses kartını tek deck tutabilir.</source><translation>Off in exclusive mode: only one deck can hold the sound card.</translation></message>
     <message><source>GENEL</source><translation>GENERAL</translation></message>
     <message><source>Genel</source><translation>General</translation></message>
     <message><source>HAKKINDA</source><translation>ABOUT</translation></message>
-    <message><source>HER SEFERDE EKLENEN</source><translation>ADDED EACH TIME</translation></message>
     <message><source>HESAP</source><translation>ACCOUNT</translation></message>
     <message><source>Hakkında</source><translation>About</translation></message>
     <message><source>Hesap</source><translation>Account</translation></message>
@@ -622,7 +638,6 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>Temizle</source><translation>Clear</translation></message>
     <message><source>Tepside simge durur; pencereyi kapatınca müzik durmaz. Çıkış: simgeye sağ tık. Kapalıyken pencereyi kapatmak uygulamadan çıkar.</source><translation>An icon stays in the tray; closing the window doesn&apos;t stop the music. To quit: right-click the icon. When off, closing the window quits the app.</translation></message>
     <message><source>Tuşlara bas…</source><translation>Press keys…</translation></message>
-    <message><source>BENZERLİK GÜCÜ</source><translation>SIMILARITY STRENGTH</translation></message>
     <message><source>Uygulamanın görünümü.</source><translation>How the app looks.</translation></message>
     <message><source>YAPI TARİHİ: %1</source><translation>BUILT: %1</translation></message>
     <message><source>Yapı tarihi: %1</source><translation>Built: %1</translation></message>
@@ -642,9 +657,6 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>Şarkının yarısı (en fazla 4 dakikası) çalınca bir dinleme sayılır.</source><translation>A play counts once half of the song (at most 4 minutes) has played.</translation></message>
     <message><source>Şimdi çalıyor bilgisini gönder</source><translation>Send now playing</translation></message>
     <message><source>ŞİMDİ ÇALIYOR BİLGİSİNİ GÖNDER</source><translation>SEND NOW PLAYING</translation></message>
-    <message><source>KEŞİF</source><translation>DISCOVERY</translation></message>
-    <message><source>HER PARTİDE YENİ EKLENEN YA DA AZ DİNLENEN ŞARKILARA AYRILAN PAY.</source><translation>SHARE OF EACH BATCH KEPT FOR NEW OR RARELY PLAYED SONGS.</translation></message>
-    <message><source>ATLAMALARDAN VE DİNLEMELERDEN ÖĞRENİLENİ SİLER. KÜTÜPHANE DİZİNİ KALIR.</source><translation>FORGETS WHAT WAS LEARNED FROM SKIPS AND LISTENS. THE LIBRARY INDEX STAYS.</translation></message>
     <message><source>DJ HAFIZASINI SIFIRLA</source><translation>RESET DJ MEMORY</translation></message>
     <message><source>DJ hafızasını sıfırla</source><translation>Reset DJ memory</translation></message>
     <message><source>Gelişmiş ayarlar</source><translation>Advanced settings</translation></message>
@@ -658,6 +670,18 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>DJ&apos;nin son seçimde tarttığı şarkılar ve puanları.</source><translation>The songs the DJ weighed for its last pick, with their scores.</translation></message>
     <message><source>DJ durumu</source><translation>DJ state</translation></message>
     <message><source>Atlamaları, dinlemeleri ve geri bildirimlerini siler. Kütüphane dizini kalır.</source><translation>Forgets skips, listens and your feedback. The library index stays.</translation></message>
+    <message><source>GELİŞMİŞ AYARLAR</source><translation>ADVANCED SETTINGS</translation></message>
+    <message><source>AÇIK</source><translation>ON</translation></message>
+    <message><source>DJ AYARLARINI İLK HÂLİNE GETİRİR.</source><translation>PUTS THE DJ SETTINGS BACK AS THEY CAME.</translation></message>
+    <message><source>VARSAYILANLARA DÖN</source><translation>BACK TO DEFAULTS</translation></message>
+    <message><source>GERİ BİLDİRİMLERİN</source><translation>YOUR FEEDBACK</translation></message>
+    <message><source>HENÜZ YOK. BİR ŞARKININ MENÜSÜNDEN &quot;BUNUN GİBİ DAHA ÇOK&quot; YA DA &quot;BUNU DAHA AZ ÇAL&quot; DİYEBİLİRSİN.</source><translation>NONE YET. A SONG&apos;S MENU HAS &quot;MORE LIKE THIS&quot; AND &quot;LESS LIKE THIS&quot;.</translation></message>
+    <message><source>DAHA ÇOK</source><translation>MORE</translation></message>
+    <message><source>DAHA AZ</source><translation>LESS</translation></message>
+    <message><source>KALDIR</source><translation>REMOVE</translation></message>
+    <message><source>DJ&apos;NİN SON SEÇİMDE TARTTIĞI ŞARKILAR VE PUANLARI.</source><translation>THE SONGS THE DJ WEIGHED FOR ITS LAST PICK, WITH THEIR SCORES.</translation></message>
+    <message><source>DJ DURUMU</source><translation>DJ STATE</translation></message>
+    <message><source>ATLAMALARI, DİNLEMELERİ VE GERİ BİLDİRİMLERİNİ SİLER. KÜTÜPHANE DİZİNİ KALIR.</source><translation>FORGETS SKIPS, LISTENS AND YOUR FEEDBACK. THE LIBRARY INDEX STAYS.</translation></message>
 </context>
 <context>
     <name>Share</name>

@@ -50,6 +50,11 @@ QtObject {
         { key: "djRandomness", label: qsTr("Seçim rastgeleliği"), unit: "", from: 10, to: 200, step: 10,
           hint: qsTr("Düşük: hep en yüksek puanlılar. Yüksek: puanlar birbirine yaklaşır (×100).") }
     ]
+    // capitals for themes that write in them: Turkish i is İ (the UI is English only off a Turkish system)
+    function upper(s) {
+        s = s || ""
+        return Qt.uiLanguage && !Qt.uiLanguage.startsWith("tr") ? s.toUpperCase() : s.replace(/i/g, "İ").toUpperCase()
+    }
     // a knob's value as the settings show it
     function text(k, v) {
         if (k.unit === "%") return "%" + v
