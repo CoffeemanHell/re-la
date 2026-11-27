@@ -110,6 +110,14 @@ impl Index {
         crate::disk::write_atomic(&self.path, &serde_json::to_vec(&f).map_err(std::io::Error::other)?)
     }
 
+    pub fn path(&self) -> &std::path::Path {
+        &self.path
+    }
+
+    pub fn words_len(&self) -> usize {
+        self.words.len()
+    }
+
     pub fn word(&self, i: u32) -> &str {
         self.words.get(i as usize).map_or("", String::as_str)
     }

@@ -457,4 +457,53 @@ mod tests {
         assert_eq!(disliked_score(2.0), 2.0 * 0.3);
         assert!(disliked_score(-0.5) < -0.5); // never climbs
     }
+
+    // 50 000 songs: picking stays under 10 ms, the index file under 10 MB, the genre build under 500 ms.
+    // cargo test --offline -p rela-core --release budget_50k -- --ignored --nocapture
+    #[test]
+    #[ignore]
+    fn budget_50k() {
+        use std::time::Instant;
+        let mut b = brain();
+        let genre = |i: usize| format!("Genre {}", i % 300);
+        for i in 0..50_000 {
+            let gs: Vec<Value> = (0..1 + i % 3).map(|k| json!({"name": genre(i + k * 7)})).collect();
+            b.index.upsert(
+                &json!({"id": format!("song-{i:08}-abcdef"), "artist": format!("Artist {}", i % 5000), "albumId": format!("al{}", i / 10),
+                    "genres": gs, "year": 1960 + i % 60, "playCount": i % 40, "created": "2023-05-01T00:00:00Z"}),
+                DAY,
+            );
+        }
+        for i in 0..5000 {
+            b.memory.record(&format!("song-{i:08}-abcdef"), if i % 3 == 0 { listen::Heard::EarlySkip } else { listen::Heard::Full }, DAY - (i % 90) as u32);
+        }
+        for i in 0..2000 {
+            b.memory.record_pair(&genre(i), &genre(i + 1), DAY);
+        }
+        let t = Instant::now();
+        b.rebuild_genres(DAY);
+        let build = t.elapsed();
+        b.index.save().unwrap();
+        let size = std::fs::metadata(b.index.path()).unwrap().len();
+        let history: Vec<Value> = (0..5).map(|i| json!({"id": format!("song-{i:08}-abcdef")})).collect();
+        let pool: Vec<Value> = (100..650).map(|i| json!({"id": format!("song-{i:08}-abcdef"), "artist": format!("Artist {}", i % 5000)})).collect();
+        let mut rng = fastrand::Rng::with_seed(1);
+        let mut times: Vec<f64> = (0..20)
+            .map(|_| {
+                let t = Instant::now();
+                let x = extra_ids(&b, &history, &w(80, 20, 10), false, DAY, &mut rng);
+                let p = pick(&mut b, &pool, &history, &HashSet::new(), &w(80, 20, 10), false, DAY, &mut rng);
+                assert!(p.len() == 10 && !x.is_empty());
+                t.elapsed().as_secs_f64() * 1000.0
+            })
+            .collect();
+        times.sort_by(f64::total_cmp);
+        // shortcut: a rough count from sizes, not the real RSS; heaptrack tells the truth when it matters
+        let ram = b.index.songs.len() * (std::mem::size_of::<Song>() + 22 + 4 * 6) + 5000 * 64 + b.index.words_len() * 32;
+        println!("genres build {build:?}, index file {:.1} MB, pick+extra median {:.2} ms (max {:.2}), ~RAM {:.1} MB", size as f64 / 1e6, times[10], times[19], ram as f64 / 1e6);
+        assert!(times[10] < 10.0, "pick median {} ms", times[10]);
+        assert!(size < 10_000_000, "index {size} bytes");
+        assert!(build.as_millis() < 500, "genres {build:?}");
+        assert!(ram < 20_000_000, "ram ~{ram}");
+    }
 }
