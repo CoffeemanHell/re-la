@@ -276,7 +276,8 @@ pub fn extra_ids(brain: &Brain, history: &[Value], w: &Weights, _searching: bool
     let session = taste_now(brain, history, &mut tmp);
     let have: HashSet<&str> = history.iter().map(|m| text(&m["id"])).collect();
     let n = 2 * w.batch.max(0) as usize;
-    let (mut new, mut old): (Vec<(f32, &str)>, Vec<(f32, &str)>) = (vec![], vec![]);
+    let mut new: Vec<(f32, &str)> = vec![];
+    let mut old: Vec<(f32, &str)> = vec![];
     for s in &ix.songs {
         if have.contains(s.id.as_str()) {
             continue;
