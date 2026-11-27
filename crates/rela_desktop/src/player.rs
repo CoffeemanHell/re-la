@@ -123,6 +123,9 @@ pub mod ffi {
         #[cxx_name = "clearSongCache"]
         fn clear_song_cache(self: &RustPlayer);
         #[qinvokable]
+        #[cxx_name = "resetDjMemory"]
+        fn reset_dj_memory(self: &RustPlayer);
+        #[qinvokable]
         fn login(self: &RustPlayer, server: &QString, user: &QString, password: &QString);
         #[qinvokable]
         fn logout(self: &RustPlayer);
@@ -412,6 +415,9 @@ impl ffi::RustPlayer {
     }
     fn clear_song_cache(&self) {
         player().call(|c| c.clear_song_cache());
+    }
+    fn reset_dj_memory(&self) {
+        player().call(|c| c.reset_dj_memory());
     }
     fn login(&self, server: &QString, user: &QString, password: &QString) {
         let (s, u, p) = (server.to_string(), user.to_string(), password.to_string());

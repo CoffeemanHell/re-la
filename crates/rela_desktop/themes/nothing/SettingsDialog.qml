@@ -166,11 +166,19 @@ Dialog {
                     }
                     Setting {
                         enabled: Player.dj
-                        label: qsTr("TÜR BAĞLILIĞI")
+                        label: qsTr("BENZERLİK GÜCÜ")
                         valueText: "%" + (Player.options.radioGenre || 0)
-                        hint: qsTr("AYNI TÜRE (GENRE) NE KADAR YAKIN KALINSIN.")
+                        hint: qsTr("ÇALAN MÜZİĞE NE KADAR YAKIN KALINSIN. YAKIN TÜRLER (HEAVY METAL ~ HARD ROCK) DE SAYILIR.")
                         dots: 11; value: (Player.options.radioGenre || 0) / 100
                         onPicked: v => Player.setOption("radioGenre", Math.round(v * 10) * 10)
+                    }
+                    Setting {
+                        enabled: Player.dj
+                        label: qsTr("KEŞİF")
+                        valueText: "%" + (Player.options.radioExplore || 0)
+                        hint: qsTr("HER PARTİDE YENİ EKLENEN YA DA AZ DİNLENEN ŞARKILARA AYRILAN PAY.")
+                        dots: 6; value: (Player.options.radioExplore || 0) / 50
+                        onPicked: v => Player.setOption("radioExplore", Math.round(v * 5) * 10)
                     }
                     Setting {
                         enabled: Player.dj
@@ -178,6 +186,11 @@ Dialog {
                         valueText: qsTr("%n ŞARKI", "", Player.options.radioBatch || 10)
                         dots: 6; value: ((Player.options.radioBatch || 10) - 5) / 25
                         onPicked: v => Player.setOption("radioBatch", 5 + Math.round(v * 5) * 5)
+                    }
+                    Hint { text: qsTr("ATLAMALARDAN VE DİNLEMELERDEN ÖĞRENİLENİ SİLER. KÜTÜPHANE DİZİNİ KALIR.") }
+                    RowLayout {
+                        Item { Layout.fillWidth: true }
+                        Pill { text: qsTr("DJ HAFIZASINI SIFIRLA"); onClicked: Player.resetDjMemory() }
                     }
                 }
 

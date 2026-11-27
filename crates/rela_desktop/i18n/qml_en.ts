@@ -480,9 +480,9 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>0 = boşluksuz (gapless) ve bit-perfect geçiş.</source><translation>0 = gapless and bit-perfect transition.</translation></message>
     <message><source>ALBÜM VE SANATÇI KARTLARININ GENİŞLİĞİ.</source><translation>WIDTH OF THE ALBUM AND ARTIST CARDS.</translation></message>
     <message><source>AYARLAR</source><translation>SETTINGS</translation></message>
-    <message><source>AYNI TÜRE (GENRE) NE KADAR YAKIN KALINSIN.</source><translation>HOW CLOSELY TO STAY WITH THE SAME GENRE.</translation></message>
+    <message><source>ÇALAN MÜZİĞE NE KADAR YAKIN KALINSIN. YAKIN TÜRLER (HEAVY METAL ~ HARD ROCK) DE SAYILIR.</source><translation>HOW CLOSE TO STAY TO WHAT IS PLAYING. RELATED GENRES (HEAVY METAL ~ HARD ROCK) COUNT TOO.</translation></message>
     <message><source>Albüm ve sanatçı kartlarının genişliği.</source><translation>Width of the album and artist cards.</translation></message>
-    <message><source>Aynı türe (genre) ne kadar yakın kalınsın.</source><translation>How closely to stay with the same genre.</translation></message>
+    <message><source>Çalan müziğe ne kadar yakın kalınsın. Yakın türler (Heavy Metal ~ Hard Rock) de sayılır.</source><translation>How close to stay to what is playing. Related genres (Heavy Metal ~ Hard Rock) count too.</translation></message>
     <message><source>BOYUT SINIRI</source><translation>SIZE LIMIT</translation></message>
     <message><source>Bağlı değil</source><translation>Not connected</translation></message>
     <message><source>Boyut sınırı</source><translation>Size limit</translation></message>
@@ -548,8 +548,8 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>Temizle</source><translation>Clear</translation></message>
     <message><source>Tepside simge durur; pencereyi kapatınca müzik durmaz. Çıkış: simgeye sağ tık. Kapalıyken pencereyi kapatmak uygulamadan çıkar.</source><translation>An icon stays in the tray; closing the window doesn&apos;t stop the music. To quit: right-click the icon. When off, closing the window quits the app.</translation></message>
     <message><source>Tuşlara bas…</source><translation>Press keys…</translation></message>
-    <message><source>TÜR BAĞLILIĞI</source><translation>GENRE AFFINITY</translation></message>
-    <message><source>Tür bağlılığı</source><translation>Genre affinity</translation></message>
+    <message><source>BENZERLİK GÜCÜ</source><translation>SIMILARITY STRENGTH</translation></message>
+    <message><source>Benzerlik gücü</source><translation>Similarity strength</translation></message>
     <message><source>Uygulamanın görünümü.</source><translation>How the app looks.</translation></message>
     <message><source>YAPI TARİHİ: %1</source><translation>BUILT: %1</translation></message>
     <message><source>Yapı tarihi: %1</source><translation>Built: %1</translation></message>
@@ -569,6 +569,14 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>Şarkının yarısı (en fazla 4 dakikası) çalınca bir dinleme sayılır.</source><translation>A play counts once half of the song (at most 4 minutes) has played.</translation></message>
     <message><source>Şimdi çalıyor bilgisini gönder</source><translation>Send now playing</translation></message>
     <message><source>ŞİMDİ ÇALIYOR BİLGİSİNİ GÖNDER</source><translation>SEND NOW PLAYING</translation></message>
+    <message><source>KEŞİF</source><translation>DISCOVERY</translation></message>
+    <message><source>Keşif</source><translation>Discovery</translation></message>
+    <message><source>HER PARTİDE YENİ EKLENEN YA DA AZ DİNLENEN ŞARKILARA AYRILAN PAY.</source><translation>SHARE OF EACH BATCH KEPT FOR NEW OR RARELY PLAYED SONGS.</translation></message>
+    <message><source>Her partide yeni eklenen ya da az dinlenen şarkılara ayrılan pay.</source><translation>Share of each batch kept for new or rarely played songs.</translation></message>
+    <message><source>ATLAMALARDAN VE DİNLEMELERDEN ÖĞRENİLENİ SİLER. KÜTÜPHANE DİZİNİ KALIR.</source><translation>FORGETS WHAT WAS LEARNED FROM SKIPS AND LISTENS. THE LIBRARY INDEX STAYS.</translation></message>
+    <message><source>Atlamalardan ve dinlemelerden öğrenileni siler. Kütüphane dizini kalır.</source><translation>Forgets what was learned from skips and listens. The library index stays.</translation></message>
+    <message><source>DJ HAFIZASINI SIFIRLA</source><translation>RESET DJ MEMORY</translation></message>
+    <message><source>DJ hafızasını sıfırla</source><translation>Reset DJ memory</translation></message>
 </context>
 <context>
     <name>Share</name>

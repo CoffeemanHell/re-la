@@ -64,6 +64,7 @@ QtObject {
     function copy(t) { rec(["copy", t]) }
     function refreshAudioDevices() { rec(["refreshAudioDevices"]) }
     function clearSongCache() { rec(["clearSongCache"]) }
+    function resetDjMemory() { rec(["resetDjMemory"]) }
     function setting(k) { return "" }
     function setOption(k, v) { rec(["setOption", k, v]); const o = Object.assign({}, options); o[k] = v; options = o }
     function shuffledJson(songs) { rec(["shuffledJson"]); return JSON.stringify(JSON.parse(songs).reverse()) } // reversed: a test can tell

@@ -157,8 +157,14 @@
     <string name="auto_continue_hint">Kuyruk bitmeden benzer şarkılar eklenir. Nasıl seçileceğini DJ modu belirler.</string>
     <string name="dj_mode_hint">Kapalıyken Navidrome\'un benzer şarkıları olduğu gibi eklenir. Açıkken aşağıdaki ağırlıklarla seçilir.</string>
     <string name="language_affinity">Dil bağlılığı</string>
-    <string name="genre_affinity">Tür bağlılığı</string>
+    <string name="genre_affinity">Benzerlik gücü</string>
     <string name="percent">%%%1$d</string>
+    <string name="genre_affinity_hint">Çalan müziğe ne kadar yakın kalınsın. Yakın türler (Heavy Metal ~ Hard Rock) de sayılır.</string>
+    <string name="discovery">Keşif</string>
+    <string name="discovery_hint">Her partide yeni eklenen ya da az dinlenen şarkılara ayrılan pay.</string>
+    <string name="dj_memory">DJ hafızası</string>
+    <string name="dj_memory_hint">Atlamalardan ve dinlemelerden öğrenileni siler. Kütüphane dizini kalır.</string>
+    <string name="reset">Sıfırla</string>
     <string name="batch">Her seferde eklenen</string>
     <string name="audio_experimental">Ses (Deneysel)</string>
     <string name="queue_total">Toplam %1$s</string>

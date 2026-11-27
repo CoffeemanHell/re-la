@@ -473,6 +473,9 @@ impl Core {
     pub fn clear_song_cache(&self) {
         self.player.call(|c| c.clear_song_cache());
     }
+    pub fn reset_dj_memory(&self) {
+        self.player.call(|c| c.reset_dj_memory());
+    }
     pub fn demo(&self) {
         self.player.call(|c| c.demo());
     }
