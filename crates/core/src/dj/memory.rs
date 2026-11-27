@@ -131,7 +131,7 @@ impl Memory {
         if let Some(d) = self.path.parent() {
             std::fs::create_dir_all(d)?;
         }
-        crate::disk::write_atomic(&self.path, &serde_json::to_vec(&self.file).map_err(std::io::Error::other)?)?;
+        crate::disk::write_atomic_private(&self.path, &serde_json::to_vec(&self.file).map_err(std::io::Error::other)?)?;
         self.dirty = false;
         Ok(())
     }
@@ -170,6 +170,18 @@ mod tests {
         m.save().unwrap();
         m.clear();
         assert!(Memory::open(p).skip("x", 2) == 0.0);
+    }
+
+    // listening history: the owner's alone
+    #[cfg(unix)]
+    #[test]
+    fn saved_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let p = tmp("private");
+        let mut m = Memory::open(p.clone());
+        two_days(&mut m);
+        m.save().unwrap();
+        assert_eq!(std::fs::metadata(&p).unwrap().permissions().mode() & 0o777, 0o600);
     }
 
     #[test]

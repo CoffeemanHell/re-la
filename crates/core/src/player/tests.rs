@@ -1960,6 +1960,19 @@ fn next_account_indexes_now() {
     assert!(has_call(&calls, "search3"), "{calls:?}");
 }
 
+// offline too: someone else's sign-in does not inherit the queue the DJ would learn from
+#[test]
+fn login_as_another_while_offline_drops_the_queue() {
+    let mut t = T::new("relogin-offline");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    assert!(!t.c.online);
+    t.c.login("https://music.example.com", "ana", "pw");
+    assert_eq!(t.c.queue.len(), 3, "the same account keeps it");
+    t.c.login("https://music.example.com", "bob", "pw");
+    assert!(t.c.queue.is_empty());
+}
+
 // "ok" without the result is no library: nothing is pruned and the walk is not complete
 #[test]
 fn malformed_page_prunes_nothing() {
