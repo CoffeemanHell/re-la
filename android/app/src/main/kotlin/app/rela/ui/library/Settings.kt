@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -131,6 +132,7 @@ private val categories get() = listOf(
     Category("player", str(R.string.player_screen), str(R.string.player_screen_sub), R.drawable.ic_play_arrow_fill),
     Category("bar", str(R.string.bottom_bar), str(R.string.bottom_bar_sub), R.drawable.ic_bottom_navigation_fill),
     Category("playback", str(R.string.playback), str(R.string.playback_sub), R.drawable.ic_music_note_2_fill),
+    Category("dj", "DJ", str(R.string.dj_sub), R.drawable.ic_shuffle),
     Category("data", str(R.string.data), str(R.string.data_sub), R.drawable.ic_data_table),
     Category("account", str(R.string.account), str(R.string.account_sub), R.drawable.ic_account_circle_fill),
 )
@@ -183,6 +185,73 @@ private fun CoverCacheRow() {
     )
 }
 
+/** The DJ's settings page: mode, the knobs (the advanced ones folded), "more / less like this" list, state, reset. */
+private fun androidx.compose.foundation.lazy.LazyListScope.djPage(dj: Boolean, num: (String, Int) -> Int, set: (String, Any) -> Unit) {
+    item { SwitchRow(str(R.string.dj_mode), str(R.string.dj_mode_hint), dj) { Rela.core?.setDj(it) } }
+    items(djMain, key = { it.key }) { k -> KnobRow(k, num(k.key, k.from), dj, set) }
+    item { DjAdvanced(dj, num, set) }
+    item {
+        ListItem(
+            headlineContent = { Text(str(R.string.dj_defaults)) },
+            supportingContent = { Text(str(R.string.dj_defaults_hint)) },
+            trailingContent = { OutlinedButton({ Rela.core?.resetDjSettings() }) { Text(str(R.string.dj_defaults_button)) } },
+        )
+    }
+    item { DjFeedbackList() }
+    item {
+        val nav = LocalNav.current
+        ListItem(
+            headlineContent = { Text(str(R.string.dj_state)) },
+            supportingContent = { Text(str(R.string.dj_state_hint)) },
+            modifier = Modifier.clickable { nav.open(Screen.DjState) },
+        )
+    }
+    item {
+        ListItem(
+            headlineContent = { Text(str(R.string.dj_memory)) },
+            supportingContent = { Text(str(R.string.dj_memory_hint)) },
+            trailingContent = { OutlinedButton({ Rela.core?.resetDjMemory() }) { Text(str(R.string.reset)) } },
+        )
+    }
+}
+
+@Composable
+private fun KnobRow(k: Knob, value: Int, enabled: Boolean, set: (String, Any) -> Unit) =
+    SliderRow(str(k.label), value.coerceIn(k.from, k.to), k.from..k.to, k.step, enabled, if (k.hint != 0) str(k.hint) else "", text = { knobText(k, it) }) { set(k.key, it) }
+
+@Composable
+private fun DjAdvanced(dj: Boolean, num: (String, Int) -> Int, set: (String, Any) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    Column {
+        SwitchRow(str(R.string.dj_advanced), "", open, dj) { open = it }
+        if (open) djAdvanced.forEach { k -> KnobRow(k, num(k.key, k.from), dj, set) }
+    }
+}
+
+/** "More / less like this" choices, newest first, each with a button that takes it back. */
+@Composable
+private fun DjFeedbackList() {
+    var list by remember { mutableStateOf<List<kotlinx.serialization.json.JsonObject>>(emptyList()) }
+    LaunchedEffect(Unit) { list = (Rela.local("djFeedback") as? kotlinx.serialization.json.JsonArray)?.mapNotNull { it as? kotlinx.serialization.json.JsonObject } ?: emptyList() }
+    Column {
+        Header(str(R.string.dj_feedback))
+        if (list.isEmpty()) Text(str(R.string.dj_feedback_none), Modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+        list.forEach { f ->
+            val more = f["dir"].text() == "1"
+            ListItem(
+                headlineContent = { Text(f["title"].text()) },
+                supportingContent = { Text(listOf(str(if (more) R.string.dj_more_short else R.string.dj_less_short), f["artist"].text()).filter { it.isNotEmpty() }.joinToString(" · ")) },
+                trailingContent = {
+                    OutlinedButton({
+                        Rela.core?.djFeedback(f.toString(), 0)
+                        list = list - f
+                    }) { Text(str(R.string.dj_remove)) }
+                },
+            )
+        }
+    }
+}
+
 /** Settings: a card per category, each opening its own page; Hakkında stands apart and only shows the version. */
 @Composable
 fun Settings() {
@@ -229,6 +298,7 @@ fun SettingsPage(page: String) {
                     item { ChoiceRow(str(R.string.artist_image), shapes, look.artistShape) { set("artistShape", it) } }
                     item { SwitchRow(str(R.string.alpha_scroll), str(R.string.alpha_scroll_hint), look.alphaScroll) { set("alphaScroll", it) } }
                 }
+                "dj" -> djPage(s.dj, ::num, ::set)
                 "playback" -> {
                     item { Header(str(R.string.playback)) }
                     item {
@@ -237,20 +307,6 @@ fun SettingsPage(page: String) {
                         }
                     }
                     item { SwitchRow(str(R.string.auto_continue), str(R.string.auto_continue_hint), on("autoContinue")) { set("autoContinue", it) } }
-                    item {
-                        SwitchRow(str(R.string.dj_mode), str(R.string.dj_mode_hint), s.dj) { core?.setDj(it) }
-                    }
-                    item { SliderRow(str(R.string.language_affinity), num("radioLanguage", 0), 0..100, 10, s.dj, text = { str(R.string.percent, it) }) { set("radioLanguage", it) } }
-                    item { SliderRow(str(R.string.genre_affinity), num("radioGenre", 0), 0..100, 10, s.dj, str(R.string.genre_affinity_hint), text = { str(R.string.percent, it) }) { set("radioGenre", it) } }
-                    item { SliderRow(str(R.string.discovery), num("radioExplore", 20), 0..50, 10, s.dj, str(R.string.discovery_hint), text = { str(R.string.percent, it) }) { set("radioExplore", it) } }
-                    item { SliderRow(str(R.string.batch), num("radioBatch", 10), 5..30, 5, s.dj, text = { plural(R.plurals.n_songs, it) }) { set("radioBatch", it) } }
-                    item {
-                        ListItem(
-                            headlineContent = { Text(str(R.string.dj_memory)) },
-                            supportingContent = { Text(str(R.string.dj_memory_hint)) },
-                            trailingContent = { OutlinedButton({ core?.resetDjMemory() }) { Text(str(R.string.reset)) } },
-                        )
-                    }
                     item { Header(str(R.string.audio_experimental)) }
                     item { AudioSwitch(str(R.string.float_output), str(R.string.float_output_hint), "floatOutput") }
                     item {

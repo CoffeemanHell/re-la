@@ -72,16 +72,21 @@ object Rela {
     suspend fun get(method: String, params: Map<String, Any?> = emptyMap()) = call(method, params, false)
     suspend fun set(method: String, params: Map<String, Any?> = emptyMap()) = call(method, params, true)
 
+    /** The core's own answers (djState, djFeedback): any JSON, offline too. */
+    suspend fun local(method: String): JsonElement? = raw(method, emptyMap(), false)?.let { runCatching { Json.parseToJsonElement(it) }.getOrNull() }
+
     /** The `subsonic-response` object, or null when the call failed (the core shows why in status). */
-    private suspend fun call(method: String, params: Map<String, Any?>, write: Boolean): JsonObject? {
+    private suspend fun call(method: String, params: Map<String, Any?>, write: Boolean): JsonObject? =
+        raw(method, params, write)?.let { Json.parseToJsonElement(it) as? JsonObject }
+
+    private suspend fun raw(method: String, params: Map<String, Any?>, write: Boolean): String? {
         val c = running ?: return null
         val id = ids.incrementAndGet().toULong()
         val reply = CompletableDeferred<String?>()
         replies[id] = reply
         try {
             if (!c.request(id, method, paramsJson(params), write)) return null
-            val text = reply.await() ?: return null
-            return (Json.parseToJsonElement(text) as? JsonObject)
+            return reply.await()
         } finally {
             replies.remove(id) // a screen that went away: its reply is dropped
         }

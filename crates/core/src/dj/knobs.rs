@@ -76,7 +76,7 @@ pub const RANGES: &[(&str, i64, i64, i64)] = &[
     ("djSkipShare", 30, 10, 60),
     ("djDislikeSkips", 3, 1, 10),
     ("djDislikeDays", 2, 1, 5),
-    ("djMemoryDays", 60, 7, 365),
+    ("djMemoryDays", 60, 7, 364), // 52 weeks: whole steps of 7
     ("djRepeatDays", 7, 0, 30),
     ("djArtistMax", 2, 1, 5),
     ("djWildcard", 10, 0, 30),
@@ -155,6 +155,6 @@ mod tests {
         let k = Knobs::from_options(o.as_object().unwrap());
         assert_eq!(k.skip_share, 0.3);
         assert_eq!(k.artist_max, 1);
-        assert_eq!(k.memory_days, 365.0);
+        assert_eq!(k.memory_days, 364.0);
     }
 }

@@ -19,7 +19,7 @@ QtObject {
           hint: qsTr("Bu kadar eksiden sonra şarkı sevilmiyor sayılır ve çok seyrek çalar.") },
         { key: "djDislikeDays", label: qsTr("Sevilmeyen şarkı: farklı gün"), unit: "days", from: 1, to: 5, step: 1,
           hint: qsTr("Eksiler en az bu kadar farklı günde gelmiş olmalı: kötü bir akşam yetmez.") },
-        { key: "djMemoryDays", label: qsTr("Hafıza süresi"), unit: "days", from: 7, to: 365, step: 7,
+        { key: "djMemoryDays", label: qsTr("Hafıza süresi"), unit: "days", from: 7, to: 364, step: 7,
           hint: qsTr("Bir eksinin yarıya inmesi için geçen süre.") },
         { key: "djRepeatDays", label: qsTr("Tekrar etmeme"), unit: "days", from: 0, to: 30, step: 1,
           hint: qsTr("Bu kadar gün içinde dinlediğin şarkılar geri planda kalır. 0: kapalı.") },
