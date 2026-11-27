@@ -57,7 +57,8 @@ pub fn classify(pos: f64, dur: f64, natural_end: bool, rms: Option<&[f32]>) -> H
     let mut end = 1.0;
     if let Some(r) = rms.filter(|r| !r.is_empty()) {
         end = music_end(r, dur);
-        if (end < 1.0 && frac >= end) || silent_at(r, frac, dur) {
+        let music_before = r[..((frac * r.len() as f64) as usize).min(r.len())].iter().any(|&x| x >= SILENCE_RMS);
+        if (end < 1.0 && frac >= end) || (music_before && silent_at(r, frac, dur)) {
             return Heard::Full;
         }
     }
@@ -104,6 +105,14 @@ mod tests {
     fn short_gap_ignored() {
         // 10 s of a 300 s song is ~137 parts
         assert_eq!(music_end(&wave(&[(0, 3000), (3137, 4096)]), 300.0), 1.0);
+    }
+
+    // skipping inside a silent intro is leaving a song unheard, not a silence to forgive
+    #[test]
+    fn silent_intro_skip_is_early() {
+        let w = wave(&[(512, 4096)]); // 200 s song, first ~25 s silent
+        assert_eq!(classify(10.0, 200.0, false, Some(&w)), Heard::EarlySkip);
+        assert_eq!(classify(0.0, 200.0, false, Some(&w)), Heard::EarlySkip);
     }
 
     #[test]

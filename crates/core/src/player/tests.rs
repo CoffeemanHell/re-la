@@ -1633,7 +1633,68 @@ fn skip_learns() {
     t.c.play(songs(4), 0);
     t.at(20.0); // 20 s of a 200 s song
     t.c.next();
+    assert_eq!(skip_of(&mut t, "s0"), 0.0, "held: it may start a search");
+    t.advance(120_000.0);
+    t.at(195.0);
+    t.c.next(); // no search came of it: the skip counts
     assert_eq!(skip_of(&mut t, "s0"), 1.0);
+}
+
+// a lone early skip still counts when the app quits right after it
+#[test]
+fn quit_saves_memory_and_a_held_skip() {
+    let mut t = T::new("dj-quit");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(195.0);
+    t.c.next();
+    t.at(20.0);
+    t.c.next();
+    let _ = t.c.persist_now();
+    let file = t.dir.join("data/dj").join(crate::disk::hashed("https://music.example.com\nana")).join("dj-memory.json");
+    let m = crate::dj::memory::Memory::open(file);
+    let day = crate::dj::memory::day(t.c.clock_ms);
+    assert!(m.last_heard("s0").is_some());
+    assert_eq!(m.skip("s1", day), 1.0);
+}
+
+// a listener in the room pressing next is not the root skipping
+#[test]
+fn follower_next_learns_nothing() {
+    let mut t = T::new("dj-follower-cmd");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    t.at(5.0);
+    t.c.on_sync(&SyncEvent::CommandReceived { op: "next".into(), args: json!({}) });
+    t.at(5.0);
+    t.c.on_sync(&SyncEvent::CommandReceived { op: "next".into(), args: json!({}) });
+    assert_eq!(t.current(), "s2");
+    let now = t.c.clock_ms;
+    assert!(!t.c.dj_brain().session.searching(now));
+    t.advance(120_000.0);
+    t.at(195.0);
+    t.c.next();
+    assert_eq!(skip_of(&mut t, "s0") + skip_of(&mut t, "s1"), 0.0);
+}
+
+// late DJ replies for another account must not land in this account's index
+#[test]
+fn late_extend_reply_stays_out_of_the_next_account() {
+    let mut t = T::new("dj-late");
+    t.c.online = true;
+    t.c.set_dj(true);
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    let jobs = t.c.take_jobs();
+    t.c.logout();
+    t.c.login("https://music.example.com", "bob", "pw");
+    for j in jobs {
+        if let Job::Api { then, method, .. } = j {
+            let r = if method == "getSimilarSongs" { similar(&["late1", "late2"]).unwrap() } else { json!({"status": "ok"}) };
+            then(&mut t.c, Ok(r));
+        }
+    }
+    assert!(t.c.dj_brain().index.get("late1").is_none());
 }
 
 #[test]
@@ -1651,7 +1712,10 @@ fn full_listen_learns_and_streak_does_not() {
     }
     let now = t.c.clock_ms;
     assert!(t.c.dj_brain().session.searching(now));
-    assert_eq!(skip_of(&mut t, "s1"), 1.0);
+    t.advance(120_000.0);
+    t.at(195.0);
+    t.c.next();
+    assert_eq!(skip_of(&mut t, "s1"), 0.0, "the skip that started the search is held back too");
     assert_eq!(skip_of(&mut t, "s2"), 0.0);
     assert_eq!(skip_of(&mut t, "s3"), 0.0);
 }
@@ -1793,14 +1857,17 @@ fn full_scan_pages() {
 fn no_full_scan_on_mobile() {
     let mut t = indexing("ix-mobile");
     t.c.set_mobile(true);
+    // songs seen in DJ pools land in the index, but it was never walked: still nothing on mobile data
+    t.c.dj_brain().index.upsert(&song("seen"), 1);
     t.c.tick();
     let calls = t.run(false, |m, q| if m == "search3" { library(q, 10) } else { None });
-    assert!(!has_call(&calls, "search3"), "{calls:?}");
+    assert!(!has_call(&calls, "search3") && !has_call(&calls, "getAlbumList2"), "{calls:?}");
 }
 
 #[test]
 fn incremental_newest() {
     let mut t = indexing("ix-newest");
+    t.set_now(20_000.0 * 86_400_000.0);
     let day = crate::dj::memory::day(t.c.clock_ms);
     {
         let b = t.c.dj_brain();

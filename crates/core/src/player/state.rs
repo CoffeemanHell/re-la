@@ -306,6 +306,8 @@ pub struct PlayerCore {
     pub(super) brain: Option<(String, Brain)>, // the DJ's, for the account it was opened for
     pub(super) last_full: Vec<String>,         // genres of the song before, when it was heard in full
     pub(super) memory_saved: f64,              // clock ms
+    pub(super) held_skip: Option<(String, u32, f64)>, // early skip (id, day, clock ms) that may yet start a search
+    pub(super) by_listener: bool,              // a command from someone in the room is running
     pub(super) index_busy: bool,               // the DJ's library index is being walked
     pub(super) index_next: f64,                // clock ms: no walk before it
 }
@@ -414,6 +416,8 @@ impl PlayerCore {
             brain: None,
             last_full: vec![],
             memory_saved: 0.0,
+            held_skip: None,
+            by_listener: false,
             index_busy: false,
             index_next: 0.0,
             settings,
@@ -1108,6 +1112,7 @@ impl PlayerCore {
     pub(super) fn dj_brain(&mut self) -> &mut Brain {
         let key = crate::disk::hashed(&format!("{}\n{}", self.login.server, self.login.user));
         if self.brain.as_ref().is_none_or(|(k, _)| *k != key) {
+            self.dj_flush();
             self.brain = None; // saved on drop
             let day = crate::dj::memory::day(self.clock_ms);
             let b = Brain::open(&self.cache_dir.join("dj").join(&key), &self.data_dir.join("dj").join(&key), day);
@@ -1120,7 +1125,7 @@ impl PlayerCore {
     /// station. True when its upcoming picks should make way: the listener just started looking for something else,
     /// or a song caught them while they were.
     pub(super) fn heard(&mut self, natural: bool) -> bool {
-        if !self.dj || self.following() || !self.station.is_empty() || !self.valid(self.idx) {
+        if !self.dj || self.following() || self.by_listener || !self.station.is_empty() || !self.valid(self.idx) {
             return false;
         }
         let song = self.queue[self.idx as usize].clone();
@@ -1131,6 +1136,9 @@ impl PlayerCore {
         let ratio = if dur > 0.0 { pos / dur } else { 0.0 };
         let (now, day) = (self.clock_ms, crate::dj::memory::day(self.clock_ms));
         let last_full = std::mem::take(&mut self.last_full);
+        if self.held_skip.as_ref().is_some_and(|h| now - h.2 > 90_000.0) {
+            self.dj_flush_held(); // no search came of it
+        }
         let b = self.dj_brain();
         if b.index.get(&id).is_none() {
             b.index.upsert(&song, day);
@@ -1139,9 +1147,17 @@ impl PlayerCore {
         let was = b.session.searching(now);
         let caught = b.session.hear(&s, h, now, ratio, &b.genres, &b.index);
         let searching = b.session.searching(now);
-        if !searching {
-            b.memory.record(&id, h, day); // not while looking for something else
+        if searching {
+            self.held_skip = None; // it was the start of a search: skips while looking for something else do not count
+        } else if h == Heard::EarlySkip {
+            if self.held_skip.is_some() {
+                self.dj_flush_held();
+            }
+            self.held_skip = Some((id.clone(), day, now)); // counts once 90 s pass without a search
+        } else {
+            b.memory.record(&id, h, day);
         }
+        let b = self.dj_brain();
         let genres: Vec<String> = s.genres.iter().map(|&g| b.index.word(g).to_string()).collect();
         if h == Heard::Full {
             for a in &last_full {
@@ -1158,6 +1174,20 @@ impl PlayerCore {
             self.last_full = genres;
         }
         caught || (searching && !was)
+    }
+
+    fn dj_flush_held(&mut self) {
+        if let (Some((id, day, _)), Some((_, b))) = (self.held_skip.take(), self.brain.as_mut()) {
+            b.memory.record(&id, Heard::EarlySkip, day);
+        }
+    }
+
+    /// A held skip counts now and the memory goes to disk (quit, logout, another account).
+    pub(super) fn dj_flush(&mut self) {
+        self.dj_flush_held();
+        if let Some((_, b)) = self.brain.as_mut() {
+            let _ = b.memory.save();
+        }
     }
 
     /// The DJ's upcoming picks go (the listener's own songs stay); tick refills the queue for the new direction.
@@ -1180,6 +1210,8 @@ impl PlayerCore {
         let b = self.dj_brain();
         b.memory.clear();
         b.session = Default::default();
+        self.held_skip = None;
+        let b = self.dj_brain();
         b.rebuild_genres(day);
         let _ = b.memory.save();
         self.last_full.clear();

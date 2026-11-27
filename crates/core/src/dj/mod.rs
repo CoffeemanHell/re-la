@@ -54,12 +54,14 @@ pub struct Weights {
     pub batch: i32,
 }
 
-/// Slots of a batch: (exploring, wildcard, normal). Searching doubles the exploring share.
-pub fn slots(batch: i32, explore: i32, searching: bool) -> (usize, usize, usize) {
+/// Slots of a batch: (exploring, wildcard, normal). Searching doubles the exploring share. Fractions are rounded by
+/// chance, so one-song refills explore as often on average as whole batches (and one song in ten is a wildcard).
+pub fn slots(batch: i32, explore: i32, searching: bool, rng: &mut fastrand::Rng) -> (usize, usize, usize) {
     let batch = batch.max(0) as usize;
     let share = f64::from(explore.clamp(0, 50)) / 100.0 * if searching { 2.0 } else { 1.0 };
-    let joker = usize::from(batch >= 3);
-    let exp = ((batch as f64 * share).round() as usize).min(batch - joker);
+    let mut by_chance = |x: f64| (x + rng.f64()).floor() as usize;
+    let joker = by_chance(batch as f64 * 0.1).min(batch);
+    let exp = by_chance(batch as f64 * share).min(batch - joker);
     (exp, joker, batch - joker - exp)
 }
 
@@ -139,10 +141,21 @@ fn taste_now<'a>(brain: &'a Brain, history: &[Value], tmp: &'a mut Session) -> &
     tmp
 }
 
-/// Picks up to w.batch new songs from `pool` to continue `history` (the queue up to the current song). Songs in
-/// `similar` came from getSimilarSongs. Pool and history go into the index first.
+/// Picks up to w.batch new songs from `pool` to continue `history` (the queue up to the current song) after
+/// `upcoming` (the rest of it). Songs in `similar` came from getSimilarSongs. Pool and history go into the index first.
+/// An artist is picked at most twice counting the last 10 songs and those coming up.
 #[allow(clippy::too_many_arguments)]
-pub fn pick(brain: &mut Brain, pool: &[Value], history: &[Value], similar: &HashSet<String>, w: &Weights, searching: bool, day: u32, rng: &mut fastrand::Rng) -> Vec<Value> {
+pub fn pick(
+    brain: &mut Brain,
+    pool: &[Value],
+    history: &[Value],
+    upcoming: &[Value],
+    similar: &HashSet<String>,
+    w: &Weights,
+    searching: bool,
+    day: u32,
+    rng: &mut fastrand::Rng,
+) -> Vec<Value> {
     for m in history.iter().chain(pool) {
         brain.index.upsert(m, day);
     }
@@ -164,7 +177,7 @@ pub fn pick(brain: &mut Brain, pool: &[Value], history: &[Value], similar: &Hash
     }
     let seed_lang = langs.iter().max_by_key(|(l, n)| (**n, std::cmp::Reverse(**l))).map_or(0, |(l, _)| *l);
 
-    let have: HashSet<&str> = history.iter().map(|m| text(&m["id"])).collect();
+    let have: HashSet<&str> = history.iter().chain(upcoming).map(|m| text(&m["id"])).collect();
     struct C<'a> {
         song: &'a Value,
         artist: String,
@@ -198,7 +211,7 @@ pub fn pick(brain: &mut Brain, pool: &[Value], history: &[Value], similar: &Hash
         cands.push(C { song: m, artist: text(&m["artist"]).to_string(), score, fresh: fresh(s, day), same_lang: seed_lang != 0 && ix.lang(s) == seed_lang });
     }
 
-    let (n_explore, n_joker, _) = slots(w.batch, w.explore, searching); // normal picks fill the rest
+    let (n_explore, n_joker, _) = slots(w.batch, w.explore, searching, rng); // normal picks fill the rest
     let quota = if seed_lang == 0 { 0 } else { (f64::from(w.batch.max(0) * w.language.clamp(0, 100)) / 100.0).round() as usize };
     struct Draw {
         used: Vec<bool>,
@@ -243,7 +256,11 @@ pub fn pick(brain: &mut Brain, pool: &[Value], history: &[Value], similar: &Hash
         }
         Some(chosen)
     }
-    let mut d = Draw { used: vec![false; cands.len()], per_artist: HashMap::new(), same: 0, quota };
+    let mut per_artist: HashMap<String, i32> = HashMap::new();
+    for m in history.iter().rev().take(10).chain(upcoming) {
+        *per_artist.entry(text(&m["artist"]).to_string()).or_default() += 1;
+    }
+    let mut d = Draw { used: vec![false; cands.len()], per_artist, same: 0, quota };
     let mut chosen = vec![];
     for _ in 0..n_explore {
         match draw(0, &cands, &mut d, rng) {
@@ -332,7 +349,7 @@ mod tests {
         let history = vec![song("seed", "Şımarık", "Tarkan", "Pop")];
         let mut rng = fastrand::Rng::with_seed(42);
         let mut b = brain();
-        let picked = pick(&mut b, &pool, &history, &HashSet::new(), &w(100, 20, 10), false, DAY, &mut rng);
+        let picked = pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(100, 20, 10), false, DAY, &mut rng);
         assert_eq!(picked.len(), 10);
         let mut per_artist: HashMap<String, i32> = HashMap::new();
         for m in &picked {
@@ -343,7 +360,7 @@ mod tests {
         }
         assert_eq!(ids(&picked).iter().collect::<HashSet<_>>().len(), 10);
 
-        let tr = ids(&pick(&mut b, &pool, &history, &HashSet::new(), &w(50, 20, 10), false, DAY, &mut rng))
+        let tr = ids(&pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(50, 20, 10), false, DAY, &mut rng))
             .iter()
             .filter(|id| id.starts_with("tr"))
             .count();
@@ -354,12 +371,12 @@ mod tests {
             let mut b = brain();
             let pool = [song("x", "Şarkı", nobody, "Pop"), song("y", "Song", nobody, "Pop"), song("z", "Gel", "TR Artist 0", "Pop")];
             let known = [song("tr0x", "Şarkı", "TR Artist 0", "Pop")];
-            let picked = pick(&mut b, &pool, &known, &HashSet::from(["y".into()]), &w(100, 0, 2), false, DAY, &mut rng);
+            let picked = pick(&mut b, &pool, &known, &[], &HashSet::from(["y".into()]), &w(100, 0, 2), false, DAY, &mut rng);
             assert!(picked.iter().all(|v| v["id"] != "y"), "{nobody}: {picked:?}");
         }
 
         // already queued songs are never picked again
-        assert!(pick(&mut b, &history, &history, &HashSet::new(), &w(100, 20, 10), false, DAY, &mut rng).is_empty());
+        assert!(pick(&mut b, &history, &history, &[], &HashSet::new(), &w(100, 20, 10), false, DAY, &mut rng).is_empty());
     }
 
     // a song that fits well but is disliked still comes now and then, far less often
@@ -377,7 +394,7 @@ mod tests {
             }
             let mut rng = fastrand::Rng::with_seed(7);
             (0..1000)
-                .filter(|_| pick(&mut b, &pool, &history, &HashSet::new(), &w(0, 0, 1), false, DAY, &mut rng)[0]["id"] == "x")
+                .filter(|_| pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(0, 0, 1), false, DAY, &mut rng)[0]["id"] == "x")
                 .count()
         };
         let (liked, disliked) = (count(false), count(true));
@@ -396,7 +413,7 @@ mod tests {
         let mut rng = fastrand::Rng::with_seed(3);
         let (mut new, mut all) = (0, 0);
         for _ in 0..100 {
-            let p = pick(&mut b, &pool, &history, &HashSet::new(), &w(0, 20, 10), false, DAY, &mut rng);
+            let p = pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(0, 20, 10), false, DAY, &mut rng);
             all += p.len();
             new += p.iter().filter(|m| m["id"].as_str().unwrap().starts_with('n')).count();
         }
@@ -412,7 +429,7 @@ mod tests {
         let mut rng = fastrand::Rng::with_seed(5);
         let (mut a, mut bb) = (0, 0);
         for _ in 0..1000 {
-            match pick(&mut b, &pool, &history, &HashSet::new(), &w(0, 0, 1), false, DAY, &mut rng)[0]["id"].as_str().unwrap() {
+            match pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(0, 0, 1), false, DAY, &mut rng)[0]["id"].as_str().unwrap() {
                 "a" => a += 1,
                 _ => bb += 1,
             }
@@ -422,17 +439,37 @@ mod tests {
 
     #[test]
     fn searching_doubles_explore() {
-        assert_eq!(slots(10, 20, false), (2, 1, 7));
-        assert_eq!(slots(10, 20, true), (4, 1, 5));
-        assert_eq!(slots(2, 50, true), (2, 0, 0));
-        assert_eq!(slots(0, 20, false), (0, 0, 0));
+        let r = &mut fastrand::Rng::with_seed(4);
+        assert_eq!(slots(10, 20, false, r), (2, 1, 7));
+        assert_eq!(slots(10, 20, true, r), (4, 1, 5));
+        assert_eq!(slots(0, 20, false, r), (0, 0, 0));
+        // one-song refills (the usual case once the queue is full) explore at the same rate on average
+        let n = 2000;
+        let (e, j) = (0..n).map(|_| slots(1, 20, false, r)).fold((0, 0), |a, s| (a.0 + s.0, a.1 + s.1));
+        assert!((300..500).contains(&e) && (100..300).contains(&j), "{e} {j}");
+        let e2: usize = (0..n).map(|_| slots(1, 20, true, r).0).sum();
+        assert!(e2 > e + 300, "searching: {e2} vs {e}");
+    }
+
+    // an artist already twice among the recent and upcoming songs gets no third
+    #[test]
+    fn recent_artist_capped() {
+        let history: Vec<Value> = (0..8).map(|i| song(&format!("h{i}"), "S", &format!("H{i}"), "Qqg")).chain([song("z1", "S", "Z", "Qqg")]).collect();
+        let upcoming = vec![song("z2", "S", "Z", "Qqg")];
+        let pool: Vec<Value> = (0..5).map(|i| song(&format!("z{}", i + 3), "S", "Z", "Qqg")).chain((0..5).map(|i| song(&format!("o{i}"), "S", &format!("O{i}"), "Qqx"))).collect();
+        let mut b = brain();
+        let mut rng = fastrand::Rng::with_seed(8);
+        for _ in 0..50 {
+            let p = pick(&mut b, &pool, &history, &upcoming, &HashSet::new(), &w(0, 0, 3), false, DAY, &mut rng);
+            assert!(p.iter().all(|m| m["artist"] != "Z"), "{p:?}");
+        }
     }
 
     #[test]
     fn no_genre_songs() {
         let pool: Vec<Value> = (0..30).map(|i| json!({"id": format!("p{i}"), "artist": format!("A{i}")})).collect();
         let mut b = brain();
-        let p = pick(&mut b, &pool, &[json!({"id": "h"})], &HashSet::new(), &w(80, 20, 10), false, DAY, &mut fastrand::Rng::with_seed(1));
+        let p = pick(&mut b, &pool, &[json!({"id": "h"})], &[], &HashSet::new(), &w(80, 20, 10), false, DAY, &mut fastrand::Rng::with_seed(1));
         assert_eq!(p.len(), 10);
     }
 
@@ -492,7 +529,7 @@ mod tests {
             .map(|_| {
                 let t = Instant::now();
                 let x = extra_ids(&b, &history, &w(80, 20, 10), false, DAY, &mut rng);
-                let p = pick(&mut b, &pool, &history, &HashSet::new(), &w(80, 20, 10), false, DAY, &mut rng);
+                let p = pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(80, 20, 10), false, DAY, &mut rng);
                 assert!(p.len() == 10 && !x.is_empty());
                 t.elapsed().as_secs_f64() * 1000.0
             })

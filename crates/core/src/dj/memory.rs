@@ -66,6 +66,9 @@ impl Memory {
         e.skip_day = day;
         match h {
             Heard::EarlySkip => {
+                if e.skip < 0.5 {
+                    e.skip_days = 0; // what was held against it has faded: old days do not count again
+                }
                 e.skip += 1.0;
                 if e.last_skip_day != day || e.skip_days == 0 {
                     e.skip_days = e.skip_days.saturating_add(1);
@@ -173,6 +176,17 @@ mod tests {
         assert!(m.disliked("x", 2));
         assert!(!m.disliked("x", 2 + 120));
         assert!(!m.disliked("other", 2));
+    }
+
+    // a dislike that faded away does not come back from one bad evening months later
+    #[test]
+    fn old_days_do_not_count_again() {
+        let mut m = Memory::open(tmp("old"));
+        two_days(&mut m);
+        for _ in 0..3 {
+            m.record("x", EarlySkip, 300);
+        }
+        assert!(!m.disliked("x", 300));
     }
 
     #[test]

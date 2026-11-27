@@ -463,11 +463,14 @@ impl PlayerCore {
                 if f.pending > 0 {
                     return;
                 }
+                if generation != c.generation || seq != c.extend_seq {
+                    return; // another account or a new direction: these songs are not for this index
+                }
                 let at = ((c.idx + 1).max(0) as usize).min(c.queue.len());
                 let pool = similar_append(&c.queue, &f.pool);
                 c.dj_brain();
                 let brain = &mut c.brain.as_mut().unwrap().1;
-                let mut picked = pick(brain, &pool, &c.queue[..at], &f.similar, &w, searching, day, &mut c.rng);
+                let mut picked = pick(brain, &pool, &c.queue[..at], &c.queue[at..], &f.similar, &w, searching, day, &mut c.rng);
                 for s in &mut picked {
                     s["dj"] = true.into(); // so a skip streak can swap the DJ's own picks, never the listener's
                 }
@@ -488,13 +491,14 @@ impl PlayerCore {
         let day = crate::dj::memory::day(self.clock_ms);
         let mobile = self.mobile;
         let ix = &self.dj_brain().index;
-        let (empty, stale) = (ix.is_empty(), ix.full_day + 7 <= day);
-        if empty && mobile {
+        // songs from DJ pools land in the index too: only a whole walk makes it the library's
+        let (never, stale) = (ix.full_day == 0, ix.full_day + 7 <= day);
+        if never && mobile {
             self.index_next = self.clock_ms + 15.0 * 60_000.0; // until Wi-Fi
             return;
         }
         self.index_busy = true;
-        if (empty || stale) && !mobile {
+        if (never || stale) && !mobile {
             self.index_page(0, HashSet::new());
         } else {
             self.index_newest(0);
