@@ -74,6 +74,11 @@ impl Session {
         }
     }
 
+    /// A strong push towards (v > 0) or away from (v < 0) songs like this one: "more / less like this".
+    pub fn nudge(&mut self, s: &Song, v: f32, genres: &Genres, index: &Index) {
+        self.add(s, v, genres, index);
+    }
+
     /// A song ended this way at `ratio` of it. True when it caught a searching listener: the DJ's upcoming picks
     /// should make way for ones like it.
     #[allow(clippy::too_many_arguments)]

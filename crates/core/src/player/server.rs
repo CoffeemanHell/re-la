@@ -366,6 +366,15 @@ impl PlayerCore {
             self.replies.push((id, Some(v), true));
             return true;
         }
+        if !write && method == "djFeedback" {
+            let list = self.dj_open().map(|b| b.memory.feedback_list()).unwrap_or_default();
+            let v = list
+                .into_iter()
+                .map(|f| json!({"id": f.id, "title": if f.title.is_empty() { &f.id } else { &f.title }, "artist": f.artist, "dir": f.dir, "day": f.day}))
+                .collect::<Vec<_>>();
+            self.replies.push((id, Some(json!(v)), true));
+            return true;
+        }
         if !(if write { writable(method) } else { readable(method) }) {
             return false;
         }

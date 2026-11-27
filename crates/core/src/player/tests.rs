@@ -1868,6 +1868,39 @@ fn reset_dj_memory_forgets() {
 }
 
 #[test]
+fn less_like_this_skips_without_penalty() {
+    let mut t = T::new("dj-less");
+    t.c.set_dj(true);
+    t.c.play(songs(3), 0);
+    t.at(10.0);
+    t.c.dj_feedback(song("s0"), -1);
+    assert_eq!(t.c.idx, 1, "on to the next song");
+    assert_eq!(skip_of(&mut t, "s0"), 0.0);
+    assert_eq!(dj_memory(&mut t).feedback("s0"), -1);
+    assert!(t.c.held_skip.is_none());
+}
+
+#[test]
+fn feedback_list_names() {
+    let mut t = T::new("dj-feedback-list");
+    t.c.set_dj(true);
+    t.c.dj_feedback(song("x1"), 1);
+    assert!(t.c.request(5, "djFeedback", Map::new(), false));
+    let r = t.c.take_replies();
+    let list = r[0].1.as_ref().unwrap().as_array().unwrap().clone();
+    assert_eq!(list.len(), 1);
+    assert_eq!((list[0]["id"].as_str(), list[0]["title"].as_str(), list[0]["artist"].as_str(), list[0]["dir"].as_i64()), (Some("x1"), Some("T x1"), Some("A"), Some(1)));
+}
+
+#[test]
+fn reset_clears_feedback() {
+    let mut t = T::new("dj-feedback-reset");
+    t.c.dj_feedback(song("x1"), 1);
+    t.c.reset_dj_memory();
+    assert_eq!(dj_memory(&mut t).feedback("x1"), 0);
+}
+
+#[test]
 fn reset_dj_settings_restores() {
     let mut t = T::new("dj-settings-reset");
     t.c.set_option("djArtistMax", json!(4));

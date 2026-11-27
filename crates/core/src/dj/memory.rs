@@ -24,6 +24,29 @@ struct Entry {
     skip_days: u8, // different days with an early skip
     last_heard: u32,
     heard: u16,
+    // "more like this" (1) / "less like this" (-1), when, and what it was called then (the index keeps no titles)
+    #[serde(default, skip_serializing_if = "is_zero")]
+    fb: i8,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    fb_day: u32,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    title: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    artist: String,
+}
+
+fn is_zero<T: Default + PartialEq>(v: &T) -> bool {
+    *v == T::default()
+}
+
+/// One "more / less like this", newest first in `Memory::feedback_list`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Feedback {
+    pub id: String,
+    pub dir: i8,
+    pub day: u32,
+    pub title: String,
+    pub artist: String,
 }
 
 #[derive(Serialize, Deserialize, Default, Clone)]
@@ -92,6 +115,31 @@ impl Memory {
     /// The faded early-skip count.
     pub fn skip(&self, id: &str, day: u32, k: &Knobs) -> f32 {
         self.file.songs.get(id).map_or(0.0, |e| faded(e.skip, e.skip_day, day, k))
+    }
+
+    /// The listener asked for more (1) or less (-1) like this song; 0 takes it back.
+    pub fn set_feedback(&mut self, id: &str, dir: i8, day: u32, title: &str, artist: &str) {
+        let e = self.file.songs.entry(id.to_string()).or_default();
+        e.fb = dir.clamp(-1, 1);
+        e.fb_day = if dir == 0 { 0 } else { day };
+        (e.title, e.artist) = if dir == 0 { Default::default() } else { (title.to_string(), artist.to_string()) };
+        self.dirty = true;
+    }
+
+    pub fn feedback(&self, id: &str) -> i8 {
+        self.file.songs.get(id).map_or(0, |e| e.fb)
+    }
+
+    pub fn feedback_list(&self) -> Vec<Feedback> {
+        let mut v: Vec<Feedback> = self
+            .file
+            .songs
+            .iter()
+            .filter(|(_, e)| e.fb != 0)
+            .map(|(id, e)| Feedback { id: id.clone(), dir: e.fb, day: e.fb_day, title: e.title.clone(), artist: e.artist.clone() })
+            .collect();
+        v.sort_by(|a, b| b.day.cmp(&a.day).then_with(|| a.id.cmp(&b.id)));
+        v
     }
 
     pub fn last_heard(&self, id: &str) -> Option<u32> {
@@ -316,5 +364,32 @@ mod tests {
         let k = Knobs { memory_days: 30.0, ..Knobs::default() };
         m.record("x", EarlySkip, 0, &k);
         assert!((m.skip("x", 30, &k) - 0.5).abs() < 1e-4);
+    }
+
+    #[test]
+    fn feedback_roundtrip() {
+        let p = tmp("feedback");
+        let mut m = Memory::open(p.clone());
+        m.set_feedback("x", 1, 5, "Song X", "Artist X");
+        m.set_feedback("y", -1, 6, "Song Y", "Artist Y");
+        m.save().unwrap();
+        let mut m = Memory::open(p);
+        assert_eq!((m.feedback("x"), m.feedback("y"), m.feedback("z")), (1, -1, 0));
+        let list = m.feedback_list();
+        assert_eq!(list.len(), 2);
+        assert_eq!((list[0].id.as_str(), list[0].dir, list[0].day, list[0].title.as_str()), ("y", -1, 6, "Song Y"));
+        m.set_feedback("x", 0, 7, "", "");
+        assert_eq!(m.feedback("x"), 0);
+        assert_eq!(m.feedback_list().len(), 1);
+    }
+
+    // a file from before feedback opens with everything it had
+    #[test]
+    fn old_file_without_fb_opens() {
+        let p = tmp("old-file");
+        std::fs::write(&p, r#"{"v":1,"songs":{"a":{"skip":1.0,"skip_day":5,"last_skip_day":5,"skip_days":1,"last_heard":0,"heard":0}},"pairs":{}}"#).unwrap();
+        let m = Memory::open(p);
+        assert_eq!(m.skip("a", 5, &kn()), 1.0);
+        assert_eq!(m.feedback("a"), 0);
     }
 }

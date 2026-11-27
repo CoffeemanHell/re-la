@@ -334,8 +334,8 @@ fn weigh(
             similar: if similar.contains(id) { k.similar } else { 0.0 },
             fresh: f64::from(0.6 / (1.0 + s.play_count as f32).sqrt() + 0.5 * new),
             recent: repeat_penalty(brain.memory.last_heard(id).map(|d| day.saturating_sub(d)), k),
-            feedback: 0.0,
-            disliked: brain.memory.disliked(id, day, k),
+            feedback: if brain.memory.feedback(id) > 0 { 1.0 } else { 0.0 },
+            disliked: brain.memory.disliked(id, day, k) || brain.memory.feedback(id) < 0,
         };
         let score = parts.total();
         cands.push(C {
@@ -849,5 +849,19 @@ mod tests {
             let sum: f64 = ["fit", "taste", "similar", "fresh", "recent", "feedback"].iter().map(|k| r[k].as_f64().unwrap()).sum();
             assert!((sum - r["total"].as_f64().unwrap()).abs() < 1e-9, "{r}");
         }
+    }
+
+    #[test]
+    fn more_like_this_lifts_score() {
+        let history = vec![song("h", "S", "H", "Qqg")];
+        let pool = vec![song("a", "S", "A", "Qqg"), song("b", "S", "B", "Qqg")];
+        let mut b = brain();
+        b.memory.set_feedback("a", 1, DAY, "S", "A");
+        let mut rng = fastrand::Rng::with_seed(5);
+        let a = (0..200).filter(|_| pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(0, 0, 1), false, DAY, &mut rng)[0]["id"] == "a").count();
+        assert!(a > 140, "{a}");
+        b.memory.set_feedback("a", -1, DAY, "S", "A");
+        let a = (0..200).filter(|_| pick(&mut b, &pool, &history, &[], &HashSet::new(), &w(0, 0, 1), false, DAY, &mut rng)[0]["id"] == "a").count();
+        assert!(a < 60, "less like this: {a}");
     }
 }

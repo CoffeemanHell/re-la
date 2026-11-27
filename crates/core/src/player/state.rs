@@ -1194,6 +1194,8 @@ impl PlayerCore {
         if b.index.get(&id).is_none() {
             b.index.upsert(&song, day);
         }
+        // "less like this" already said it: leaving the song early says nothing more
+        let h = if h == Heard::EarlySkip && b.memory.feedback(&id) < 0 { Heard::Neutral } else { h };
         let Some(s) = b.index.get(&id).cloned() else { return false };
         let was = b.session.searching(now, &k);
         let caught = b.session.hear(&s, h, now, ratio, &b.genres, &b.index, &k);
@@ -1257,7 +1259,31 @@ impl PlayerCore {
         }
     }
 
-    /// Forgets what the DJ learned from skips and listens; the library index stays.
+    /// "More like this" (1), "less like this" (-1: on to the next song if it is the one playing, and leaving it says
+    /// nothing more) or neither (0). Kept in the DJ memory until taken back or the memory is reset.
+    pub fn dj_feedback(&mut self, song: Value, dir: i8) {
+        let id = text(&song["id"]);
+        if id.is_empty() {
+            return;
+        }
+        let (day, dir) = (crate::dj::memory::day(self.clock_ms), dir.clamp(-1, 1));
+        let b = self.dj_brain();
+        if b.index.get(&id).is_none() {
+            b.index.upsert(&song, day);
+        }
+        b.memory.set_feedback(&id, dir, day, &text(&song["title"]), &text(&song["artist"]));
+        if dir != 0
+            && let Some(s) = b.index.get(&id).cloned()
+        {
+            b.session.nudge(&s, 3.0 * f32::from(dir), &b.genres, &b.index);
+        }
+        let _ = b.memory.save();
+        if dir < 0 && self.valid(self.idx) && text(&self.queue[self.idx as usize]["id"]) == id {
+            self.next();
+        }
+    }
+
+    /// Forgets what the DJ learned from skips, listens and "more / less like this"; the library index stays.
     pub fn reset_dj_memory(&mut self) {
         let b = self.dj_brain();
         b.memory.clear();
