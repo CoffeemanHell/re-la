@@ -179,11 +179,31 @@ ApplicationWindow {
 
     // ---------------------------------------------------------------- player bar
     footer: Rectangle {
+        id: playerBar
         visible: win.usable
         implicitHeight: 96
         color: App.theme.bg
+        z: 1 // the skip undo popup overlaps the page above the bar
         Rectangle { width: parent.width; height: 1; color: App.theme.line }
+        Rectangle { // a skip the DJ will hold against the song, for a few seconds: take it back
+            objectName: "skipUndoPopup"
+            visible: !!Player.skipUndo.id
+            x: playerRow.x + middleColumn.x + transport.x + transport.width / 2 - width / 2 // centred on the transport row
+            y: -height - 8
+            z: 2
+            width: undoRow.implicitWidth + 28; height: undoRow.implicitHeight + 14
+            color: App.theme.bg
+            border.width: 1; border.color: App.theme.line
+            RowLayout {
+                id: undoRow
+                anchors.centerIn: parent
+                spacing: 12
+                Mono { text: qsTr("ATLAMA EKSİ SAYILACAK"); color: App.theme.muted; font.pixelSize: 9; ToolTip.visible: undoHover.hovered; ToolTip.text: Player.skipUndo.title || ""; HoverHandler { id: undoHover } }
+                Pill { text: qsTr("GERİ AL"); implicitHeight: 20; onClicked: Player.undoSkip() }
+            }
+        }
         RowLayout {
+            id: playerRow
             anchors.fill: parent
             anchors.leftMargin: 36; anchors.rightMargin: 36
             spacing: 28
@@ -247,9 +267,12 @@ ApplicationWindow {
             }
 
             ColumnLayout {
+                id: middleColumn
                 Layout.fillWidth: true
                 spacing: 8
                 RowLayout {
+                    id: transport
+                    objectName: "transport"
                     Layout.alignment: Qt.AlignHCenter
                     spacing: 12
                     Pill { objectName: "shuffle"; text: qsTr("KARIŞIK"); on: Player.shuffle; enabled: Sync.canControl && !Player.station.id; onClicked: Player.shuffle = !Player.shuffle }
@@ -333,14 +356,7 @@ ApplicationWindow {
                     }
                     Mono { text: String(Math.round(Player.volume)).padStart(3, "0"); color: App.theme.muted }
                 }
-                Mono { Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; visible: !Player.skipUndo.id; text: win.up(win.notice || Player.status); color: App.theme.muted; font.pixelSize: 9 }
-                RowLayout { // a skip the DJ will hold against the song, for a few seconds: take it back
-                    Layout.alignment: Qt.AlignRight
-                    visible: !!Player.skipUndo.id
-                    spacing: 8
-                    Mono { text: qsTr("ATLAMA EKSİ SAYILACAK"); color: App.theme.muted; font.pixelSize: 9 }
-                    Pill { text: qsTr("GERİ AL"); implicitHeight: 20; onClicked: Player.undoSkip() }
-                }
+                Mono { objectName: "status"; Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft; text: win.up(win.notice || Player.status); color: App.theme.muted; font.pixelSize: 9 }
             }
         }
     }

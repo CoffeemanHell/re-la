@@ -183,9 +183,35 @@ ApplicationWindow {
 
     // ---------------------------------------------------------------- player bar
     footer: ToolBar {
+        id: playerBar
         visible: win.usable
         implicitHeight: 80
+        z: 1 // the skip undo popup overlaps the page above the bar
+        Rectangle { // a skip the DJ will hold against the song, for a few seconds: take it back
+            objectName: "skipUndoPopup"
+            visible: !!Player.skipUndo.id
+            x: playerRow.x + middleColumn.x + transport.x + transport.width / 2 - width / 2 // centred on the transport row
+            y: -height - 8
+            z: 2
+            width: undoRow.implicitWidth + 24; height: undoRow.implicitHeight + 12
+            radius: 6
+            color: palette.window
+            border.width: 1; border.color: palette.mid
+            RowLayout {
+                id: undoRow
+                anchors.centerIn: parent
+                spacing: 6
+                Plain {
+                    text: qsTr("Atlama eksi sayılacak"); color: palette.placeholderText
+                    font.pointSize: Qt.application.font.pointSize * 0.8
+                    ToolTip.visible: undoHover.hovered; ToolTip.text: Player.skipUndo.title || ""
+                    HoverHandler { id: undoHover }
+                }
+                Button { text: qsTr("Geri al"); flat: true; implicitHeight: 24; onClicked: Player.undoSkip() }
+            }
+        }
         RowLayout {
+            id: playerRow
             anchors.fill: parent
             anchors.leftMargin: 10; anchors.rightMargin: 10
             spacing: 16
@@ -239,6 +265,7 @@ ApplicationWindow {
             }
 
             ColumnLayout {
+                id: middleColumn
                 Layout.fillWidth: true
                 Layout.preferredWidth: 1 // takes what the sides leave, whatever the seek row holds: the volume slider must not move
                 Layout.minimumWidth: transport.implicitWidth // never narrower than the buttons: the left column gives way instead
@@ -332,22 +359,10 @@ ApplicationWindow {
                     Slider { objectName: "volume"; Layout.preferredWidth: 100; from: 0; to: 100; stepSize: 5; wheelEnabled: true; value: Player.volume; onMoved: Player.volume = value }
                 }
                 Plain {
+                    objectName: "status"
                     Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft
-                    visible: !Player.skipUndo.id
                     text: win.notice || Player.status; color: palette.placeholderText
                     font.pointSize: Qt.application.font.pointSize * 0.8
-                }
-                RowLayout { // a skip the DJ will hold against the song, for a few seconds: take it back
-                    Layout.alignment: Qt.AlignRight
-                    visible: !!Player.skipUndo.id
-                    spacing: 6
-                    Plain {
-                        text: qsTr("Atlama eksi sayılacak"); color: palette.placeholderText
-                        font.pointSize: Qt.application.font.pointSize * 0.8
-                        ToolTip.visible: undoHover.hovered; ToolTip.text: Player.skipUndo.title || ""
-                        HoverHandler { id: undoHover }
-                    }
-                    Button { text: qsTr("Geri al"); flat: true; implicitHeight: 24; onClicked: Player.undoSkip() }
                 }
             }
         }
