@@ -1960,6 +1960,33 @@ fn next_account_indexes_now() {
     assert!(has_call(&calls, "search3"), "{calls:?}");
 }
 
+// "ok" without the result is no library: nothing is pruned and the walk is not complete
+#[test]
+fn malformed_page_prunes_nothing() {
+    let mut t = indexing("ix-malformed");
+    t.c.dj_brain().index.upsert(&song("keep"), 1);
+    t.c.tick();
+    t.run(false, |m, _| if m == "search3" { ok(json!({})) } else { None });
+    let b = t.c.dj_brain();
+    assert!(b.index.get("keep").is_some() && b.index.full_day == 0);
+}
+
+// signing in as someone else while online: replies for the old account stay out of the new one's index
+#[test]
+fn login_while_online_fences_old_replies() {
+    let mut t = indexing("ix-relogin");
+    t.c.tick();
+    let jobs = t.c.take_jobs();
+    t.c.login("https://music.example.com", "bob", "pw");
+    for j in jobs {
+        if let Job::Api { then, method, query, .. } = j {
+            let r = if method == "search3" { library(&query, 10).unwrap() } else { json!({"status": "ok"}) };
+            then(&mut t.c, Ok(r));
+        }
+    }
+    assert!(t.c.dj_brain().index.get("L0").is_none());
+}
+
 #[test]
 fn incremental_newest() {
     let mut t = indexing("ix-newest");

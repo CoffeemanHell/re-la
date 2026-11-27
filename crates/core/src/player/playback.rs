@@ -518,6 +518,7 @@ impl PlayerCore {
 
     fn index_page(&mut self, offset: usize, mut ids: HashSet<String>) {
         const PAGE: usize = 500;
+        const MAX_SONGS: usize = 1_000_000;
         let generation = self.generation;
         let off = offset.to_string();
         let query = q(&[("query", ""), ("songCount", "500"), ("songOffset", &off), ("artistCount", "0"), ("albumCount", "0")]);
@@ -525,9 +526,10 @@ impl PlayerCore {
             if generation != c.generation {
                 return c.index_busy = false;
             }
-            let Some(r) = r else { return c.index_done(false) }; // half a walk: nothing is dropped
+            // half a walk, or "ok" with no result in it: nothing is dropped
+            let Some(res) = r.as_ref().map(|r| &r["searchResult3"]).filter(|v| v.is_object()) else { return c.index_done(false) };
             let day = crate::dj::memory::day(c.clock_ms);
-            let songs = r["searchResult3"]["song"].as_array().cloned().unwrap_or_default();
+            let songs = res["song"].as_array().cloned().unwrap_or_default(); // none: the last page was full
             let ix = &mut c.dj_brain().index;
             for s in &songs {
                 ix.upsert(s, day);
@@ -537,10 +539,14 @@ impl PlayerCore {
                 if c.mobile {
                     return c.index_done(false); // on mobile data now: the rest waits for Wi-Fi
                 }
-                return c.index_page(offset + PAGE, ids);
+                if offset + PAGE < MAX_SONGS {
+                    return c.index_page(offset + PAGE, ids);
+                }
+                // a server that never stops: keep what came, prune nothing, count it as walked
+            } else {
+                c.dj_brain().index.retain(&ids); // the end: songs the walk did not meet are gone
             }
-            ix.retain(&ids);
-            ix.full_day = day;
+            c.dj_brain().index.full_day = day;
             c.index_done(true);
         });
     }

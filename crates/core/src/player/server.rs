@@ -29,6 +29,7 @@ impl PlayerCore {
             }
             Ok(l) => {
                 self.fresh = true;
+                self.generation += 1; // replies still out were asked for the login before (when signing in over it)
                 self.set_login(l);
                 self.connect_server();
             }
