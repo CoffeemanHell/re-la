@@ -19,6 +19,10 @@ Item {
     width: ListView.view ? ListView.view.width - ListView.view.rightMargin : parent ? parent.width : 0
     height: 52
     HoverHandler { id: hov }
+    activeFocusOnTab: true // keyboard: Tab to the row, Menu (or Shift+F10) opens the song menu, Enter plays
+    Keys.onMenuPressed: openMenu()
+    Keys.onPressed: e => { if (e.key === Qt.Key_F10 && e.modifiers & Qt.ShiftModifier) { openMenu(); e.accepted = true } }
+    Keys.onReturnPressed: if (Sync.canControl) row.inQueue ? Player.jump(row.index) : row.list ? Player.play(row.list, row.index) : Player.add([row.song], 0)
     function openMenu() { w.menu("song", song, { queueIndex: inQueue ? index : -1 }) }
     TapHandler {
         enabled: Sync.canControl
@@ -28,7 +32,7 @@ Item {
     Rectangle {
         anchors.fill: parent; radius: Kirigami.Units.cornerRadius
         color: row.isCurrent ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.22)
-             : hov.hovered ? Kirigami.Theme.alternateBackgroundColor : "transparent"
+             : hov.hovered || row.activeFocus ? Kirigami.Theme.alternateBackgroundColor : "transparent"
     }
     RowLayout {
         anchors.fill: parent; anchors.leftMargin: Kirigami.Units.largeSpacing; anchors.rightMargin: Kirigami.Units.largeSpacing

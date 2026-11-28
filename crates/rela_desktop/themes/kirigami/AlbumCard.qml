@@ -57,7 +57,7 @@ Item {
         Plain { Layout.fillWidth: true; elide: Text.ElideRight; text: card.album.name || ""; font.weight: Font.DemiBold }
         Plain {
             Layout.fillWidth: true; elide: Text.ElideRight
-            text: (card.album.artist || "") + (card.album.year ? " · " + card.album.year : "")
+            text: card.album.year ? qsTr("%1 · %2").arg(card.album.artist || "").arg(card.album.year) : card.album.artist || ""
             color: Kirigami.Theme.disabledTextColor
             font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
         }

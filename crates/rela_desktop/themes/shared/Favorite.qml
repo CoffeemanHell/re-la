@@ -15,12 +15,13 @@ QtObject {
     Component.onCompleted: sync()
     function toggle() {
         const was = on
+        const id = item.id
         on = !was
-        setId = item.id
+        setId = id
         const key = kind === "album" ? "albumId" : kind === "artist" ? "artistId" : "id"
         Player.set(owner, was ? "unstar" : "star", { [key]: item.id }, r => {
             if (r) return
-            on = was
+            if (item && item.id === id) on = was // the button may show another item by now
             w.notify(qsTr("İşlem başarısız"))
         })
     }

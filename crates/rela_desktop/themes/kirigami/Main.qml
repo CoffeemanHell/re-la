@@ -22,7 +22,7 @@ Kirigami.AbstractApplicationWindow { // no page stack: one page area of our own 
     onWidthChanged: if (geoReady && visibility === Window.Windowed) geo.w = width
     onHeightChanged: if (geoReady && visibility === Window.Windowed) geo.h = height
     onVisibilityChanged: if (geoReady && (visibility === Window.Windowed || visibility === Window.Maximized)) geo.max = visibility === Window.Maximized
-    title: Player.station.id ? Player.station.name + " · re-la" : Player.current.title ? Player.current.title + " · " + Player.current.artist : "re-la"
+    title: Player.station.id ? qsTr("%1 · re-la").arg(Player.station.name) : Player.current.title ? qsTr("%1 · %2").arg(Player.current.title).arg(Player.current.artist || "") : "re-la"
 
     readonly property bool usable: Player.online || Player.offline // offline: no server, but songs on disk
     readonly property bool hasSong: Player.current.id !== undefined

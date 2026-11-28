@@ -5,6 +5,7 @@ import org.kde.kirigami as Kirigami
 import QtQuick.Controls
 import QtQuick.Layouts
 import shared
+import Rela
 
 HomeData {
     id: root
@@ -42,7 +43,7 @@ HomeData {
                     }
                     ListView {
                         id: list
-                        Layout.fillWidth: true; Layout.preferredHeight: 240
+                        Layout.fillWidth: true; Layout.preferredHeight: Math.max(240, (Player.options.gridSize || 172) + 72) // card (size + 60) at y 6, and its shadow
                         orientation: ListView.Horizontal
                         interactive: false
                         spacing: 20

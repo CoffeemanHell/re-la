@@ -80,7 +80,8 @@ NowPlayingData {
             Plain {
                 Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight
                 visible: root.live && !!root.sw.dj; color: Kirigami.Theme.disabledTextColor
-                text: qsTr("DJ %1").arg(root.sw.dj) + (root.sw.show ? " · " + root.sw.show : "") + " · " + qsTr("%n dinleyici", "", root.sw.listeners || 0)
+                text: root.sw.show ? qsTr("DJ %1 · %2 · %n dinleyici", "", root.sw.listeners || 0).arg(root.sw.dj).arg(root.sw.show)
+                               : qsTr("DJ %1 · %n dinleyici", "", root.sw.listeners || 0).arg(root.sw.dj)
             }
             Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; visible: root.live && !Subwave.online; text: qsTr("Bağlantı yok"); color: Kirigami.Theme.negativeTextColor }
             Link {
@@ -140,7 +141,7 @@ NowPlayingData {
                     TabBar {
                         id: tabs
                         visible: !root.live
-                        TabButton { text: qsTr("Sıra  %1").arg(Player.queueLength); width: implicitWidth }
+                        TabButton { text: qsTr("Sıra  %n", "", Player.queueLength); width: implicitWidth }
                         TabButton { text: qsTr("Benzer"); width: implicitWidth }
                         TabButton { text: qsTr("Sözler"); width: implicitWidth }
                     }

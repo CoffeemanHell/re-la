@@ -16,6 +16,11 @@
         <source>İşlem başarısız</source>
         <translation>Action failed</translation>
     </message>
+    <message>
+        <location filename="../themes/kirigami/AlbumCard.qml" line="60"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
 </context>
 <context>
     <name>AlbumData</name>
@@ -42,7 +47,6 @@
     </message>
     <message numerus="yes">
         <location filename="../themes/default/AlbumPage.qml" line="62"/>
-        <location filename="../themes/kirigami/AlbumPage.qml" line="63"/>
         <source>%n şarkı</source>
         <translation>
             <numerusform>%n song</numerusform>
@@ -116,6 +120,14 @@
         <location filename="../themes/kirigami/AlbumPage.qml" line="69"/>
         <source>Çal</source>
         <translation>Play</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/AlbumPage.qml" line="63"/>
+        <source>%n şarkı  ·  %1</source>
+        <translation>
+            <numerusform>%n song  ·  %1</numerusform>
+            <numerusform>%n songs  ·  %1</numerusform>
+        </translation>
     </message>
 </context>
 <context>
@@ -798,51 +810,51 @@
     </message>
     <message>
         <location filename="../themes/default/DjStateDialog.qml" line="37"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="38"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="39"/>
         <source>Arayış modunda: atlamalar eksi sayılmıyor, DJ daha çok keşfediyor.</source>
         <translation>Looking around: skips do not count against songs, and the DJ explores more.</translation>
     </message>
     <message>
         <location filename="../themes/default/DjStateDialog.qml" line="38"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="39"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="40"/>
         <source>Çıkış noktası: %1</source>
         <translation>Starting from: %1</translation>
     </message>
     <message>
         <location filename="../themes/default/DjStateDialog.qml" line="39"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="40"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="41"/>
         <source>Bu oturum: %1</source>
         <translation>This sitting: %1</translation>
     </message>
     <message>
         <location filename="../themes/default/DjStateDialog.qml" line="41"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="42"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="44"/>
         <source>DJ henüz seçim yapmadı</source>
         <translation>The DJ has not picked anything yet</translation>
     </message>
     <message>
         <location filename="../themes/default/DjStateDialog.qml" line="46"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="47"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="49"/>
         <source>Şarkı</source>
         <translation>Song</translation>
     </message>
     <message>
         <location filename="../themes/default/DjStateDialog.qml" line="70"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="71"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="73"/>
         <location filename="../themes/nothing/DjStateDialog.qml" line="72"/>
         <source>Sevilmiyor</source>
         <translation>Disliked</translation>
     </message>
     <message>
         <location filename="../themes/default/DjStateDialog.qml" line="71"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="72"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="74"/>
         <location filename="../themes/nothing/DjStateDialog.qml" line="73"/>
         <source>Eksi: %1</source>
         <translation>Skips: %1</translation>
     </message>
     <message numerus="yes">
         <location filename="../themes/default/DjStateDialog.qml" line="72"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="73"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="75"/>
         <location filename="../themes/nothing/DjStateDialog.qml" line="74"/>
         <source>%n gün önce dinlendi</source>
         <translation>
@@ -852,7 +864,7 @@
     </message>
     <message>
         <location filename="../themes/default/DjStateDialog.qml" line="73"/>
-        <location filename="../themes/kirigami/DjStateDialog.qml" line="74"/>
+        <location filename="../themes/kirigami/DjStateDialog.qml" line="76"/>
         <location filename="../themes/nothing/DjStateDialog.qml" line="75"/>
         <source>Seçilmedi</source>
         <translation>Not picked</translation>
@@ -931,7 +943,7 @@
 <context>
     <name>Favorite</name>
     <message>
-        <location filename="../themes/shared/Favorite.qml" line="24"/>
+        <location filename="../themes/shared/Favorite.qml" line="25"/>
         <source>İşlem başarısız</source>
         <translation>Action failed</translation>
     </message>
@@ -945,7 +957,6 @@
     </message>
     <message>
         <location filename="../themes/default/FavoritesPage.qml" line="21"/>
-        <location filename="../themes/kirigami/FavoritesPage.qml" line="22"/>
         <source>Albümler (%1)</source>
         <translation>Albums (%1)</translation>
     </message>
@@ -978,7 +989,6 @@
     </message>
     <message>
         <location filename="../themes/default/FavoritesPage.qml" line="22"/>
-        <location filename="../themes/kirigami/FavoritesPage.qml" line="23"/>
         <source>Sanatçılar (%1)</source>
         <translation>Artists (%1)</translation>
     </message>
@@ -989,9 +999,32 @@
     </message>
     <message>
         <location filename="../themes/default/FavoritesPage.qml" line="20"/>
-        <location filename="../themes/kirigami/FavoritesPage.qml" line="21"/>
         <source>Şarkılar (%1)</source>
         <translation>Songs (%1)</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/FavoritesPage.qml" line="21"/>
+        <source>Şarkılar (%n)</source>
+        <translation>
+            <numerusform>Songs (%n)</numerusform>
+            <numerusform>Songs (%n)</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/FavoritesPage.qml" line="22"/>
+        <source>Albümler (%n)</source>
+        <translation>
+            <numerusform>Albums (%n)</numerusform>
+            <numerusform>Albums (%n)</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/FavoritesPage.qml" line="23"/>
+        <source>Sanatçılar (%n)</source>
+        <translation>
+            <numerusform>Artists (%n)</numerusform>
+            <numerusform>Artists (%n)</numerusform>
+        </translation>
     </message>
 </context>
 <context>
@@ -1031,7 +1064,6 @@
     </message>
     <message numerus="yes">
         <location filename="../themes/default/GenresPage.qml" line="33"/>
-        <location filename="../themes/kirigami/GenresPage.qml" line="34"/>
         <source>%n albüm</source>
         <translation>
             <numerusform>%n album</numerusform>
@@ -1077,6 +1109,14 @@
         <source>Türler</source>
         <translation>Genres</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/GenresPage.qml" line="34"/>
+        <source>%n albüm · %1</source>
+        <translation>
+            <numerusform>%n album · %1</numerusform>
+            <numerusform>%n albums · %1</numerusform>
+        </translation>
+    </message>
 </context>
 <context>
     <name>Heart</name>
@@ -1102,7 +1142,7 @@
     </message>
     <message>
         <location filename="../themes/default/HomePage.qml" line="67"/>
-        <location filename="../themes/kirigami/HomePage.qml" line="68"/>
+        <location filename="../themes/kirigami/HomePage.qml" line="69"/>
         <source>Kütüphane boş</source>
         <translation>The library is empty</translation>
     </message>
@@ -1113,7 +1153,7 @@
     </message>
     <message>
         <location filename="../themes/default/HomePage.qml" line="13"/>
-        <location filename="../themes/kirigami/HomePage.qml" line="14"/>
+        <location filename="../themes/kirigami/HomePage.qml" line="15"/>
         <source>Rastgele</source>
         <translation>Random</translation>
     </message>
@@ -1124,7 +1164,7 @@
     </message>
     <message>
         <location filename="../themes/default/HomePage.qml" line="12"/>
-        <location filename="../themes/kirigami/HomePage.qml" line="13"/>
+        <location filename="../themes/kirigami/HomePage.qml" line="14"/>
         <source>Son dinlenenler</source>
         <translation>Recently played</translation>
     </message>
@@ -1135,7 +1175,7 @@
     </message>
     <message>
         <location filename="../themes/default/HomePage.qml" line="40"/>
-        <location filename="../themes/kirigami/HomePage.qml" line="41"/>
+        <location filename="../themes/kirigami/HomePage.qml" line="42"/>
         <source>Tümü</source>
         <translation>All</translation>
     </message>
@@ -1146,7 +1186,7 @@
     </message>
     <message>
         <location filename="../themes/default/HomePage.qml" line="12"/>
-        <location filename="../themes/kirigami/HomePage.qml" line="13"/>
+        <location filename="../themes/kirigami/HomePage.qml" line="14"/>
         <source>Yeni eklenenler</source>
         <translation>Recently added</translation>
     </message>
@@ -1157,7 +1197,7 @@
     </message>
     <message>
         <location filename="../themes/default/HomePage.qml" line="13"/>
-        <location filename="../themes/kirigami/HomePage.qml" line="14"/>
+        <location filename="../themes/kirigami/HomePage.qml" line="15"/>
         <source>Çok dinlenenler</source>
         <translation>Most played</translation>
     </message>
@@ -1176,13 +1216,13 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="32"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="33"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="35"/>
         <source>Albüm</source>
         <translation>Album</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="34"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="35"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="37"/>
         <source>Albüm sanatçıları</source>
         <translation>Album artists</translation>
     </message>
@@ -1198,25 +1238,25 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="35"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="36"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="38"/>
         <source>Besteciler</source>
         <translation>Composers</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="47"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="48"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="50"/>
         <source>Bit derinliği</source>
         <translation>Bit depth</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="45"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="46"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="48"/>
         <source>Bit hızı</source>
         <translation>Bit rate</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="49"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="50"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="52"/>
         <source>Boyut</source>
         <translation>Size</translation>
     </message>
@@ -1243,21 +1283,21 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="41"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="42"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="44"/>
         <source>Disk numarası</source>
         <translation>Disc number</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="44"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="45"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="47"/>
         <source>Dosya tipi</source>
         <translation>File type</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="42"/>
         <location filename="../themes/default/InfoDialog.qml" line="78"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="43"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="79"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="45"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="83"/>
         <source>Dosya yolu</source>
         <translation>File path</translation>
     </message>
@@ -1273,7 +1313,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="51"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="52"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="54"/>
         <source>Eklenme</source>
         <translation>Added</translation>
     </message>
@@ -1294,13 +1334,13 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="48"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="49"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="51"/>
         <source>Kanallar</source>
         <translation>Channels</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="81"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="82"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="86"/>
         <source>Kopyala</source>
         <translation>Copy</translation>
     </message>
@@ -1321,7 +1361,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="31"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="32"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="34"/>
         <source>Parça Adı</source>
         <translation>Track Name</translation>
     </message>
@@ -1333,7 +1373,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="40"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="41"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="43"/>
         <source>Parça numarası</source>
         <translation>Track number</translation>
     </message>
@@ -1344,7 +1384,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="33"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="34"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="36"/>
         <source>Sanatçılar</source>
         <translation>Artists</translation>
     </message>
@@ -1355,7 +1395,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="37"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="38"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="40"/>
         <source>Süre</source>
         <translation>Length</translation>
     </message>
@@ -1366,7 +1406,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="36"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="37"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="39"/>
         <source>Türler</source>
         <translation>Genres</translation>
     </message>
@@ -1382,7 +1422,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="38"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="39"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="41"/>
         <source>Yorum</source>
         <translation>Comment</translation>
     </message>
@@ -1393,26 +1433,25 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="68"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="69"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="73"/>
         <source>Yüklenemedi</source>
         <translation>Could not load</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="39"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="40"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="42"/>
         <source>Yıl</source>
         <translation>Year</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="52"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="53"/>
         <location filename="../themes/nothing/InfoDialog.qml" line="55"/>
         <source>albüm %1 dB</source>
         <translation>album %1 dB</translation>
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="52"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="53"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="56"/>
         <location filename="../themes/nothing/InfoDialog.qml" line="55"/>
         <source>parça %1 dB</source>
         <translation>track %1 dB</translation>
@@ -1424,7 +1463,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="50"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="51"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="53"/>
         <source>Çalma sayısı</source>
         <translation>Play count</translation>
     </message>
@@ -1435,7 +1474,7 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="46"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="47"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="49"/>
         <source>Örnekleme</source>
         <translation>Sample rate</translation>
     </message>
@@ -1446,9 +1485,34 @@
     </message>
     <message>
         <location filename="../themes/default/InfoDialog.qml" line="43"/>
-        <location filename="../themes/kirigami/InfoDialog.qml" line="44"/>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="46"/>
         <source>İçerik türü</source>
         <translation>Content type</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="48"/>
+        <source>%1 kbps</source>
+        <translation>%1 kbps</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="49"/>
+        <source>%1 kHz</source>
+        <translation>%1 kHz</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="50"/>
+        <source>%1 bit</source>
+        <translation>%1 bit</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="55"/>
+        <source>ReplayGain</source>
+        <translation>ReplayGain</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/InfoDialog.qml" line="57"/>
+        <source>parça %1 dB, albüm %2 dB</source>
+        <translation>track %1 dB, album %2 dB</translation>
     </message>
 </context>
 <context>
@@ -1802,20 +1866,20 @@
     <name>Main</name>
     <message>
         <location filename="../themes/default/Main.qml" line="63"/>
-        <location filename="../themes/kirigami/Main.qml" line="88"/>
+        <location filename="../themes/kirigami/Main.qml" line="84"/>
         <location filename="../themes/nothing/Main.qml" line="62"/>
         <source>%1 ayrıldı</source>
         <translation>%1 left</translation>
     </message>
     <message>
         <location filename="../themes/default/Main.qml" line="174"/>
-        <location filename="../themes/kirigami/Main.qml" line="158"/>
+        <location filename="../themes/kirigami/Main.qml" line="154"/>
         <source>%1 ile dinliyorsun</source>
         <translation>Listening with %1</translation>
     </message>
     <message>
         <location filename="../themes/default/Main.qml" line="62"/>
-        <location filename="../themes/kirigami/Main.qml" line="87"/>
+        <location filename="../themes/kirigami/Main.qml" line="83"/>
         <location filename="../themes/nothing/Main.qml" line="61"/>
         <source>%1 seni dinliyor</source>
         <translation>%1 is listening to you</translation>
@@ -1835,7 +1899,7 @@
     </message>
     <message numerus="yes">
         <location filename="../themes/default/Main.qml" line="175"/>
-        <location filename="../themes/kirigami/Main.qml" line="159"/>
+        <location filename="../themes/kirigami/Main.qml" line="155"/>
         <source>%n kişi seni dinliyor</source>
         <translation>
             <numerusform>%n person listening to you</numerusform>
@@ -1844,7 +1908,7 @@
     </message>
     <message numerus="yes">
         <location filename="../themes/default/Main.qml" line="176"/>
-        <location filename="../themes/kirigami/Main.qml" line="160"/>
+        <location filename="../themes/kirigami/Main.qml" line="156"/>
         <source>%n kişi çevrimiçi</source>
         <translation>
             <numerusform>%n person online</numerusform>
@@ -1941,7 +2005,7 @@
     </message>
     <message>
         <location filename="../themes/default/Main.qml" line="138"/>
-        <location filename="../themes/kirigami/Main.qml" line="150"/>
+        <location filename="../themes/kirigami/Main.qml" line="146"/>
         <source>Geri</source>
         <translation>Back</translation>
     </message>
@@ -2103,13 +2167,13 @@
     </message>
     <message>
         <location filename="../themes/default/Main.qml" line="176"/>
-        <location filename="../themes/kirigami/Main.qml" line="160"/>
+        <location filename="../themes/kirigami/Main.qml" line="156"/>
         <source>Yalnız</source>
         <translation>Alone</translation>
     </message>
     <message>
         <location filename="../themes/default/Main.qml" line="140"/>
-        <location filename="../themes/kirigami/Main.qml" line="152"/>
+        <location filename="../themes/kirigami/Main.qml" line="148"/>
         <source>Yenile</source>
         <translation>Refresh</translation>
     </message>
@@ -2125,20 +2189,20 @@
     </message>
     <message>
         <location filename="../themes/default/Main.qml" line="139"/>
-        <location filename="../themes/kirigami/Main.qml" line="151"/>
+        <location filename="../themes/kirigami/Main.qml" line="147"/>
         <source>İleri</source>
         <translation>Forward</translation>
     </message>
     <message>
         <location filename="../themes/default/Main.qml" line="109"/>
-        <location filename="../themes/kirigami/Main.qml" line="130"/>
+        <location filename="../themes/kirigami/Main.qml" line="126"/>
         <location filename="../themes/nothing/Main.qml" line="126"/>
         <source>İndir</source>
         <translation>Download</translation>
     </message>
     <message>
         <location filename="../themes/default/Main.qml" line="165"/>
-        <location filename="../themes/kirigami/Main.qml" line="168"/>
+        <location filename="../themes/kirigami/Main.qml" line="164"/>
         <source>Şarkı, sanatçı, albüm ara…</source>
         <translation>Search songs, artists, albums…</translation>
     </message>
@@ -2197,6 +2261,16 @@
         <source>GERİ AL</source>
         <translation>UNDO</translation>
     </message>
+    <message>
+        <location filename="../themes/kirigami/Main.qml" line="25"/>
+        <source>%1 · re-la</source>
+        <translation>%1 · re-la</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/Main.qml" line="25"/>
+        <source>%1 · %2</source>
+        <translation>%1 · %2</translation>
+    </message>
 </context>
 <context>
     <name>NowPlayingData</name>
@@ -2228,7 +2302,6 @@
     </message>
     <message numerus="yes">
         <location filename="../themes/default/NowPlayingPage.qml" line="82"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="83"/>
         <source>%n dinleyici</source>
         <translation>
             <numerusform>%n listener</numerusform>
@@ -2252,25 +2325,24 @@
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="84"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="85"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="86"/>
         <source>Bağlantı yok</source>
         <translation>No connection</translation>
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="143"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="144"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="145"/>
         <source>Benzer</source>
         <translation>Similar</translation>
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="215"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="216"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="217"/>
         <source>Benzer şarkı bulunamadı.</source>
         <translation>No similar songs found.</translation>
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="82"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="83"/>
         <location filename="../themes/nothing/NowPlayingPage.qml" line="69"/>
         <source>DJ %1</source>
         <translation>DJ %1</translation>
@@ -2284,7 +2356,7 @@ ADD SONGS FROM ALBUMS OR SEARCH</translation>
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="196"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="197"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="198"/>
         <source>Kuyruk boş.
 Albümlerden ya da aramadan şarkı ekle; Radyo açıksa gerisi kendiliğinden gelir.</source>
         <translation>The queue is empty.
@@ -2293,8 +2365,8 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="151"/>
         <location filename="../themes/default/NowPlayingPage.qml" line="154"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="152"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="155"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="153"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="156"/>
         <location filename="../themes/nothing/NowPlayingPage.qml" line="115"/>
         <location filename="../themes/nothing/NowPlayingPage.qml" line="116"/>
         <source>Kuyruğu playlist olarak kaydet</source>
@@ -2302,7 +2374,7 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="156"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="157"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="158"/>
         <location filename="../themes/nothing/NowPlayingPage.qml" line="118"/>
         <source>Playlist oluşturuldu: %1</source>
         <translation>Playlist created: %1</translation>
@@ -2326,20 +2398,19 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="136"/>
         <location filename="../themes/default/NowPlayingPage.qml" line="144"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="137"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="145"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="138"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="146"/>
         <source>Sözler</source>
         <translation>Lyrics</translation>
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="142"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="143"/>
         <source>Sıra  %1</source>
         <translation>Queue  %1</translation>
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="163"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="164"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="165"/>
         <location filename="../themes/nothing/NowPlayingPage.qml" line="122"/>
         <source>Sıradakileri temizle</source>
         <translation>Clear upcoming</translation>
@@ -2357,13 +2428,13 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="137"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="138"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="139"/>
         <source>İstek</source>
         <translation>Request</translation>
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="156"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="157"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="158"/>
         <location filename="../themes/nothing/NowPlayingPage.qml" line="118"/>
         <source>İşlem başarısız</source>
         <translation>Action failed</translation>
@@ -2381,13 +2452,13 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="119"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="120"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="121"/>
         <source>Bunun gibi daha çok</source>
         <translation>More like this</translation>
     </message>
     <message>
         <location filename="../themes/default/NowPlayingPage.qml" line="120"/>
-        <location filename="../themes/kirigami/NowPlayingPage.qml" line="121"/>
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="122"/>
         <source>Bunu daha az çal</source>
         <translation>Less like this</translation>
     </message>
@@ -2400,6 +2471,30 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
         <location filename="../themes/nothing/NowPlayingPage.qml" line="90"/>
         <source>▼ DAHA AZ</source>
         <translation>▼ LESS</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="83"/>
+        <source>DJ %1 · %2 · %n dinleyici</source>
+        <translation>
+            <numerusform>DJ %1 · %2 · %n listener</numerusform>
+            <numerusform>DJ %1 · %2 · %n listeners</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="84"/>
+        <source>DJ %1 · %n dinleyici</source>
+        <translation>
+            <numerusform>DJ %1 · %n listener</numerusform>
+            <numerusform>DJ %1 · %n listeners</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/NowPlayingPage.qml" line="144"/>
+        <source>Sıra  %n</source>
+        <translation>
+            <numerusform>Queue  %n</numerusform>
+            <numerusform>Queue  %n</numerusform>
+        </translation>
     </message>
 </context>
 <context>
@@ -2548,7 +2643,6 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message numerus="yes">
         <location filename="../themes/default/PlaylistPage.qml" line="25"/>
-        <location filename="../themes/kirigami/PlaylistPage.qml" line="26"/>
         <source>%n şarkı</source>
         <translation>
             <numerusform>%n song</numerusform>
@@ -2610,6 +2704,14 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
         <source>Çal</source>
         <translation>Play</translation>
     </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/PlaylistPage.qml" line="26"/>
+        <source>%n şarkı · %1 · %2</source>
+        <translation>
+            <numerusform>%n song · %1 · %2</numerusform>
+            <numerusform>%n songs · %1 · %2</numerusform>
+        </translation>
+    </message>
 </context>
 <context>
     <name>PlaylistsData</name>
@@ -2636,7 +2738,6 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message numerus="yes">
         <location filename="../themes/default/PlaylistsPage.qml" line="42"/>
-        <location filename="../themes/kirigami/PlaylistsPage.qml" line="43"/>
         <source>%n şarkı</source>
         <translation>
             <numerusform>%n song</numerusform>
@@ -2655,7 +2756,7 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/PlaylistsPage.qml" line="50"/>
-        <location filename="../themes/kirigami/PlaylistsPage.qml" line="51"/>
+        <location filename="../themes/kirigami/PlaylistsPage.qml" line="52"/>
         <source>Playlist yok</source>
         <translation>No playlists</translation>
     </message>
@@ -2675,6 +2776,22 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
         <location filename="../themes/kirigami/PlaylistsPage.qml" line="18"/>
         <source>Yeni playlist</source>
         <translation>New playlist</translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/PlaylistsPage.qml" line="43"/>
+        <source>%n şarkı · %1 · %2</source>
+        <translation>
+            <numerusform>%n song · %1 · %2</numerusform>
+            <numerusform>%n songs · %1 · %2</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../themes/kirigami/PlaylistsPage.qml" line="44"/>
+        <source>%n şarkı · %1</source>
+        <translation>
+            <numerusform>%n song · %1</numerusform>
+            <numerusform>%n songs · %1</numerusform>
+        </translation>
     </message>
 </context>
 <context>
@@ -3554,6 +3671,21 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
         <source>Varsayılana dön</source>
         <translation>Reset to default</translation>
     </message>
+    <message>
+        <location filename="../themes/kirigami/SettingsDialog.qml" line="207"/>
+        <source>%1 px</source>
+        <translation>%1 px</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/SettingsDialog.qml" line="237"/>
+        <source>WASAPI özel modu</source>
+        <translation>WASAPI Exclusive</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/SettingsDialog.qml" line="324"/>
+        <source>%1 GB</source>
+        <translation>%1 GB</translation>
+    </message>
 </context>
 <context>
     <name>Share</name>
@@ -3662,57 +3794,57 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
 <context>
     <name>Sidebar</name>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="26"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="28"/>
         <source>Ana sayfa</source>
         <translation>Home</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="27"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="29"/>
         <source>Şimdi çalan</source>
         <translation>Now playing</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="28"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="30"/>
         <source>Favoriler</source>
         <translation>Favorites</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="29"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="31"/>
         <source>Albümler</source>
         <translation>Albums</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="30"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="32"/>
         <source>Sanatçılar</source>
         <translation>Artists</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="31"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="33"/>
         <source>Türler</source>
         <translation>Genres</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="32"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="34"/>
         <source>Playlist&apos;ler</source>
         <translation>Playlists</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="33"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="35"/>
         <source>Tüm parçalar</source>
         <translation>All tracks</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="34"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="36"/>
         <source>Radyo</source>
         <translation>Radio</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="39"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="41"/>
         <source>Birlikte dinle</source>
         <translation>Listen together</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/Sidebar.qml" line="43"/>
+        <location filename="../themes/kirigami/Sidebar.qml" line="45"/>
         <source>Ayarlar</source>
         <translation>Settings</translation>
     </message>
@@ -3721,25 +3853,25 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <name>SongRow</name>
     <message>
         <location filename="../themes/default/SongRow.qml" line="73"/>
-        <location filename="../themes/kirigami/SongRow.qml" line="74"/>
+        <location filename="../themes/kirigami/SongRow.qml" line="78"/>
         <source>Aşağı</source>
         <translation>Down</translation>
     </message>
     <message>
         <location filename="../themes/default/SongRow.qml" line="75"/>
-        <location filename="../themes/kirigami/SongRow.qml" line="76"/>
+        <location filename="../themes/kirigami/SongRow.qml" line="80"/>
         <source>Diğer</source>
         <translation>More</translation>
     </message>
     <message>
         <location filename="../themes/default/SongRow.qml" line="74"/>
-        <location filename="../themes/kirigami/SongRow.qml" line="75"/>
+        <location filename="../themes/kirigami/SongRow.qml" line="79"/>
         <source>Kuyruktan çıkar</source>
         <translation>Remove from queue</translation>
     </message>
     <message>
         <location filename="../themes/default/SongRow.qml" line="72"/>
-        <location filename="../themes/kirigami/SongRow.qml" line="73"/>
+        <location filename="../themes/kirigami/SongRow.qml" line="77"/>
         <source>Yukarı</source>
         <translation>Up</translation>
     </message>

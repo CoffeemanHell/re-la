@@ -23,7 +23,7 @@ PlaylistData {
                 PageTitle { Layout.fillWidth: true; elide: Text.ElideRight; text: root.pl ? root.pl.name : "" }
                 Plain {
                     color: Kirigami.Theme.disabledTextColor
-                    text: root.pl ? qsTr("%n şarkı", "", root.songs.length) + " · " + root.w.fmt(root.pl.duration) + " · " + root.pl.owner : ""
+                    text: root.pl ? qsTr("%n şarkı · %1 · %2", "", root.songs.length).arg(root.w.fmt(root.pl.duration)).arg(root.pl.owner) : ""
                 }
                 RowLayout {
                     Layout.topMargin: 8; spacing: 8

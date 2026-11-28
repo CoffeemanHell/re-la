@@ -35,9 +35,11 @@ Dialog {
         Hint {
             Layout.fillWidth: true
             visible: d.dj.picked
-            text: (d.dj.state.searching ? qsTr("Arayış modunda: atlamalar eksi sayılmıyor, DJ daha çok keşfediyor.") + "\n" : "")
-                + qsTr("Çıkış noktası: %1").arg((d.dj.state.seed || {}).title || "–")
-                + ((d.dj.state.session || []).length ? "\n" + qsTr("Bu oturum: %1").arg(d.dj.state.session.map(t => t.tag + " " + (t.weight > 0 ? "+" : "") + t.weight.toFixed(1)).join(", ")) : "")
+            text: [ // one whole sentence per line
+                d.dj.state.searching ? qsTr("Arayış modunda: atlamalar eksi sayılmıyor, DJ daha çok keşfediyor.") : "",
+                qsTr("Çıkış noktası: %1").arg((d.dj.state.seed || {}).title || "–"),
+                (d.dj.state.session || []).length ? qsTr("Bu oturum: %1").arg(d.dj.state.session.map(t => t.tag + " " + (t.weight > 0 ? "+" : "") + t.weight.toFixed(1)).join(", ")) : ""
+            ].filter(l => l).join("\n")
         }
         Plain { visible: !d.dj.picked; text: qsTr("DJ henüz seçim yapmadı"); color: Kirigami.Theme.disabledTextColor; Layout.topMargin: 24; Layout.alignment: Qt.AlignHCenter }
         RowLayout { // column titles, over the rows' cells (rows: 6 px padding, 12 px left for the scroll bar)

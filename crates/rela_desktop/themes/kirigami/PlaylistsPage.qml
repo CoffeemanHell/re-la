@@ -40,7 +40,8 @@ PlaylistsData {
                         Plain { Layout.fillWidth: true; elide: Text.ElideRight; text: row.modelData.name; font.weight: Font.Medium }
                         Plain {
                             Layout.fillWidth: true; elide: Text.ElideRight; color: Kirigami.Theme.disabledTextColor
-                            text: qsTr("%n şarkı", "", row.modelData.songCount) + " · " + root.w.fmt(row.modelData.duration) + (row.modelData.owner !== Player.user ? " · " + row.modelData.owner : "")
+                            text: row.modelData.owner !== Player.user ? qsTr("%n şarkı · %1 · %2", "", row.modelData.songCount).arg(root.w.fmt(row.modelData.duration)).arg(row.modelData.owner)
+                                                                : qsTr("%n şarkı · %1", "", row.modelData.songCount).arg(root.w.fmt(row.modelData.duration))
                         }
                     }
                 }

@@ -60,7 +60,7 @@ AlbumData {
                         }
                         Plain {
                             color: Kirigami.Theme.disabledTextColor
-                            text: !root.album ? "" : (parent.genres.length ? " ·  " : "") + qsTr("%n şarkı", "", root.songs.length) + "  ·  " + root.length(root.album.duration || 0)
+                            text: !root.album ? "" : (parent.genres.length ? " ·  " : "") + qsTr("%n şarkı  ·  %1", "", root.songs.length).arg(root.length(root.album.duration || 0))
                         }
                     }
                     RowLayout {

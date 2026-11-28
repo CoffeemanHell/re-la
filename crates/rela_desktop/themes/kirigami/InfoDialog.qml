@@ -17,11 +17,13 @@ Dialog {
     property var rows: []   // [label, value]
     property bool failed: false
 
+    property int asked: 0 // the latest show(): an earlier song's late reply is dropped
     function show(id) {
+        const n = ++asked
         rows = []
         failed = false
         open()
-        Player.get(d, "getSong", { id: id }, r => r ? rows = build(r.song) : failed = true)
+        Player.get(d, "getSong", { id: id }, r => { if (n === d.asked) r ? rows = build(r.song) : failed = true })
     }
     function names(list) { return (list || []).map(a => a.name).filter(n => n).join(", ") }
     function clock(t) { t = Math.floor(t || 0); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0") }
@@ -43,14 +45,16 @@ Dialog {
             [qsTr("Dosya yolu"), s.path],
             [qsTr("İçerik türü"), s.contentType],
             [qsTr("Dosya tipi"), s.suffix],
-            [qsTr("Bit hızı"), s.bitRate ? s.bitRate + " kbps" : ""],
-            [qsTr("Örnekleme"), s.samplingRate ? s.samplingRate / 1000 + " kHz" : ""],
-            [qsTr("Bit derinliği"), s.bitDepth ? s.bitDepth + " bit" : ""],
+            [qsTr("Bit hızı"), s.bitRate ? qsTr("%1 kbps").arg(s.bitRate) : ""],
+            [qsTr("Örnekleme"), s.samplingRate ? qsTr("%1 kHz").arg(s.samplingRate / 1000) : ""],
+            [qsTr("Bit derinliği"), s.bitDepth ? qsTr("%1 bit").arg(s.bitDepth) : ""],
             [qsTr("Kanallar"), s.channelCount],
             [qsTr("Boyut"), s.size ? Qt.locale().formattedDataSize(s.size, 1, Locale.DataSizeTraditionalFormat) : ""],
             [qsTr("Çalma sayısı"), s.playCount],
             [qsTr("Eklenme"), s.created ? new Date(s.created).toLocaleDateString(Qt.locale(), Locale.ShortFormat) : ""],
-            ["ReplayGain", gain.trackGain !== undefined ? qsTr("parça %1 dB").arg(gain.trackGain) + (gain.albumGain !== undefined ? ", " + qsTr("albüm %1 dB").arg(gain.albumGain) : "") : ""],
+            [qsTr("ReplayGain"), gain.trackGain === undefined ? ""
+                : gain.albumGain === undefined ? qsTr("parça %1 dB").arg(gain.trackGain)
+                : qsTr("parça %1 dB, albüm %2 dB").arg(gain.trackGain).arg(gain.albumGain)],
         ]
         return all.filter(r => r[1] !== undefined && r[1] !== null && String(r[1]) !== "" && String(r[1]) !== "0")
                   .map(r => [r[0], String(r[1])])

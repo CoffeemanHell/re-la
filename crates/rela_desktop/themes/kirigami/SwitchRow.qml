@@ -17,5 +17,5 @@ RowLayout {
         Plain { text: sr.label }
         Hint { text: sr.hint }
     }
-    Switch { id: sw; onToggled: sr.toggled(checked) }
+    Switch { id: sw; Accessible.name: sr.label; onToggled: sr.toggled(checked) }
 }

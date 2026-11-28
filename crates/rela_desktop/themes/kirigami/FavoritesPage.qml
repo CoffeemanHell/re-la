@@ -18,9 +18,9 @@ FavoritesData {
         TabBar {
             id: tabs
             currentIndex: root.tab; onCurrentIndexChanged: root.tab = currentIndex
-            TabButton { text: qsTr("Şarkılar (%1)").arg(root.songs.length); width: implicitWidth }
-            TabButton { text: qsTr("Albümler (%1)").arg(root.albums.length); width: implicitWidth }
-            TabButton { text: qsTr("Sanatçılar (%1)").arg(root.artists.length); width: implicitWidth }
+            TabButton { text: qsTr("Şarkılar (%n)", "", root.songs.length); width: implicitWidth }
+            TabButton { text: qsTr("Albümler (%n)", "", root.albums.length); width: implicitWidth }
+            TabButton { text: qsTr("Sanatçılar (%n)", "", root.artists.length); width: implicitWidth }
         }
         StackLayout {
             currentIndex: tabs.currentIndex

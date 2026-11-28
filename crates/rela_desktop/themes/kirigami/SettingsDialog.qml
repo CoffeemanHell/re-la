@@ -204,7 +204,7 @@ Dialog {
                     }
                     LabeledSlider {
                         label: qsTr("Izgara boyutu")
-                        valueText: (Player.options.gridSize || 172) + " px"
+                        valueText: qsTr("%1 px").arg(Player.options.gridSize || 172)
                         hint: qsTr("Albüm ve sanatçı kartlarının genişliği.")
                         from: 120; to: 260; stepSize: 10; value: Player.options.gridSize || 172
                         onMoved: v => Player.setOption("gridSize", v)
@@ -234,7 +234,7 @@ Dialog {
                     }
                     SwitchRow {
                         visible: Qt.platform.os === "windows"
-                        label: "WASAPI Exclusive"
+                        label: qsTr("WASAPI özel modu")
                         hint: qsTr("Ses kartını uygulamaya ayırır, Windows mikseri atlanır: bit-perfect.")
                         checked: Player.exclusive
                         onToggled: on => Player.exclusive = on
@@ -321,7 +321,7 @@ Dialog {
                         label: qsTr("Boyut sınırı")
                         hint: qsTr("Dolunca en uzun süredir dinlenmeyen silinir.")
                         box: "cacheBox"
-                        model: Util.cacheSizes.map(g => g ? g + " GB" : qsTr("Kapalı"))
+                        model: Util.cacheSizes.map(g => g ? qsTr("%1 GB").arg(g) : qsTr("Kapalı"))
                         currentIndex: Util.cacheSizes.indexOf(Player.options.offlineGb || 0)
                         onPicked: i => Player.setOption("offlineGb", Util.cacheSizes[i])
                     }

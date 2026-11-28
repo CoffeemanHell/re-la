@@ -31,7 +31,7 @@ GenresData {
                 RowLayout {
                     anchors.fill: parent; anchors.leftMargin: Kirigami.Units.largeSpacing; anchors.rightMargin: Kirigami.Units.largeSpacing
                     Plain { Layout.fillWidth: true; elide: Text.ElideRight; text: row.modelData.value; font.weight: Font.Medium }
-                    Plain { text: qsTr("%n albüm", "", row.modelData.albumCount) + " · " + qsTr("%n şarkı", "", row.modelData.songCount); color: Kirigami.Theme.disabledTextColor }
+                    Plain { text: qsTr("%n albüm · %1", "", row.modelData.albumCount).arg(qsTr("%n şarkı", "", row.modelData.songCount)); color: Kirigami.Theme.disabledTextColor }
                 }
             }
             ScrollBar.vertical: Scroll {}
