@@ -182,8 +182,8 @@ impl DeckState {
 }
 
 /// Only what peers need to show and play a song (no server paths).
-const SONG_KEYS: [&str; 14] =
-    ["id", "title", "artist", "album", "albumId", "artistId", "duration", "coverArt", "suffix", "bitDepth", "samplingRate", "genre", "starred", "userRating"];
+const SONG_KEYS: [&str; 16] =
+    ["id", "title", "artist", "album", "albumId", "artistId", "duration", "coverArt", "suffix", "bitDepth", "samplingRate", "genre", "starred", "userRating", "auto", "dj"];
 
 pub(super) fn song_json(song: &Value) -> Value {
     let mut o = Map::new();
@@ -1084,7 +1084,12 @@ impl PlayerCore {
         let restart = self.station.is_empty() && self.position() > 3.0;
         self.end_station();
         let (at, account) = (self.idx, self.brain_key());
-        if !restart && let Some(s) = self.swap.take_if(|s| s.first == at && s.account == account) {
+        if !restart && let Some(s) = self.swap.as_ref().filter(|s| s.first == at && s.account == account) {
+            let id = s.queue.get(s.idx as usize).map(|v| text(&v["id"])).unwrap_or_default();
+            if self.refused_offline(&id) {
+                return self.publish(); // keep the swap: back restores once online
+            }
+            let s = self.swap.take().expect("checked above");
             self.queue = s.queue;
             self.before = s.before;
             self.extend_seq += 1; // picks in flight were for the song opened from the queue

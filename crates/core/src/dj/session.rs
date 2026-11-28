@@ -54,7 +54,7 @@ impl Session {
 
     /// Early skips close together turn it on; a song that holds the listener (or a long while of nothing) turns it off.
     pub fn searching(&self, at_ms: f64, k: &Knobs) -> bool {
-        self.search && !self.idle(at_ms, k)
+        self.search && k.search_skips != usize::MAX && !self.idle(at_ms, k) // MAX: the search switch is off
     }
 
     fn idle(&self, at_ms: f64, k: &Knobs) -> bool {
@@ -85,6 +85,9 @@ impl Session {
     pub fn hear(&mut self, s: &Song, h: Heard, at_ms: f64, ratio: f64, genres: &Genres, index: &Index, k: &Knobs) -> bool {
         if self.idle(at_ms, k) {
             *self = Session::default();
+        }
+        if k.search_skips == usize::MAX {
+            self.search = false; // the search switch went off mid-search
         }
         self.last_ms = at_ms;
         if self.search && (h == Heard::Full || ratio >= 0.5) {
@@ -183,6 +186,18 @@ mod tests {
         s.hear(ix.get("b").unwrap(), Full, 2000.0, 1.0, &g, &ix, &kn());
         assert!((s.weight(genre(&ix, "Qqa")) - 0.7).abs() < 1e-5);
         assert!(s.fit(ix.get("b").unwrap(), &ix) > s.fit(ix.get("a").unwrap(), &ix));
+    }
+
+    #[test]
+    fn search_switch_off_ends_search() {
+        let (ix, g) = setup();
+        let mut s = Session::default();
+        s.hear(ix.get("a").unwrap(), EarlySkip, 1000.0, 0.1, &g, &ix, &kn());
+        s.hear(ix.get("b").unwrap(), EarlySkip, 2000.0, 0.1, &g, &ix, &kn());
+        let off = Knobs { search_skips: usize::MAX, ..kn() };
+        assert!(!s.searching(2000.0, &off));
+        assert!(!s.hear(ix.get("a").unwrap(), Full, 3000.0, 1.0, &g, &ix, &off), "no search left to end");
+        assert!(!s.searching(3000.0, &kn()));
     }
 
     #[test]

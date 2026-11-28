@@ -123,6 +123,7 @@
     <message><source>Tam dinlenmiş sayılır</source><translation>Counts as heard in full</translation></message>
     <message><source>Şarkının bu kadarı çaldıysa sonuna kadar dinlenmiş sayılır.</source><translation>A song played this far counts as heard to the end.</translation></message>
     <message><source>Arayış: atlama sayısı</source><translation>Looking around: skips</translation></message>
+    <message><source>Hızlı atlamalar &quot;başka bir şey arıyorum&quot; demek: bu atlamalar eksi sayılmaz, DJ daha çok keşfeder.</source><translation>Quick skips mean &quot;I want something else&quot;: they do not count against the songs, and the DJ explores more.</translation></message>
     <message><source>Bu kadar hızlı atlama &quot;başka bir şey arıyorum&quot; demek: bu atlamalar eksi sayılmaz, DJ daha çok keşfeder.</source><translation>This many quick skips mean &quot;I want something else&quot;: they do not count against the songs, and the DJ explores more.</translation></message>
     <message><source>Arayış: süre</source><translation>Looking around: time</translation></message>
     <message><source>Atlamalar bu süre içinde gelmeli. Tek bir atlama da bu kadar bekler, sonra eksi sayılır.</source><translation>The skips must come within this time. A single skip waits this long too, then counts.</translation></message>

@@ -514,6 +514,29 @@ fn refill_in_flight_stays_out_of_the_restored_queue() {
 }
 
 #[test]
+fn offline_back_does_not_restore_a_song_not_held() {
+    let mut t = T::new("swap-offline-back");
+    t.c.play(songs(2), 0);
+    t.c.add(vec![song("x")], 0);
+    let ids = t.ids();
+    t.c.offline = true;
+    t.c.prev();
+    assert_eq!(t.current(), "x");
+    assert_eq!(t.ids(), ids, "the queue stays as it was");
+    assert!(t.c.swap.is_some(), "online again, back still restores");
+    assert_eq!(t.c.snapshot().status, "Çevrimdışı: bu şarkı inmemiş");
+}
+
+#[test]
+fn relayed_songs_keep_their_pick_marks() {
+    let mut s = song("d");
+    s["dj"] = true.into();
+    s["auto"] = true.into();
+    let r = super::state::song_json(&s);
+    assert!(r["dj"] == true && r["auto"] == true, "{r}");
+}
+
+#[test]
 fn offline_refused_song_keeps_no_swap() {
     let mut t = T::new("swap-offline");
     t.c.play(songs(2), 0);
@@ -521,6 +544,18 @@ fn offline_refused_song_keeps_no_swap() {
     t.c.add(vec![song("x")], 0);
     assert!(t.c.swap.is_none());
     assert_eq!(t.ids(), ["s0", "s1"]);
+}
+
+#[test]
+fn dj_turned_on_mid_request_still_marks_refill() {
+    let mut t = T::new("swap-auto-dj");
+    t.c.online = true;
+    t.c.play(songs(1), 0);
+    t.c.tick();
+    t.c.set_dj(true);
+    t.run(false, |m, _| if m == "getSimilarSongs" { similar(&["x1", "x2"]) } else { None });
+    let q = t.c.snapshot().queue;
+    assert!(q.len() > 1 && q[1]["auto"] == true, "{q:?}");
 }
 
 #[test]

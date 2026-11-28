@@ -117,12 +117,14 @@ Dialog {
             }
         }
         SpinBox {
+            objectName: "spin_" + kn.k.key
             visible: kn.k.kind === "spin"
             Layout.alignment: Qt.AlignLeft
             from: kn.k.from; to: kn.k.to; stepSize: kn.k.step
             editable: true
             value: kn.cur
             textFromValue: v => DjKnobs.text(kn.k, v)
+            validator: RegularExpressionValidator { regularExpression: /\d{1,4}\D*/ } // the number with the unit it shows
             valueFromText: t => parseInt(t) || kn.k.from
             onValueModified: kn.moved(value)
         }

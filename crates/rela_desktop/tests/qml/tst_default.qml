@@ -814,6 +814,15 @@ Item {
             const c = Player.called("setOption")
             compare(c[c.length - 1].slice(1), ["djSkipShare", 30])
         }
+        function test_dj_spin_takes_text_with_unit() {
+            const s = djSettings()
+            named(s.contentItem, "cat_Hafıza").clicked()
+            const b = named(s.contentItem, "spin_djRepeatDays")
+            tryVerify(() => b.visible)
+            b.contentItem.text = "12 gün"
+            verify(b.contentItem.acceptableInput, "the unit the box shows must not block typing")
+            compare(b.valueFromText(b.contentItem.text, b.locale), 12)
+        }
         function test_dj_switch_hides_children() {
             Player.options = Object.assign({}, Player.options, { djSkipOn: false })
             const s = djSettings()
