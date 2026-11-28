@@ -13,6 +13,7 @@ Item {
 
         function test_broken_theme_falls_back_to_default() {
             Player.theme = "broken"; App.broken = ["broken"]
+            ignoreWarning(/^Theme failed to load: .*no-such-theme.*: \S/) // a fixed marker for the zip's smoke test, then why
             const s = createTemporaryObject(shellComp, null)
             verify(s.win !== null) // the app keeps running
             compare(App.loaded, ["broken", "default"])

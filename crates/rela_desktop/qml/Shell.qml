@@ -35,8 +35,8 @@ QtObject {
     function make(url) {
         const c = Qt.createComponent(url)
         const w = c.status === Component.Ready ? c.createObject(null) : null
-        if (!w)
-            console.warn(c.errorString())
+        if (!w) // a fixed start (the zip's smoke test looks for it), then why: errorString can be empty when createObject fails
+            console.warn("Theme failed to load: " + url + ": " + (c.errorString() || "the window could not be created"))
         return w
     }
 

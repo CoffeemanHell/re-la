@@ -42,6 +42,10 @@ cp "$plugins"/kf6/kirigami/platform/*.dll "$out/kf6/kirigami/platform/"
 cp "$plugins"/styles/*breeze*.dll "$out/styles/" # breeze6.dll (the name is not checked here)
 cp /ucrt64/bin/data/icons/breeze/breeze-icons.rcc "$out/data/icons/breeze/"
 cp -r /ucrt64/bin/data/color-schemes "$out/data/"
+# KDE's Qt Quick style and what it imports: windeployqt finds Kirigami but not these (its scanner skips a style module)
+qml=$(qmake6 -query QT_INSTALL_QML)
+mkdir -p "$out/qml/org/kde"
+cp -r "$qml"/org/kde/desktop "$qml"/org/kde/qqc2desktopstyle "$qml"/org/kde/sonnet "$out/qml/org/kde/"
 # windeployqt copies Qt's own DLLs; the MinGW runtime and the other MSYS2 libraries they load come from ldd
 find "$out" -name '*.dll' -o -name '*.exe' | while read -r f; do ldd "$f"; done \
     | awk '$3 ~ /^\/ucrt64\// {print $3}' | sort -u | while read -r d; do cp -n "$d" "$out/"; done
