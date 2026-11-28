@@ -3733,6 +3733,11 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
         <translation>Could not load the theme: %1 (%2)</translation>
     </message>
     <message>
+        <location filename="../qml/Shell.qml" line="40"/>
+        <source>Pencere oluşturulamadı</source>
+        <translation>The window could not be created</translation>
+    </message>
+    <message>
         <location filename="../qml/Shell.qml" line="65"/>
         <source>Oynat</source>
         <translation>Play</translation>

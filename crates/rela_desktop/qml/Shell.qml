@@ -37,7 +37,7 @@ QtObject {
         const c = Qt.createComponent(url)
         const w = c.status === Component.Ready ? c.createObject(null) : null
         if (!w) { // a fixed start (the zip's smoke test looks for it), then why: errorString can be empty when createObject fails
-            why = c.errorString().trim() || "the window could not be created"
+            why = c.errorString().trim() || qsTr("Pencere oluşturulamadı")
             console.warn("Theme failed to load: " + url + ": " + why)
         }
         return w
