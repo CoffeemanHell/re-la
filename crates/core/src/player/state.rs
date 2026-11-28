@@ -397,7 +397,7 @@ impl PlayerCore {
             station_port,
             client: None,
             status: String::new(),
-            theme: if s.contains("theme") { s.get_string("theme") } else if cfg!(windows) { "default".into() } else { "nothing".into() },
+            theme: if s.contains("theme") { s.get_string("theme") } else { "kirigami".into() },
             qhash: String::new(),
             queue: Arc::default(),
             queue_sent: Arc::default(),

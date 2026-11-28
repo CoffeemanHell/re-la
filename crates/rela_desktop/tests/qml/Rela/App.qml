@@ -15,6 +15,14 @@ QtObject {
     property var themeTitles: ({ default: "Default", nothing: "Nothing" })
     property bool trayAvailable: false
     property string buildDate: "01.02.2026"
+    // Shell.qml: a theme's Main.qml by folder; "broken" (and anything in `broken`) gives a file that does not exist
+    property var broken: []
+    property var loaded: []
+    function load(name) {
+        loaded = loaded.concat([name])
+        return Qt.resolvedUrl("../../../themes/" + (broken.indexOf(name) >= 0 ? "no-such-theme" : name) + "/Main.qml")
+    }
+    function addCoverProvider() {}
 
     // Main.qml's Settings (window size) need an app identity; the test command keeps them in a scratch config dir
     Component.onCompleted: {

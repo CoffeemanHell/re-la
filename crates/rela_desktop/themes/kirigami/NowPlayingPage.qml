@@ -1,0 +1,227 @@
+// Now playing: big cover over its own blurred copy; queue and similar songs on the right.
+import QtQuick
+import org.kde.kirigami as Kirigami
+import QtQuick.Controls
+import QtQuick.Layouts
+import QtQuick.Effects
+import shared
+import Rela
+
+NowPlayingData {
+    id: root
+    DjData { id: djData }
+    Connections { target: Player; function onDjChanged() { if (Player.dj) djData.refreshFeedback() } }
+    Component.onCompleted: if (Player.dj) djData.refreshFeedback()
+
+    Image {
+        id: ambient
+        anchors.fill: parent
+        source: root.live ? Subwave.coverUrl : root.cur.coverArt ? "image://cover/" + root.cur.coverArt : ""
+        sourceSize: Qt.size(300, 300)
+        fillMode: Image.PreserveAspectCrop
+        visible: false
+    }
+    MultiEffect {
+        anchors.fill: parent; source: ambient
+        visible: ambient.status === Image.Ready
+        blurEnabled: true; blur: 1.0; blurMax: 64
+        saturation: 0.2
+    }
+    Rectangle { anchors.fill: parent; color: Kirigami.Theme.backgroundColor; opacity: 0.6 }
+
+    Plain {
+        objectName: "strip"
+        anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom
+        anchors.leftMargin: 32; anchors.rightMargin: 32; anchors.bottomMargin: 10
+        elide: Text.ElideRight
+        text: root.strip
+        color: Kirigami.Theme.disabledTextColor
+        font.features: { "tnum": 1 }
+        ToolTip.visible: stripHover.hovered && Player.signalPath !== ""; ToolTip.text: Player.signalPath
+        HoverHandler { id: stripHover }
+    }
+
+    RowLayout {
+        anchors.fill: parent; anchors.margins: 32; anchors.bottomMargin: 40
+        spacing: 32
+
+        ColumnLayout {
+            id: left
+            // the cover is centred in the column; every text starts at the cover's left edge and is as wide as the cover
+            readonly property real side: Math.max(120, Math.min(root.width * 0.42 - 16, root.height - 220))
+            readonly property real edge: Math.max(0, (root.width * 0.42 - side) / 2) // from the set width, not the laid out one: no layout loop
+            Layout.preferredWidth: root.width * 0.42; Layout.maximumWidth: root.width * 0.42
+            Layout.fillWidth: false; Layout.fillHeight: true
+            spacing: 6
+            Item { Layout.fillHeight: true }
+            Cover {
+                objectName: "cover"
+                Layout.alignment: Qt.AlignHCenter
+                Layout.preferredWidth: left.side; Layout.preferredHeight: left.side
+                art: Player.station.id ? "" : root.cur.coverArt || ""
+                url: root.live ? Subwave.coverUrl : ""
+                radius: Kirigami.Units.cornerRadius * 2
+                layer.enabled: true
+                layer.effect: MultiEffect { shadowEnabled: true; shadowBlur: 1.0; shadowOpacity: 0.5; shadowVerticalOffset: 8 }
+            }
+            Item { Layout.preferredHeight: 8 }
+            Plain {
+                Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.preferredWidth: left.side; Layout.maximumWidth: left.side
+                elide: Text.ElideRight; horizontalAlignment: Text.AlignLeft
+                text: root.live && root.sw.title ? root.sw.title : Player.station.id ? Player.station.name : root.cur.title || qsTr("Çalan bir şey yok")
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 1.6; font.weight: Font.Bold
+            }
+            Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; visible: !!Player.station.id; text: qsTr("● Canlı"); color: Kirigami.Theme.negativeTextColor }
+            Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight; visible: root.live; text: root.sw.artist || "" }
+            Plain {
+                Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight
+                visible: root.live; color: Kirigami.Theme.disabledTextColor; text: root.sw.album || ""
+            }
+            Plain {
+                Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight
+                visible: root.live && !!root.sw.dj; color: Kirigami.Theme.disabledTextColor
+                text: root.sw.show ? qsTr("DJ %1 · %2 · %n dinleyici", "", root.sw.listeners || 0).arg(root.sw.dj).arg(root.sw.show)
+                               : qsTr("DJ %1 · %n dinleyici", "", root.sw.listeners || 0).arg(root.sw.dj)
+            }
+            Plain { Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; visible: root.live && !Subwave.online; text: qsTr("Bağlantı yok"); color: Kirigami.Theme.negativeTextColor }
+            Link {
+                Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side
+                visible: !Player.station.id
+                text: root.cur.artist || ""
+                active: !!root.cur.artistId
+                onActivated: root.w.go("artist", {id: root.cur.artistId})
+            }
+            Link {
+                Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side
+                text: root.cur.album || ""
+                color: Kirigami.Theme.disabledTextColor
+                visible: !Player.station.id
+                active: !!root.cur.albumId
+                onActivated: root.w.go("album", {id: root.cur.albumId})
+            }
+            Plain { // why the DJ picked it
+                Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge; Layout.maximumWidth: left.side; elide: Text.ElideRight
+                visible: !Player.station.id && !!root.cur.djWhy
+                text: root.cur.djWhy || ""; color: Kirigami.Theme.disabledTextColor; font.italic: true
+            }
+            RowLayout {
+                Layout.alignment: Qt.AlignLeft; Layout.leftMargin: left.edge
+                visible: !Player.station.id && !!root.cur.id
+                Heart { item: root.cur }
+                Stars { item: root.cur }
+                component Fb: ToolButton {
+                    required property int dir
+                    visible: Player.dj
+                    checkable: true
+                    checked: djData.dirOf(root.cur.id) === dir
+                    display: AbstractButton.IconOnly
+                    ToolTip.visible: hovered; ToolTip.text: text; ToolTip.delay: Kirigami.Units.toolTipDelay
+                    onClicked: djData.toggle(root.cur, dir)
+                }
+                Fb { objectName: "djMore"; dir: 1; icon.name: Util.icon("go-up"); text: qsTr("Bunun gibi daha çok") }
+                Fb { objectName: "djLess"; dir: -1; icon.name: Util.icon("go-down"); text: qsTr("Bunu daha az çal") }
+            }
+            Item { Layout.fillHeight: true }
+        }
+
+        Frame {
+            Layout.fillWidth: true; Layout.fillHeight: true
+            // one surface under all three tabs
+            background: Rectangle { color: Qt.rgba(Kirigami.Theme.backgroundColor.r, Kirigami.Theme.backgroundColor.g, Kirigami.Theme.backgroundColor.b, 0.55); radius: Kirigami.Units.cornerRadius * 2 }
+            ColumnLayout {
+                anchors.fill: parent
+                spacing: 6
+                RowLayout {
+                    TabBar {
+                        id: liveTabs // SUB/WAVE: no queue and no similar songs, the DJ picks
+                        visible: root.live
+                        TabButton { text: qsTr("Sözler"); width: implicitWidth }
+                        TabButton { text: qsTr("İstek"); width: implicitWidth }
+                    }
+                    TabBar {
+                        id: tabs
+                        visible: !root.live
+                        TabButton { text: qsTr("Sıra  %n", "", Player.queueLength); width: implicitWidth }
+                        TabButton { text: qsTr("Benzer"); width: implicitWidth }
+                        TabButton { text: qsTr("Sözler"); width: implicitWidth }
+                    }
+                    Item { Layout.fillWidth: true }
+                    Button {
+                        visible: !root.live && tabs.currentIndex === 0 && Player.queueLength > 0
+                        flat: true
+                        icon.name: "document-save"
+                        text: qsTr("Kuyruğu playlist olarak kaydet")
+                        display: AbstractButton.IconOnly
+                        ToolTip.visible: hovered; ToolTip.text: text; ToolTip.delay: Kirigami.Units.toolTipDelay
+                        onClicked: root.w.askName(qsTr("Kuyruğu playlist olarak kaydet"), "", name =>
+                            Player.set(root, "createPlaylist", { name: name, songId: Player.queue.map(s => s.id) },
+                                       r => root.w.notify(r ? qsTr("Playlist oluşturuldu: %1").arg(name) : qsTr("İşlem başarısız"))))
+                    }
+                    Button {
+                        visible: !root.live && tabs.currentIndex === 0 && Player.index < Player.queueLength - 1
+                        enabled: Sync.canControl
+                        flat: true
+                        icon.name: Util.icon("edit-clear-all")
+                        text: qsTr("Sıradakileri temizle")
+                        display: AbstractButton.IconOnly
+                        ToolTip.visible: hovered; ToolTip.text: text; ToolTip.delay: Kirigami.Units.toolTipDelay
+
+                        onClicked: Player.clearUpcoming()
+                    }
+                }
+                StackLayout {
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    visible: root.live
+                    currentIndex: liveTabs.currentIndex
+                    Lyrics { live: true; active: root.live && liveTabs.currentIndex === 0 }
+                    RequestForm {}
+                }
+                StackLayout {
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    visible: !root.live
+                    currentIndex: tabs.currentIndex
+                    Item {
+                        ListView {
+                            id: queueList
+                            anchors.fill: parent
+                            clip: true; spacing: 2
+                            model: Player.queue
+                            delegate: SongRow { required property var modelData; song: modelData; inQueue: true }
+                            ScrollBar.vertical: Scroll {}
+                            currentIndex: Player.index
+                            highlightFollowsCurrentItem: false
+                            onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
+                            Component.onCompleted: positionViewAtIndex(currentIndex, ListView.Center)
+                        }
+                        Plain {
+                            anchors.centerIn: parent; visible: Player.queueLength === 0
+                            text: qsTr("Kuyruk boş.\nAlbümlerden ya da aramadan şarkı ekle; Radyo açıksa gerisi kendiliğinden gelir.")
+                            color: Kirigami.Theme.disabledTextColor; horizontalAlignment: Text.AlignHCenter
+                        }
+                    }
+                    // songs like the current one (getSimilarSongs), fetched when the tab is shown or the song changes
+                    SimilarSongs {
+                        id: similar
+                        songId: root.cur.id || ""
+                        shown: tabs.currentIndex === 1
+                        ListView {
+                            anchors.fill: parent
+                            clip: true; spacing: 2
+                            model: similar.songs
+                            delegate: SongRow { required property var modelData; song: modelData }
+                            ScrollBar.vertical: Scroll {}
+                        }
+                        Plain {
+                            anchors.centerIn: parent
+                            visible: !similar.loading && !similar.failed && similar.songs.length === 0
+                            text: qsTr("Benzer şarkı bulunamadı.")
+                            color: Kirigami.Theme.disabledTextColor
+                        }
+                        Loading { loading: similar.loading; failed: similar.failed; onRetry: { similar.forId = ""; similar.load() } }
+                    }
+                    Lyrics { song: root.cur; active: !root.live && tabs.currentIndex === 2 }
+                }
+            }
+        }
+    }
+}

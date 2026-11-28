@@ -1,0 +1,25 @@
+// Share link for a song or album (createShare), copied to the clipboard.
+import QtQuick
+import QtQuick.Controls
+import org.kde.kirigami as Kirigami
+import shared
+import Rela
+
+Button {
+    id: b
+    property string itemId
+    property string label: qsTr("Paylaş")
+    readonly property var w: ApplicationWindow.window
+    text: label
+    flat: true
+    icon.name: Util.icon("emblem-shared")
+    icon.width: Kirigami.Units.iconSizes.smallMedium; icon.height: icon.width
+    enabled: itemId !== ""
+    onClicked: Player.set(b, "createShare", { id: itemId }, r => {
+        const s = r && r.shares && r.shares.share
+        const url = s && s.length ? s[0].url : ""
+        if (!url) return w.notify(qsTr("İşlem başarısız"))
+        Player.copy(url)
+        w.notify(qsTr("Link kopyalandı"))
+    })
+}

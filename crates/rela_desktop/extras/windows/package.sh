@@ -1,7 +1,7 @@
 #!/bin/bash
 # The Windows zip: dist/re-la-windows-x64.zip, a folder with re-la.exe, the Qt and MinGW DLLs it loads and libmpv-2.dll.
 # Run from the MSYS2 UCRT64 shell at the repo root. Needs:
-#   pacman -S zip mingw-w64-ucrt-x86_64-{toolchain,lld,rust,cmake,nasm,qt6-base,qt6-declarative,qt6-svg,qt6-imageformats,qt6-tools}
+#   pacman -S zip mingw-w64-ucrt-x86_64-{toolchain,lld,rust,cmake,nasm,qt6-base,qt6-declarative,qt6-svg,qt6-imageformats,qt6-tools,kirigami,qqc2-desktop-style,breeze,breeze-icons}
 #   libmpv (https://github.com/shinchiro/mpv-winbuild-cmake/releases, mpv-dev-x86_64-*.7z) unpacked to $LIBMPV
 set -euo pipefail
 LIBMPV=${LIBMPV:-/c/libmpv}
@@ -24,13 +24,28 @@ rm -rf dist/re-la dist/re-la-windows-x64.zip
 mkdir -p "$out"
 cp target/release/re-la.exe "$LIBMPV/libmpv-2.dll" "$out/"
 cp -r LICENSE LICENSES README.md crates/rela_desktop/themes/nothing/fonts/OFL-*.txt "$out/"
-# the QML the themes import, and the style main.rs picks at run time (no QML file imports it); the SVG tray icon and
-# WebP/JPEG covers are plugins nothing links
+# the QML the themes import, and the style main.rs picks at run time (no QML file imports it; Kirigami too, so
+# the zip has them even if a build is made without the Kirigami theme); the SVG tray icon and WebP/JPEG covers are plugins
+# nothing links
 style=$(mktemp -d)
-echo 'import QtQuick.Controls.FluentWinUI3' > "$style/style.qml"
+printf 'import org.kde.desktop\nimport org.kde.kirigami\n' > "$style/style.qml"
 "$QTBIN/windeployqt" --release --no-translations --no-system-d3d-compiler --no-opengl-sw \
     --qmldir crates/rela_desktop/themes --qmldir crates/rela_desktop/qml --qmldir "$style" \
     --include-plugins qsvgicon,qsvg,qjpeg,qwebp "$out/re-la.exe"
+# KDE's Breeze, which main.rs sets on Windows: the widget style plugin (org.kde.desktop draws with it), Kirigami's
+# platform plugins (its colors and units follow the style through them), the icon theme (one .rcc that main.rs mounts)
+# and the color schemes. MSYS2's KDE packages keep their data in bin/data/, which KDE finds as data/ next to the exe. None is a Qt module, so windeployqt skips them. Before the ldd step below:
+# the style plugin loads several KF6 libraries that nothing else pulls in.
+plugins=$(qmake6 -query QT_INSTALL_PLUGINS)
+mkdir -p "$out/styles" "$out/kf6/kirigami/platform" "$out/data/icons/breeze"
+cp "$plugins"/kf6/kirigami/platform/*.dll "$out/kf6/kirigami/platform/"
+cp "$plugins"/styles/*breeze*.dll "$out/styles/" # breeze6.dll (the name is not checked here)
+cp /ucrt64/bin/data/icons/breeze/breeze-icons.rcc "$out/data/icons/breeze/"
+cp -r /ucrt64/bin/data/color-schemes "$out/data/"
+# KDE's Qt Quick style and what it imports: windeployqt finds Kirigami but not these (its scanner skips a style module)
+qml=$(qmake6 -query QT_INSTALL_QML)
+mkdir -p "$out/qml/org/kde"
+cp -r "$qml"/org/kde/desktop "$qml"/org/kde/qqc2desktopstyle "$qml"/org/kde/sonnet "$out/qml/org/kde/"
 # windeployqt copies Qt's own DLLs; the MinGW runtime and the other MSYS2 libraries they load come from ldd
 find "$out" -name '*.dll' -o -name '*.exe' | while read -r f; do ldd "$f"; done \
     | awk '$3 ~ /^\/ucrt64\// {print $3}' | sort -u | while read -r d; do cp -n "$d" "$out/"; done

@@ -37,6 +37,10 @@ pub mod ffi {
         include!(<QtGui/QGuiApplication>);
         include!(<QtGui/QStyleHints>);
         include!(<QtGui/QFontDatabase>);
+        include!(<QtGui/QIcon>);
+        include!(<QtCore/QResource>);
+        include!(<QtWidgets/QApplication>);
+        include!(<QtWidgets/QStyle>);
         type QCoreApplication;
         #[Self = "QCoreApplication"]
         fn quit();
@@ -51,6 +55,20 @@ pub mod ffi {
         #[Self = "QGuiApplication"]
         #[cxx_name = "setQuitOnLastWindowClosed"]
         fn set_quit_on_last_window_closed(quit: bool);
+        #[Self = "QIcon"]
+        #[cxx_name = "setThemeName"]
+        fn set_icon_theme_name(name: &QString);
+        /// The Qt Widgets style by name (null if there is none): what KDE's org.kde.desktop draws its controls with.
+        #[Self = "QApplication"]
+        #[cxx_name = "setStyle"]
+        fn set_style(name: &QString) -> *mut QStyle;
+        #[Self = "QIcon"]
+        #[cxx_name = "hasThemeIcon"]
+        fn has_theme_icon(name: &QString) -> bool;
+        /// Mounts a binary .rcc file in the ":" tree at map_root.
+        #[Self = "QResource"]
+        #[cxx_name = "registerResource"]
+        fn register_resource(rcc: &QString, map_root: &QString) -> bool;
         #[cxx_name = "installEventFilter"]
         unsafe fn install_event_filter(self: Pin<&mut QCoreApplication>, filter: *mut QObject);
         include!(<QtQuick/QQuickWindow>);
@@ -87,6 +105,10 @@ pub mod ffi {
         type QStyleHints;
         type QGuiApplication;
         type QFontDatabase;
+        type QIcon;
+        type QResource;
+        type QApplication;
+        type QStyle;
         type QQuickWindow;
         type QQuickItem;
         #[namespace = "QEvent"]

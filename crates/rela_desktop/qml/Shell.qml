@@ -14,19 +14,33 @@ QtObject {
 
     function load() {
         const url = App.load(Player.theme)
-        const c = Qt.createComponent(url)
-        const w = c.status === Component.Ready ? c.createObject(null) : null
+        let w = make(url)
         if (!w) {
-            console.warn(c.errorString())
-            Player.setStatus(qsTr("Tema yüklenemedi: %1").arg(url))
-            if (!win)
-                Qt.exit(1)
-            return
+            Player.setStatus(qsTr("Tema yüklenemedi: %1 (%2)").arg(url).arg(why))
+            // a missing module (Kirigami not installed) must not end the app: Default needs only Qt. The saved choice stays.
+            if (!win && Player.theme !== "default")
+                w = make(App.load("default"))
+            if (!w) {
+                if (!win)
+                    Qt.exit(1)
+                return
+            }
         }
         const old = win
         win = w
         if (old)
             old.destroy() // the new window is up first
+    }
+
+    property string why // make()'s last failure: the status says it too
+    function make(url) {
+        const c = Qt.createComponent(url)
+        const w = c.status === Component.Ready ? c.createObject(null) : null
+        if (!w) { // a fixed start (the zip's smoke test looks for it), then why: errorString can be empty when createObject fails
+            why = c.errorString().trim() || qsTr("Pencere oluşturulamadı")
+            console.warn("Theme failed to load: " + url + ": " + why)
+        }
+        return w
     }
 
     function show() {

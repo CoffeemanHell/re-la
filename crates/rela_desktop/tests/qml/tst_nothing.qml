@@ -643,7 +643,8 @@ Item {
             mouseClick(F.text(p, trUp("Geri al"))) // a real click: the popup sits outside the bar
             compare(Player.called("undoSkip").length, 1)
             verify(named(m.footer, "status").visible) // the status line no longer hides behind the notice
-            compare(m.ToolTip.toolTip.contentItem.textFormat, Text.PlainText) // song names in tips: never markup
+            const tc2 = m.ToolTip.toolTip.contentItem // KDE style: the Label is its first child
+            compare((tc2.textFormat !== undefined ? tc2 : tc2.children[0]).textFormat, Text.PlainText) // song names in tips: never markup
         }
         function test_dj_why_in_queue() {
             const r = make(songRow, { inQueue: true, song: { id: "s1", title: "Song", artist: "A", djWhy: "Sürpriz" } })
@@ -803,7 +804,7 @@ Item {
             compare(m.count, 18)
             const fav = mi(m, "FAV.")
             verify(fav.checked)
-            mouseClick(fav)
+            fav.toggle(); fav.triggered() // not a click: the 18 items may not fit the test window (Windows, KDE style) and the menu scrolls
             compare(Player.called("setOption").length, 1)
             verify(Player.options.columns.split(",").indexOf("fav") < 0 && Player.options.columns.indexOf("artist") >= 0)
             const r = createTemporaryObject(trackRow, host, { width: 1200, song: { id: "s1", title: "T", size: 1048576, path: "a/b.flac" } })

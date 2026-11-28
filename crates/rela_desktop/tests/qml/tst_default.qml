@@ -737,13 +737,10 @@ Item {
             compare(make(playlistPage, { args: { id: "p1" } }).shuffled([1, 2, 3]), [3, 2, 1])
         }
         // what Windows' icon engine has no name for goes in as one character of its icon font
-        function test_icon_names() {
-            const windows = Qt.platform.os === "windows"
-            for (const n in Util.glyphs) {
-                compare(Util.glyphs[n].length, 1, n)
-                compare(Util.icon(n), windows ? Util.glyphs[n] : n)
-            }
-            compare(Util.icon("go-home"), "go-home")
+        function test_icon_names() { // plain theme names on every system: Windows bundles Breeze icons
+            compare(Util.glyphs, undefined)
+            for (const n of ["audio-headphones", "radio", "view-media-artist", "go-home"])
+                compare(Util.icon(n), n)
         }
         function test_download_name_comes_from_the_core() {
             compare(Util.fileName({ name: "Mix" }, "playlist"), "file")
@@ -899,7 +896,8 @@ Item {
             mouseClick(F.text(p, "Geri al")) // a real click: KDE's ToolBar gives none to what sits outside it
             compare(Player.called("undoSkip").length, 1)
             verify(named(m.footer, "status").visible) // the status line no longer hides behind the notice
-            compare(m.ToolTip.toolTip.contentItem.textFormat, Text.PlainText) // song names in tips: never markup
+            const tc2 = m.ToolTip.toolTip.contentItem // KDE style: the Label is its first child
+            compare((tc2.textFormat !== undefined ? tc2 : tc2.children[0]).textFormat, Text.PlainText) // song names in tips: never markup
         }
         function test_dj_knob_table() {
             const k = DjKnobs.knobs.filter(e => e.key === "djMemoryDays")[0]
@@ -1093,7 +1091,7 @@ Item {
             compare(m.count, 18)
             const fav = mi(m, "Fav.")
             verify(fav.checked)
-            mouseClick(fav)
+            fav.toggle(); fav.triggered() // not a click: the 18 items may not fit the test window (Windows, KDE style) and the menu scrolls
             compare(Player.called("setOption").length, 1)
             verify(Player.options.columns.split(",").indexOf("fav") < 0 && Player.options.columns.indexOf("artist") >= 0)
             const r = createTemporaryObject(trackRow, host, { width: 1200, song: { id: "s1", title: "T", size: 1048576, path: "a/b.flac" } })

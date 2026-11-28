@@ -1,0 +1,86 @@
+// One song in a compact list (queue, similar, popular, search). Hover: heart and ⋮; in the queue also up / down / remove.
+// Right click or ⋮ opens the song menu. list: the songs this row belongs to: double click plays the list from this row.
+import QtQuick
+import org.kde.kirigami as Kirigami
+import QtQuick.Controls
+import QtQuick.Layouts
+import Rela
+
+Item {
+    id: row
+    required property var song
+    required property int index
+    property bool inQueue: false
+    property var list: null
+    property int number: index + 1
+    readonly property var w: ApplicationWindow.window
+    readonly property bool isCurrent: inQueue && index === Player.index
+    readonly property bool played: inQueue && index < Player.index
+    width: ListView.view ? ListView.view.width - ListView.view.rightMargin : parent ? parent.width : 0
+    height: 52
+    HoverHandler { id: hov }
+    activeFocusOnTab: true // keyboard: Tab to the row, Menu (or Shift+F10) opens the song menu, Enter plays, Ctrl+Up/Down moves a queue row
+    Keys.onMenuPressed: openMenu()
+    Keys.onUpPressed: e => { e.accepted = inQueue && e.modifiers & Qt.ControlModifier; if (e.accepted && Sync.canControl && index > 0) Player.move(index, index - 1) } // Ctrl+Up/Down: reorder the queue
+    Keys.onDownPressed: e => { e.accepted = inQueue && e.modifiers & Qt.ControlModifier; if (e.accepted && Sync.canControl && index < Player.queueLength - 1) Player.move(index, index + 1) }
+    Keys.onPressed: e => { if (e.key === Qt.Key_F10 && e.modifiers & Qt.ShiftModifier) { openMenu(); e.accepted = true } }
+    Keys.onReturnPressed: if (Sync.canControl) row.inQueue ? Player.jump(row.index) : row.list ? Player.play(row.list, row.index) : Player.add([row.song], 0)
+    function openMenu() { w.menu("song", song, { queueIndex: inQueue ? index : -1 }) }
+    TapHandler {
+        enabled: Sync.canControl
+        onDoubleTapped: row.inQueue ? Player.jump(row.index) : row.list ? Player.play(row.list, row.index) : Player.add([row.song], 0)
+    }
+    TapHandler { acceptedButtons: Qt.RightButton; onTapped: row.openMenu() }
+    Rectangle {
+        anchors.fill: parent; radius: Kirigami.Units.cornerRadius
+        color: row.isCurrent ? Qt.rgba(Kirigami.Theme.highlightColor.r, Kirigami.Theme.highlightColor.g, Kirigami.Theme.highlightColor.b, 0.22)
+             : hov.hovered || row.activeFocus ? Kirigami.Theme.alternateBackgroundColor : "transparent"
+    }
+    RowLayout {
+        anchors.fill: parent; anchors.leftMargin: Kirigami.Units.largeSpacing; anchors.rightMargin: Kirigami.Units.largeSpacing
+        spacing: Kirigami.Units.largeSpacing + Kirigami.Units.smallSpacing
+        Item {
+            Layout.preferredWidth: 24; Layout.fillHeight: true
+            Plain { anchors.centerIn: parent; visible: !row.isCurrent; text: row.number; color: Kirigami.Theme.disabledTextColor }
+            Bars { anchors.centerIn: parent; visible: row.isCurrent; active: Player.playing }
+        }
+        Cover { Layout.preferredWidth: 38; Layout.preferredHeight: 38; art: row.song.coverArt || ""; radius: Kirigami.Units.cornerRadius }
+        ColumnLayout {
+            Layout.fillWidth: true
+            spacing: 1
+            Plain {
+                Layout.fillWidth: true; elide: Text.ElideRight
+                text: row.song.title || ""
+                color: row.played ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor
+                font.weight: row.isCurrent ? Font.Bold : Font.Medium // not the highlight color: the row is already tinted with it
+            }
+            Plain {
+                Layout.fillWidth: true; elide: Text.ElideRight
+                // a DJ pick in the queue says why it came; other rows show the album when there is room
+                text: (row.song.artist || "") + (row.inQueue && row.song.djWhy ? "  ·  " + row.song.djWhy
+                                                 : row.width > 640 && row.song.album ? "  ·  " + row.song.album : "")
+                color: Kirigami.Theme.disabledTextColor
+                font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.9
+            }
+        }
+        Plain { text: row.w ? row.w.tag(row.song) : ""; color: Kirigami.Theme.disabledTextColor; font.pointSize: Kirigami.Theme.defaultFont.pointSize * 0.8; visible: !hov.hovered }
+        Plain { text: row.w ? row.w.fmt(row.song.duration) : ""; color: Kirigami.Theme.disabledTextColor; visible: !hov.hovered; Layout.preferredWidth: 40; horizontalAlignment: Text.AlignRight }
+        Row {
+            visible: hov.hovered
+            component Act: ToolButton {
+                property string tip
+                text: tip
+                display: AbstractButton.IconOnly
+                implicitWidth: 32; implicitHeight: 32
+                ToolTip.visible: hovered; ToolTip.text: tip; ToolTip.delay: Kirigami.Units.toolTipDelay
+            }
+            Heart { item: row.song }
+
+            Act { visible: row.inQueue; enabled: Sync.canControl && row.index > 0; icon.name: "go-up"; tip: qsTr("Yukarı"); onClicked: Player.move(row.index, row.index - 1) }
+            Act { visible: row.inQueue; enabled: Sync.canControl && row.index < Player.queueLength - 1; icon.name: "go-down"; tip: qsTr("Aşağı"); onClicked: Player.move(row.index, row.index + 1) }
+            Act { visible: row.inQueue; enabled: Sync.canControl; icon.name: "list-remove"; tip: qsTr("Kuyruktan çıkar"); onClicked: Player.remove(row.index) }
+            Act { text: "⋮"; tip: qsTr("Diğer"); display: AbstractButton.TextOnly; onClicked: row.openMenu() }
+
+        }
+    }
+}

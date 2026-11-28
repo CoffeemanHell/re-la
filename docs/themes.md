@@ -1,6 +1,8 @@
 # Themes
 
-Two themes are built in: **Default** (uses the system look: Breeze on KDE; on Windows the Fluent style, light or dark like the system, with its icon font) and **Nothing** (black and white, dot-matrix font, red accent).
+Three themes are built in: **Kirigami** (the one a new install starts with: KDE's Kirigami on the Breeze style, with a sidebar on the left; the same on Linux and Windows), **Default** (the system's Qt Quick Controls look with the pages in a top bar) and **Nothing** (black and white, dot-matrix font, red accent).
+
+On Windows every theme draws with KDE's Breeze: the app sets the `org.kde.desktop` style, the Breeze widget style and the Breeze icon theme, all shipped in the zip. On Linux the system's style and icons are used, as before. If a theme cannot load (for example Kirigami is not installed), re-la opens Default instead and says why at the bottom.
 
 ## Your own theme
 
@@ -26,7 +28,7 @@ For new colors and fonts, a `theme.json` is enough. Default takes its colors fro
 
 `fonts` paths are relative to the theme folder.
 
-To change the layout, copy a built-in theme folder (`crates/rela_desktop/themes/default/` or `crates/rela_desktop/themes/nothing/`). `Main.qml` draws the window and each page is its own file (`HomePage.qml`, `AlbumPage.qml`, `NowPlayingPage.qml`, ...).
+To change the layout, copy a built-in theme folder (`crates/rela_desktop/themes/kirigami/`, `crates/rela_desktop/themes/default/` or `crates/rela_desktop/themes/nothing/`). A theme may `import org.kde.kirigami`, as the Kirigami theme does. `Main.qml` draws the window and each page is its own file (`HomePage.qml`, `AlbumPage.qml`, `NowPlayingPage.qml`, ...).
 
 A theme only draws. What a page loads and does lives once, in `crates/rela_desktop/themes/shared/`, and is built into the app, so a copied theme finds it from any folder with `import shared`:
 
@@ -45,7 +47,7 @@ ArtistData {          // artist, topSongs, similar, load(), radio() ... come fro
 - `ItemActions`, `Favorite`, `Rating`: what a menu, a heart and the stars do.
 - `Shortcuts` (the keyboard shortcuts, the user's or the standard ones: `Shortcut { sequences: Shortcuts.sequences("keyNext") }`) and `KeyCapture` (takes new keys for one).
 - `Columns` (the track table's columns) and `Util` (`shuffled`, `fileName`, `icon`).
-- Write icons as `icon.name: Util.icon("radio")`. On Linux the name comes from the system's icon theme. Windows has an icon font instead: a name that neither Qt nor `Util.icon` knows shows nothing there.
+- Write icons as `icon.name: Util.icon("radio")` (it gives the name back as it is). On Linux the name comes from the system's icon theme, on Windows from the Breeze icons in the zip.
 
 A new feature goes into `shared/` first; each theme then adds only how it looks.
 
@@ -69,7 +71,7 @@ The app is the `Rela` module: `import Rela` gives the singletons `Player`, `Sync
   - `App.themeNames`: the theme folders. `App.themeTitles[folder]` is the `name` from that theme's `theme.json`, shown in the settings.
   - `App.buildDate`: when the app was built, as text (`12.11.2026 14:05`, UTC). `App.trayAvailable`: the desktop has a tray.
 - The window (`ApplicationWindow.window`): `go`, `back`, `notify`, `confirm`, `menu(type, item, options)`, `info(songId)`, `download(item, type)`, `openSettings(category)`.
-- Text from outside (song, artist and user names, ...): set `textFormat: Text.PlainText`, as `Plain.qml` (Default) and `Mono.qml` (Nothing) do. A bare `Text` or `Label` reads a tag in a name as HTML, and an `<img>` there fetches from anywhere.
+- Text from outside (song, artist and user names, ...): set `textFormat: Text.PlainText`, as `Plain.qml` (Default, Kirigami) and `Mono.qml` (Nothing) do. A bare `Text` or `Label` reads a tag in a name as HTML, and an `<img>` there fetches from anywhere.
 - Cover art: `Image { source: "image://cover/" + song.coverArt }`. The app downloads it; themes never see the Navidrome token.
 
 **A theme written for an older re-la** (with `player.`, `theme.`, ... and no `import Rela`) no longer loads: those lowercase names were removed. To update it, add `import Rela` to each file and write `Player.` for `player.`, `Sync.` for `sync.`, `Subwave.` for `subwave.`, and `App.theme.` for `theme.` (likewise `App.themeNames`, `App.themeTitles`, `App.trayAvailable`, `App.buildDate`). Until then re-la opens the default theme instead and says why at the bottom.

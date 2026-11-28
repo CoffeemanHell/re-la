@@ -54,6 +54,7 @@ jobs:
         run: >
           dnf install -y --setopt=install_weak_deps=False git gcc-c++ lld rpm-build cargo rust clippy
           qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtbase-gui qt6-linguist mpv-devel dejavu-sans-fonts
+          kf6-kirigami kf6-qqc2-desktop-style
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -76,7 +77,7 @@ jobs:
           export XDG_CONFIG_HOME=$(mktemp -d)
           run() { /usr/lib64/qt6/bin/qmltestrunner -input crates/rela_desktop/tests/qml -import crates/rela_desktop/tests/qml -import crates/rela_desktop/themes; }
           run
-          QT_QUICK_CONTROLS_STYLE=FluentWinUI3 run # the Windows style: its palette differs from the system's
+          QT_QUICK_CONTROLS_STYLE=org.kde.desktop run # the style the app uses on Windows (and KDE)
       - name: Package the rpm
         env:
           TAG: ${{ needs.version.outputs.tag }}
@@ -127,6 +128,10 @@ jobs:
             mingw-w64-ucrt-x86_64-qt6-svg
             mingw-w64-ucrt-x86_64-qt6-imageformats
             mingw-w64-ucrt-x86_64-qt6-tools
+            mingw-w64-ucrt-x86_64-kirigami
+            mingw-w64-ucrt-x86_64-qqc2-desktop-style
+            mingw-w64-ucrt-x86_64-breeze
+            mingw-w64-ucrt-x86_64-breeze-icons
       - name: Put MSYS2's cargo on PATH # for rust-cache, which runs outside the MSYS2 shell
         run: cygpath -w /ucrt64/bin >> "$GITHUB_PATH"
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
@@ -149,7 +154,7 @@ jobs:
         run: |
           export APPDATA=$(mktemp -d) QT_FORCE_STDERR_LOGGING=1 # Qt writes to the debugger otherwise
           # the style the app sets on Windows (left alone, Qt picks the native "Windows" style on a server)
-          export QT_QUICK_CONTROLS_STYLE=FluentWinUI3
+          export QT_QUICK_CONTROLS_STYLE=org.kde.desktop
           "$(qmake6 -query QT_INSTALL_BINS)/qmltestrunner" -input crates/rela_desktop/tests/qml \
             -import crates/rela_desktop/tests/qml -import crates/rela_desktop/themes
       # The zip on its own, with no MSYS2 on PATH: a missing DLL or a QML error ends the app; running 8 s passes.
@@ -160,11 +165,17 @@ jobs:
           $env:PATH = "C:\Windows\system32;C:\Windows"
           $env:RELA_AO = "null"; $env:APPDATA = "C:\smoke\appdata"; $env:LOCALAPPDATA = "C:\smoke\local"
           $env:QT_FORCE_STDERR_LOGGING = "1"
+          $env:QT_DEBUG_PLUGINS = "1" # a plugin that cannot load says so: the Breeze style and Kirigami's platform plugin are checked below
           $p = Start-Process C:/smoke/re-la/re-la.exe -ArgumentList '--demo' -PassThru -RedirectStandardError C:/smoke/err.txt
           Start-Sleep 8
           if ($p.HasExited) { Get-Content C:/smoke/err.txt; throw "re-la.exe ended by itself (exit $($p.ExitCode))" }
           Stop-Process $p
           Get-Content C:/smoke/err.txt
+          # a theme that fails falls back to Default and keeps running: catch a missing KDE module here
+          if (Select-String -Path C:/smoke/err.txt -Pattern 'is not installed|plugin .* not found|Theme failed to load') { throw "a theme cannot load from the zip: a QML module or plugin is missing (Shell.qml prints why)" }
+          if (!(Test-Path C:/smoke/re-la/styles/*breeze*.dll) -or !(Test-Path C:/smoke/re-la/kf6/kirigami/platform/*.dll)) { throw "Breeze or Kirigami's platform plugin is missing from the zip" }
+          if (Select-String -Path C:/smoke/err.txt -Pattern 'Cannot load library.*(breeze|kirigami)') { throw "a KDE plugin in the zip cannot load (a DLL it needs is missing)" }
+          if (Select-String -Path C:/smoke/err.txt -Pattern 'Breeze icons not found') { throw "the Breeze icon .rcc is missing from the zip or cannot be mounted" }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: re-la-windows-x64

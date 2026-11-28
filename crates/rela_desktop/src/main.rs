@@ -27,6 +27,23 @@ const M_ARENA_MAX: c_int = -8; // malloc.h
 
 /// Sets a variable where Qt reads it. On Windows Qt reads the C runtime's copy of the environment, made at start, which
 /// std::env::set_var (SetEnvironmentVariableW) does not change; _putenv_s changes both.
+/// Breeze icons on Windows: MSYS2 ships them as one .rcc (data/icons/breeze/ next to the exe), not as a folder.
+/// Mounted where Qt looks for icon themes (":/icons/<name>"); the file's own root may or may not carry that prefix.
+#[cfg(windows)]
+fn breeze_icons() {
+    let theme = QString::from("breeze");
+    let Some(rcc) = std::env::current_exe().ok().and_then(|e| Some(e.parent()?.join("data/icons/breeze/breeze-icons.rcc"))) else { return };
+    let rcc = QString::from(rcc.to_string_lossy().as_ref());
+    qt::QIcon::set_icon_theme_name(&theme);
+    let probe = QString::from("media-playback-start");
+    for root in ["/icons/breeze", "/"] {
+        if qt::QResource::register_resource(&rcc, &QString::from(root)) && qt::QIcon::has_theme_icon(&probe) {
+            return;
+        }
+    }
+    eprintln!("Breeze icons not found: {rcc}");
+}
+
 #[cfg(windows)]
 fn set_env_for_qt(name: &std::ffi::CStr, value: &std::ffi::CStr) {
     // SAFETY: two nul-terminated strings; the C runtime copies them. Called before Qt starts, from the main thread
@@ -148,15 +165,26 @@ fn main() {
     move_from_nsync(); // before anything reads the settings, the cache or the themes
 
     #[cfg(windows)]
-    if std::env::var_os("QT_QUICK_CONTROLS_STYLE").is_none() {
-        // the Default theme's look on Windows: one style on 10 and 11, light or dark like the system
-        set_env_for_qt(c"QT_QUICK_CONTROLS_STYLE", c"FluentWinUI3");
+    {
+        // KDE's Breeze on Windows too, for every theme: the Kirigami theme needs it, and all look as they do on KDE
+        if std::env::var_os("QT_QUICK_CONTROLS_STYLE").is_none() {
+            set_env_for_qt(c"QT_QUICK_CONTROLS_STYLE", c"org.kde.desktop");
+        }
     }
     // Qt Widgets' application, not QGuiApplication: KDE's org.kde.desktop style and the tray's fallback need it
     let mut app = QApplication::new();
     qt::QCoreApplication::set_organization_name(&QString::from("re-la"));
     qt::QCoreApplication::set_application_name(&QString::from("re-la"));
     cxx_qt_lib::QGuiApplication::set_desktop_file_name(&QString::from("re-la"));
+    #[cfg(windows)]
+    {
+        // the widget style org.kde.desktop draws with. Not QT_STYLE_OVERRIDE: Qt Quick Controls reads that too and
+        // then looks for a QML style named "Breeze", which does not exist
+        if std::env::var_os("QT_STYLE_OVERRIDE").is_none() {
+            qt::QApplication::set_style(&QString::from("Breeze"));
+        }
+        breeze_icons();
+    }
     qt::QGuiApplication::set_quit_on_last_window_closed(false); // closing the window can leave it playing in the tray
     // SAFETY: a nul-terminated literal; the main thread, before any mpv deck exists
     unsafe { setlocale(LC_NUMERIC, c"C".as_ptr()) }; // libmpv needs it; Qt set the system locale (tr_TR: decimal comma)
@@ -219,7 +247,7 @@ mod tests {
         // SAFETY: a variable no other test reads; this test binary has no thread reading the environment meanwhile
         unsafe { std::env::set_var("RELA_TEST_STD", "x") };
         assert_eq!(crt("RELA_TEST_STD"), None, "set_var does not reach the C runtime's copy (why set_env_for_qt exists)");
-        super::set_env_for_qt(c"RELA_TEST_CRT", c"FluentWinUI3");
-        assert_eq!(crt("RELA_TEST_CRT").as_deref(), Some("FluentWinUI3"));
+        super::set_env_for_qt(c"RELA_TEST_CRT", c"org.kde.desktop");
+        assert_eq!(crt("RELA_TEST_CRT").as_deref(), Some("org.kde.desktop"));
     }
 }

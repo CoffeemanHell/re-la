@@ -41,6 +41,9 @@ QtObject {
 
     function reset() { calls = []; replies = {}; queue = []; index = -1; current = {}; station = {}; skipUndo = {}; playing = false; hold = false; held = []; shuffle = false; repeat = 0; position = 0; duration = 0; bitrate = 0; streamInfo = ""; dj = false; connecting = false; loginFailed = false; online = true; offline = false; cacheBytes = 0; audioDevices = []; signedIn = true; options = { autoContinue: true, scrobble: true, nowPlaying: true } }
     function rec(c) { calls = calls.concat([c]) }
+    signal raiseRequested()
+    function setStatus(t) { status = t; rec(["setStatus", t]) }
+    function trayHint() { return false }
     function called(name, method) { return calls.filter(c => c[0] === name && (method === undefined || c[1] === method)) }
     function answer(owner, method, done) {
         const r = replies[method]

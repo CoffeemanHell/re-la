@@ -2566,3 +2566,12 @@ fn weekly_full_drops_gone_songs_only_when_complete() {
     assert!(b.index.get("gone").is_none() && b.index.get("L899").is_some());
     assert_eq!(b.index.full_day, day);
 }
+
+#[test]
+fn unset_theme_is_kirigami() {
+    assert_eq!(empty("theme-unset").c.theme, "kirigami");
+    let dir = tmp("theme-saved");
+    let settings: Arc<dyn Settings> = Arc::new(JsonSettings::open(dir.join("settings.json")));
+    settings.set("theme", json!("nothing"));
+    assert_eq!(T::with("theme-saved", dir, settings).c.theme, "nothing");
+}
