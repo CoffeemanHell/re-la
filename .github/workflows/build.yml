@@ -175,6 +175,7 @@ jobs:
           if (Select-String -Path C:/smoke/err.txt -Pattern 'is not installed|Tema yüklenemedi') { throw "a QML module is missing from the zip" }
           if (!(Test-Path C:/smoke/re-la/styles/*breeze*.dll) -or !(Test-Path C:/smoke/re-la/kf6/kirigami/platform/*.dll)) { throw "Breeze or Kirigami's platform plugin is missing from the zip" }
           if (Select-String -Path C:/smoke/err.txt -Pattern 'Cannot load library.*(breeze|kirigami)') { throw "a KDE plugin in the zip cannot load (a DLL it needs is missing)" }
+          if (Select-String -Path C:/smoke/err.txt -Pattern 'Breeze icons not found') { throw "the Breeze icon .rcc is missing from the zip or cannot be mounted" }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: re-la-windows-x64

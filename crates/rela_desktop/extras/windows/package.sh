@@ -33,15 +33,15 @@ printf 'import org.kde.desktop\nimport org.kde.kirigami\n' > "$style/style.qml"
     --qmldir crates/rela_desktop/themes --qmldir crates/rela_desktop/qml --qmldir "$style" \
     --include-plugins qsvgicon,qsvg,qjpeg,qwebp "$out/re-la.exe"
 # KDE's Breeze, which main.rs sets on Windows: the widget style plugin (org.kde.desktop draws with it), Kirigami's
-# platform plugins (its colors and units follow the style through them), the icon theme (Qt's data path is the exe's
-# folder: icons/) and the color schemes. None is a Qt module, so windeployqt skips them. Before the ldd step below:
+# platform plugins (its colors and units follow the style through them), the icon theme (one .rcc that main.rs mounts)
+# and the color schemes. MSYS2's KDE packages keep their data in bin/data/, which KDE finds as data/ next to the exe. None is a Qt module, so windeployqt skips them. Before the ldd step below:
 # the style plugin loads several KF6 libraries that nothing else pulls in.
 plugins=$(qmake6 -query QT_INSTALL_PLUGINS)
-mkdir -p "$out/styles" "$out/kf6/kirigami/platform" "$out/icons" "$out/color-schemes"
+mkdir -p "$out/styles" "$out/kf6/kirigami/platform" "$out/data/icons/breeze"
 cp "$plugins"/kf6/kirigami/platform/*.dll "$out/kf6/kirigami/platform/"
 cp "$plugins"/styles/*breeze*.dll "$out/styles/" # breeze6.dll (the name is not checked here)
-cp -r /ucrt64/share/icons/breeze /ucrt64/share/icons/breeze-dark "$out/icons/"
-cp /ucrt64/share/color-schemes/Breeze*.colors "$out/color-schemes/"
+cp /ucrt64/bin/data/icons/breeze/breeze-icons.rcc "$out/data/icons/breeze/"
+cp -r /ucrt64/bin/data/color-schemes "$out/data/"
 # windeployqt copies Qt's own DLLs; the MinGW runtime and the other MSYS2 libraries they load come from ldd
 find "$out" -name '*.dll' -o -name '*.exe' | while read -r f; do ldd "$f"; done \
     | awk '$3 ~ /^\/ucrt64\// {print $3}' | sort -u | while read -r d; do cp -n "$d" "$out/"; done
