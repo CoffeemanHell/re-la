@@ -75,7 +75,7 @@ Dialog {
                                     visible: !!userRow.modelData.station || !!userRow.modelData.title
                                     text: userRow.modelData.station
                                           ? userRow.radioLine([userRow.modelData.title, userRow.modelData.artist].filter(x => x))
-                                          : (userRow.modelData.playing ? "▶  " : "❚❚  ") + qsTr("%1  ·  %2").arg(userRow.modelData.title || "").arg(userRow.modelData.artist || "")
+                                          : (userRow.modelData.playing ? qsTr("▶  %1  ·  %2") : qsTr("❚❚  %1  ·  %2")).arg(userRow.modelData.title || "").arg(userRow.modelData.artist || "")
                                     elide: Text.ElideRight; wrapMode: Text.NoWrap
                                 }
                             }

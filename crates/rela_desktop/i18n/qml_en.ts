@@ -4100,8 +4100,17 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/kirigami/TogetherDialog.qml" line="78"/>
+        <source>▶  %1  ·  %2</source>
+        <translation>▶  %1  ·  %2</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="78"/>
+        <source>❚❚  %1  ·  %2</source>
+        <translation>❚❚  %1  ·  %2</translation>
+    </message>
+    <message>
         <source>%1  ·  %2</source>
-        <translation>%1  ·  %2</translation>
+        <translation type="vanished">%1  ·  %2</translation>
     </message>
 </context>
 <context>
