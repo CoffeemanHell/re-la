@@ -29,9 +29,11 @@ Item {
             s.load(); compare(App.loaded, ["default", "default"])
             Player.theme = "nothing"; s.load()
             verify(s.win !== null && s.win !== first)
+            Player.theme = "kirigami"; s.load()
+            verify(s.win !== null && s.win.globalDrawer !== undefined) // the Kirigami window
             Player.theme = "default"; s.load()
             verify(s.win !== null)
-            compare(App.loaded, ["default", "default", "nothing", "default"])
+            compare(App.loaded, ["default", "default", "nothing", "kirigami", "default"])
             s.win.destroy()
         }
     }
