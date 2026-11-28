@@ -2282,6 +2282,22 @@ fn skip_switch_off_drops_held_skips() {
 }
 
 #[test]
+fn search_switch_off_ends_the_search_now() {
+    let mut t = T::new("dj-search-off");
+    t.c.set_dj(true);
+    t.c.play(songs(4), 0);
+    for _ in 0..2 {
+        t.at(5.0);
+        t.c.next();
+    }
+    let now = t.c.clock_ms;
+    assert!(t.c.dj_brain().session.searching(now, &Knobs::default()));
+    t.c.set_option("djSearchOn", json!(false));
+    t.c.set_option("djSearchOn", json!(true));
+    assert!(!t.c.dj_brain().session.searching(now, &Knobs::default()));
+}
+
+#[test]
 fn reset_dj_settings_restores() {
     let mut t = T::new("dj-settings-reset");
     t.c.set_option("djArtistMax", json!(4));

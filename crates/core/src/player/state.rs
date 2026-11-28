@@ -1471,6 +1471,12 @@ impl PlayerCore {
                 self.held_skip.clear(); // a switched-off penalty: skips already held never count
                 self.set_skip_undo(Value::Null);
             }
+            "djSearchOn" if !value.as_bool().unwrap_or(true) => {
+                self.held_skip.iter_mut().for_each(|h| h.before.end_search()); // an undo must not bring it back
+                if let Some((_, b)) = self.brain.as_mut() {
+                    b.session.end_search();
+                }
+            }
             "offlineGb" => {
                 self.cache_next = 0.0;
                 if self.cache_cap() > 0 {
