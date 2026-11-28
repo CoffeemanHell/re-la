@@ -20,4 +20,21 @@ class DjKnobsTest {
     // a slider lands on both ends only when its range is whole steps
     @Test
     fun rangesAreWholeSteps() = djKnobs.forEach { assertTrue(it.key, (it.to - it.from) % it.step == 0 && it.from < it.to) }
+
+    // a stored value that is no preset (63 days) has no index: the page shows no preset as chosen
+    @Test
+    fun presetIndexFindsThePreset() {
+        val presets = listOf(14, 30, 60, 91, 182, 364)
+        assertEquals(2, presetIndex(presets, 60))
+        assertEquals(-1, presetIndex(presets, 63))
+    }
+
+    // a number box moves one step and stays in its range
+    @Test
+    fun nudgedStepsWithinTheRange() {
+        val k = djKnobs.first { it.key == "djSearchSec" } // 30..300 by 10
+        assertEquals(100, nudged(k, 90, 1))
+        assertEquals(300, nudged(k, 300, 1))
+        assertEquals(30, nudged(k, 30, -1))
+    }
 }

@@ -57,6 +57,22 @@ val djSwitches = listOf(
     DjSwitch("djRepeatOn", R.string.dj_repeat_days, R.string.dj_repeat_on_hint, Knob.Group.MEMORY),
 )
 
+/** The DJ's settings pages, listed on the DJ page: route key, the group it shows, its title and a short hint. */
+data class DjPage(val key: String, val group: Knob.Group, val title: Int, val hint: Int)
+
+val djPages = listOf(
+    DjPage("djPick", Knob.Group.PICK, R.string.dj_page_pick, R.string.dj_page_pick_hint),
+    DjPage("djSkips", Knob.Group.SKIPS, R.string.dj_page_skips, R.string.dj_page_skips_hint),
+    DjPage("djMemory", Knob.Group.MEMORY, R.string.dj_page_memory, R.string.dj_page_memory_hint),
+    DjPage("djFine", Knob.Group.FINE, R.string.dj_page_fine, R.string.dj_page_fine_hint),
+)
+
+/** The index of [v] among the presets, -1 when it is not one of them. */
+fun presetIndex(presets: List<Int>, v: Int): Int = presets.indexOf(v)
+
+/** [v] one step up (dir 1) or down (dir -1), kept in the knob's range. */
+fun nudged(k: Knob, v: Int, dir: Int): Int = (v + dir * k.step).coerceIn(k.from, k.to)
+
 /** A knob's value as the settings show it. */
 fun knobText(k: Knob, v: Int): String = when (k.unit) {
     Knob.Unit.PERCENT -> str(R.string.percent, v)
