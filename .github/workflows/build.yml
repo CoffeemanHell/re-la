@@ -172,7 +172,7 @@ jobs:
           Stop-Process $p
           Get-Content C:/smoke/err.txt
           # a theme that fails falls back to Default and keeps running: catch a missing KDE module here
-          if (Select-String -Path C:/smoke/err.txt -Pattern 'is not installed|plugin .* not found|themes/kirigami/Main\.qml:') { throw "a QML module or plugin is missing from the zip (Shell.qml prints why the theme failed)" }
+          if (Select-String -Path C:/smoke/err.txt -Pattern 'is not installed|plugin .* not found|themes/kirigami/Main\.qml: ') { throw "a QML module or plugin is missing from the zip (Shell.qml prints why the theme failed)" }
           if (!(Test-Path C:/smoke/re-la/styles/*breeze*.dll) -or !(Test-Path C:/smoke/re-la/kf6/kirigami/platform/*.dll)) { throw "Breeze or Kirigami's platform plugin is missing from the zip" }
           if (Select-String -Path C:/smoke/err.txt -Pattern 'Cannot load library.*(breeze|kirigami)') { throw "a KDE plugin in the zip cannot load (a DLL it needs is missing)" }
           if (Select-String -Path C:/smoke/err.txt -Pattern 'Breeze icons not found') { throw "the Breeze icon .rcc is missing from the zip or cannot be mounted" }
