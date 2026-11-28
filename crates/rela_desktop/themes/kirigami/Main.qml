@@ -10,7 +10,6 @@ import QtCore
 import org.kde.kirigami as Kirigami
 import shared
 import Rela
-import "../default" as D
 
 Kirigami.ApplicationWindow {
     id: win
@@ -44,16 +43,12 @@ Kirigami.ApplicationWindow {
     // left of the window. Keep the content where it is (the bars span the window) and move only the pages.
     contentItem.anchors.leftMargin: 0
     pageStack.anchors.leftMargin: globalDrawer ? globalDrawer.width * globalDrawer.position : 0
-    // the page files this theme has; the rest still come from the Default theme
-    readonly property var ownPages: ["HomePage.qml", "AlbumsPage.qml", "ArtistsPage.qml", "GenresPage.qml", "PlaylistsPage.qml",
-                                     "AlbumPage.qml", "ArtistPage.qml", "GenrePage.qml", "PlaylistPage.qml", "TracksPage.qml",
-                                     "FavoritesPage.qml", "SearchPage.qml", "NowPlayingPage.qml", "RadioPage.qml"]
     property url lastPageUrl // the page file shown last (tests check it comes from this theme)
     Navigation {
         id: route
         loader: shown; searchField: q
         onLoad: (file, props) => {
-            const url = Qt.resolvedUrl((win.ownPages.indexOf(file) >= 0 ? "" : "../default/") + file)
+            const url = Qt.resolvedUrl(file)
             win.lastPageUrl = url
             const typing = q.activeFocus // the page stack gives a new page the focus: typing a search must go on
             if (win.pageStack.depth) win.pageStack.replace(url, props)
@@ -127,8 +122,8 @@ Kirigami.ApplicationWindow {
         saveDialog.selectedFile = saveDialog.currentFolder + "/" + Util.fileName(item, kind)
         saveDialog.open()
     }
-    D.ItemMenu { id: itemMenu; w: win }
-    D.InfoDialog { id: infoDialog }
+    ItemMenu { id: itemMenu; w: win }
+    InfoDialog { id: infoDialog }
     FileDialog {
         id: saveDialog
         property var item: null
@@ -191,8 +186,8 @@ Kirigami.ApplicationWindow {
     property alias togetherDialog: togetherDialog
     function openSettings(c) { settingsDialog.show(c) }
     function openTogether() { togetherDialog.show() }
-    D.SettingsDialog { id: settingsDialog; w: win }
-    D.TogetherDialog { id: togetherDialog; w: win }
+    SettingsDialog { id: settingsDialog; w: win }
+    TogetherDialog { id: togetherDialog; w: win }
 
     Component.onCompleted: {
         Util.plainTips(ToolTip.toolTip)

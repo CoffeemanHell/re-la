@@ -139,7 +139,8 @@ Item {
                                           "FavoritesPage.qml", "SearchPage.qml", "TrackRow.qml", "TrackHeader.qml", "TrackColumns.qml",
                                           "SongRow.qml", "Stars.qml", "Link.qml", "Heart.qml", "PageTitle.qml",
                                           "NowPlayingPage.qml", "Lyrics.qml", "RadioPage.qml", "RequestForm.qml", "Wave.qml", "Bars.qml",
-                                          "Hint.qml", "Share.qml"]
+                                          "Hint.qml", "Share.qml", "SettingsDialog.qml", "SwitchRow.qml", "TogetherDialog.qml",
+                                          "DjStateDialog.qml", "InfoDialog.qml", "ItemMenu.qml", "PlaylistMenu.qml"]
         function test_no_hex_colors() {
             for (const f of ["Main.qml", "Sidebar.qml", "PlayerBar.qml", "LoginPage.qml"].concat(converted))
                 verify(!/#[0-9a-fA-F]{3,8}\b/.test(read(f).replace(/\/\/.*$/gm, "")), f + " has a hex color")
@@ -149,8 +150,13 @@ Item {
                 const t = read(f)
                 verify(t.length > 0, f + " exists")
                 verify(t.indexOf("../default") < 0, f + " uses no Default file")
-                verify(/import org\.kde\.kirigami/.test(t), f + " uses Kirigami")
+                if (f !== "ItemMenu.qml" && f !== "PlaylistMenu.qml") // menus are QtQuick Controls menus, as in Kirigami apps
+                    verify(/import org\.kde\.kirigami/.test(t), f + " uses Kirigami")
             }
+        }
+        function test_no_default_files_loaded() {
+            for (const f of ["Main.qml", "Sidebar.qml", "PlayerBar.qml", "LoginPage.qml"].concat(converted))
+                verify(read(f).indexOf("../default") < 0, f + " loads a Default file")
         }
         function test_pages_load_from_this_theme() {
             const m = createTemporaryObject(mainWindow, null)
