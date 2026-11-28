@@ -61,7 +61,8 @@ Dialog {
                                 Layout.fillWidth: true; spacing: 2
                                 Plain {
                                     Layout.fillWidth: true; elide: Text.ElideRight
-                                    text: userRow.modelData.user + (userRow.mine ? qsTr("  →  seni dinliyor") : userRow.modelData.following ? "  →  " + userRow.modelData.following : "")
+                                    text: userRow.mine ? qsTr("%1  →  seni dinliyor").arg(userRow.modelData.user)
+                                        : userRow.modelData.following ? qsTr("%1  →  %2").arg(userRow.modelData.user).arg(userRow.modelData.following) : userRow.modelData.user
                                     font.weight: userRow.mine ? Font.DemiBold : Font.Normal
                                     color: userRow.mine ? Kirigami.Theme.highlightColor : Kirigami.Theme.textColor
                                 }
@@ -69,7 +70,7 @@ Dialog {
                                     visible: !!userRow.modelData.station || !!userRow.modelData.title
                                     text: userRow.modelData.station
                                           ? ["📻 " + userRow.modelData.station, userRow.modelData.title, userRow.modelData.artist].filter(x => x).join(" · ")
-                                          : (userRow.modelData.playing ? "▶  " : "❚❚  ") + (userRow.modelData.title || "") + "  ·  " + (userRow.modelData.artist || "")
+                                          : (userRow.modelData.playing ? "▶  " : "❚❚  ") + qsTr("%1  ·  %2").arg(userRow.modelData.title || "").arg(userRow.modelData.artist || "")
                                     elide: Text.ElideRight; wrapMode: Text.NoWrap
                                 }
                             }
