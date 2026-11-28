@@ -45,12 +45,14 @@ Kirigami.ApplicationWindow {
     contentItem.anchors.leftMargin: 0
     pageStack.anchors.leftMargin: globalDrawer ? globalDrawer.width * globalDrawer.position : 0
     // the page files this theme has; the rest still come from the Default theme
-    readonly property var ownPages: []
+    readonly property var ownPages: ["HomePage.qml", "AlbumsPage.qml", "ArtistsPage.qml", "GenresPage.qml", "PlaylistsPage.qml"]
+    property url lastPageUrl // the page file shown last (tests check it comes from this theme)
     Navigation {
         id: route
         loader: shown; searchField: q
         onLoad: (file, props) => {
             const url = Qt.resolvedUrl((win.ownPages.indexOf(file) >= 0 ? "" : "../default/") + file)
+            win.lastPageUrl = url
             const typing = q.activeFocus // the page stack gives a new page the focus: typing a search must go on
             if (win.pageStack.depth) win.pageStack.replace(url, props)
             else win.pageStack.push(url, props)
