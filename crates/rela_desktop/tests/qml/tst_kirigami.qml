@@ -137,7 +137,9 @@ Item {
                                           "AlbumCard.qml", "ArtistCard.qml", "Cover.qml", "Empty.qml", "Loading.qml",
                                           "AlbumPage.qml", "ArtistPage.qml", "GenrePage.qml", "PlaylistPage.qml", "TracksPage.qml",
                                           "FavoritesPage.qml", "SearchPage.qml", "TrackRow.qml", "TrackHeader.qml", "TrackColumns.qml",
-                                          "SongRow.qml", "Stars.qml", "Link.qml", "Heart.qml", "PageTitle.qml"]
+                                          "SongRow.qml", "Stars.qml", "Link.qml", "Heart.qml", "PageTitle.qml",
+                                          "NowPlayingPage.qml", "Lyrics.qml", "RadioPage.qml", "RequestForm.qml", "Wave.qml", "Bars.qml",
+                                          "Hint.qml", "Share.qml"]
         function test_no_hex_colors() {
             for (const f of ["Main.qml", "Sidebar.qml", "PlayerBar.qml", "LoginPage.qml"].concat(converted))
                 verify(!/#[0-9a-fA-F]{3,8}\b/.test(read(f).replace(/\/\/.*$/gm, "")), f + " has a hex color")
@@ -154,7 +156,8 @@ Item {
             const m = createTemporaryObject(mainWindow, null)
             tryCompare(m, "page", "home")
             for (const [p, a] of [["home"], ["albums"], ["artists"], ["genres"], ["playlists"], ["album", { id: "1" }], ["artist", { id: "1" }],
-                                  ["genre", { name: "Rap" }], ["playlist", { id: "1" }], ["tracks"], ["favorites"], ["search", { query: "x" }]]) {
+                                  ["genre", { name: "Rap" }], ["playlist", { id: "1" }], ["tracks"], ["favorites"], ["search", { query: "x" }],
+                                  ["nowplaying"], ["radio"]]) {
                 m.go(p, a)
                 const url = String(m.lastPageUrl)
                 verify(url.indexOf("/themes/kirigami/") >= 0, p + ": " + url)

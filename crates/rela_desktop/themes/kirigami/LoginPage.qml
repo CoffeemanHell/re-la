@@ -4,13 +4,12 @@ import QtQuick.Controls
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import Rela
-import "../default" as D
 
 ColumnLayout {
     width: Kirigami.Units.gridUnit * 22
     spacing: Kirigami.Units.largeSpacing
     Kirigami.Heading { text: "re-la"; level: 1 }
-    D.Plain { text: qsTr("Navidrome üzerinden birlikte, kayıpsız dinle."); color: Kirigami.Theme.disabledTextColor; Layout.bottomMargin: Kirigami.Units.largeSpacing }
+    Plain { text: qsTr("Navidrome üzerinden birlikte, kayıpsız dinle."); color: Kirigami.Theme.disabledTextColor; Layout.bottomMargin: Kirigami.Units.largeSpacing }
     Kirigami.FormLayout {
         Layout.fillWidth: true
         visible: !Player.signedIn
@@ -26,7 +25,7 @@ ColumnLayout {
         text: Player.signedIn ? qsTr("Vazgeç") : qsTr("Bağlan")
         onClicked: Player.signedIn ? Player.logout() : Player.login(url.text, user.text, pass.text)
     }
-    D.Plain {
+    Plain {
         text: Player.status
         color: Player.loginFailed ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.disabledTextColor
         wrapMode: Text.WordWrap; Layout.fillWidth: true; horizontalAlignment: Text.AlignHCenter

@@ -6,7 +6,6 @@ import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
 import shared
 import Rela
-import "../default" as D
 
 ToolBar {
     id: playerBar
@@ -32,7 +31,7 @@ ToolBar {
             id: undoRow
             anchors.centerIn: parent
             spacing: Kirigami.Units.smallSpacing
-            D.Plain {
+            Plain {
                 text: qsTr("Atlama eksi sayılacak"); color: playerBar.dim
                 font.pointSize: playerBar.small
                 ToolTip.visible: undoHover.hovered; ToolTip.text: Player.skipUndo.title || ""
@@ -51,7 +50,7 @@ ToolBar {
         RowLayout {
             Layout.preferredWidth: 350; Layout.maximumWidth: 350; Layout.minimumWidth: 240
             spacing: Kirigami.Units.largeSpacing
-            D.Cover {
+            Cover {
                 Layout.preferredWidth: Kirigami.Units.gridUnit * 3 + Kirigami.Units.smallSpacing; Layout.preferredHeight: Layout.preferredWidth
                 art: Player.station.id ? "" : Player.current.coverArt || ""
                 url: playerBar.w.live ? Subwave.coverUrl : ""
@@ -63,7 +62,7 @@ ToolBar {
                 spacing: 0
                 RowLayout {
                     spacing: 0
-                    D.Plain {
+                    Plain {
                         Layout.fillWidth: true; Layout.maximumWidth: Math.ceil(implicitWidth) // layouts round down; a fractional width would elide the last letter
                         elide: Text.ElideRight; font.weight: Font.DemiBold
                         text: playerBar.w.live && Subwave.now.title ? Subwave.now.title : Player.station.id ? Player.station.name : Player.current.title || qsTr("Çalan bir şey yok")
@@ -77,16 +76,16 @@ ToolBar {
                     }
                     Item { Layout.fillWidth: true }
                 }
-                D.Plain { visible: !!Player.station.id; text: qsTr("● Canlı"); color: Kirigami.Theme.negativeTextColor }
-                D.Plain { Layout.fillWidth: true; elide: Text.ElideRight; visible: playerBar.w.live; text: Subwave.now.artist || "" }
-                D.Link {
+                Plain { visible: !!Player.station.id; text: qsTr("● Canlı"); color: Kirigami.Theme.negativeTextColor }
+                Plain { Layout.fillWidth: true; elide: Text.ElideRight; visible: playerBar.w.live; text: Subwave.now.artist || "" }
+                Link {
                     Layout.fillWidth: true
                     visible: !Player.station.id
                     text: Player.current.artist || ""
                     active: !!Player.current.artistId
                     onActivated: playerBar.w.go("artist", { id: Player.current.artistId })
                 }
-                D.Link {
+                Link {
                     Layout.fillWidth: true
                     text: Player.current.album || ""
                     color: playerBar.dim
@@ -141,19 +140,19 @@ ToolBar {
                 readonly property real done: total > 0 ? Math.min(Subwave.elapsedMs / 1000, total) : Subwave.elapsedMs / 1000
                 visible: playerBar.w.live
                 Layout.preferredHeight: Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing
-                D.Plain { text: playerBar.w.fmt(parent.done); color: playerBar.dim; font.features: { "tnum": 1 } }
+                Plain { text: playerBar.w.fmt(parent.done); color: playerBar.dim; font.features: { "tnum": 1 } }
                 ProgressBar { Layout.fillWidth: true; visible: parent.total > 0; from: 0; to: Math.max(1, parent.total); value: parent.done }
                 Item { Layout.fillWidth: true; visible: parent.total <= 0 }
-                D.Plain { visible: parent.total > 0; text: playerBar.w.fmt(parent.total); color: playerBar.dim; font.features: { "tnum": 1 } }
+                Plain { visible: parent.total > 0; text: playerBar.w.fmt(parent.total); color: playerBar.dim; font.features: { "tnum": 1 } }
             }
             Item { visible: !!Player.station.id && !playerBar.w.live; Layout.fillWidth: true; Layout.preferredHeight: Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing } // a stream without a timeline keeps the row's height
             RowLayout {
                 visible: !Player.station.id // a live stream has no timeline
-                D.Plain { text: playerBar.w.fmt(seek.pressed ? seek.value : Player.position); color: playerBar.dim; font.features: { "tnum": 1 } }
+                Plain { text: playerBar.w.fmt(seek.pressed ? seek.value : Player.position); color: playerBar.dim; font.features: { "tnum": 1 } }
                 Item {
                     Layout.fillWidth: true; implicitHeight: Math.max(Kirigami.Units.gridUnit + Kirigami.Units.largeSpacing, seek.implicitHeight)
                     // the waveform shows through an invisible slider, which still takes clicks and drags
-                    D.Wave { anchors.fill: parent; anchors.margins: Kirigami.Units.smallSpacing; visible: Player.waveform.length > 0; levels: Player.waveform; rms: Player.waveformRms; value: seek.value / seek.to }
+                    Wave { anchors.fill: parent; anchors.margins: Kirigami.Units.smallSpacing; visible: Player.waveform.length > 0; levels: Player.waveform; rms: Player.waveformRms; value: seek.value / seek.to }
                     Slider {
                         id: seek
                         anchors.fill: parent
@@ -164,7 +163,7 @@ ToolBar {
                     }
                 }
                 Binding { target: seek; property: "value"; value: Player.position; when: !seek.pressed; restoreMode: Binding.RestoreNone }
-                D.Plain { text: playerBar.w.fmt(Player.duration); color: playerBar.dim; font.features: { "tnum": 1 } }
+                Plain { text: playerBar.w.fmt(Player.duration); color: playerBar.dim; font.features: { "tnum": 1 } }
             }
         }
 
@@ -197,7 +196,7 @@ ToolBar {
                 // stepSize also gives the ticks under it (KDE's Slider draws one per step)
                 Slider { objectName: "volume"; Layout.preferredWidth: Kirigami.Units.gridUnit * 6; from: 0; to: 100; stepSize: 5; wheelEnabled: true; value: Player.volume; onMoved: Player.volume = value }
             }
-            D.Plain {
+            Plain {
                 objectName: "status"
                 Layout.fillWidth: true; horizontalAlignment: Text.AlignRight; elide: Text.ElideLeft
                 text: playerBar.w.notice || Player.status; color: playerBar.dim
