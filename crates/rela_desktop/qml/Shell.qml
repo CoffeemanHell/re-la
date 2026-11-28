@@ -16,7 +16,7 @@ QtObject {
         const url = App.load(Player.theme)
         let w = make(url)
         if (!w) {
-            Player.setStatus(qsTr("Tema yüklenemedi: %1").arg(url))
+            Player.setStatus(qsTr("Tema yüklenemedi: %1 (%2)").arg(url).arg(why))
             // a missing module (Kirigami not installed) must not end the app: Default needs only Qt. The saved choice stays.
             if (!win && Player.theme !== "default")
                 w = make(App.load("default"))
@@ -32,11 +32,14 @@ QtObject {
             old.destroy() // the new window is up first
     }
 
+    property string why // make()'s last failure: the status says it too
     function make(url) {
         const c = Qt.createComponent(url)
         const w = c.status === Component.Ready ? c.createObject(null) : null
-        if (!w) // a fixed start (the zip's smoke test looks for it), then why: errorString can be empty when createObject fails
-            console.warn("Theme failed to load: " + url + ": " + (c.errorString() || "the window could not be created"))
+        if (!w) { // a fixed start (the zip's smoke test looks for it), then why: errorString can be empty when createObject fails
+            why = c.errorString().trim() || "the window could not be created"
+            console.warn("Theme failed to load: " + url + ": " + why)
+        }
         return w
     }
 

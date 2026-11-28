@@ -3718,42 +3718,46 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
 <context>
     <name>Shell</name>
     <message>
-        <location filename="../qml/Shell.qml" line="92"/>
+        <location filename="../qml/Shell.qml" line="95"/>
         <source>Arka planda çalmaya devam ediyor. Çıkmak için tepsi simgesine sağ tıkla → Çıkış.</source>
         <translation>Still playing in the background. To quit, right-click the tray icon → Quit.</translation>
     </message>
     <message>
-        <location filename="../qml/Shell.qml" line="62"/>
+        <location filename="../qml/Shell.qml" line="65"/>
         <source>Duraklat</source>
         <translation>Pause</translation>
     </message>
     <message>
-        <location filename="../qml/Shell.qml" line="62"/>
+        <location filename="../qml/Shell.qml" line="19"/>
+        <source>Tema yüklenemedi: %1 (%2)</source>
+        <translation>Could not load the theme: %1 (%2)</translation>
+    </message>
+    <message>
+        <location filename="../qml/Shell.qml" line="65"/>
         <source>Oynat</source>
         <translation>Play</translation>
     </message>
     <message>
-        <location filename="../qml/Shell.qml" line="66"/>
+        <location filename="../qml/Shell.qml" line="69"/>
         <source>Pencereyi göster</source>
         <translation>Show window</translation>
     </message>
     <message>
-        <location filename="../qml/Shell.qml" line="63"/>
+        <location filename="../qml/Shell.qml" line="66"/>
         <source>Sonraki</source>
         <translation>Next</translation>
     </message>
     <message>
-        <location filename="../qml/Shell.qml" line="19"/>
         <source>Tema yüklenemedi: %1</source>
-        <translation>Could not load the theme: %1</translation>
+        <translation type="vanished">Could not load the theme: %1</translation>
     </message>
     <message>
-        <location filename="../qml/Shell.qml" line="67"/>
+        <location filename="../qml/Shell.qml" line="70"/>
         <source>Çıkış</source>
         <translation>Quit</translation>
     </message>
     <message>
-        <location filename="../qml/Shell.qml" line="64"/>
+        <location filename="../qml/Shell.qml" line="67"/>
         <source>Önceki</source>
         <translation>Previous</translation>
     </message>

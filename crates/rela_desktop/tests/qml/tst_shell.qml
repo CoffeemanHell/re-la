@@ -20,6 +20,7 @@ Item {
             verify(String(s.win.title).length > 0)
             compare(Player.called("setStatus").length, 1) // the failure is told
             verify(Player.called("setStatus")[0][1].indexOf("no-such-theme") >= 0)
+            verify(/\(.+\)$/.test(Player.called("setStatus")[0][1])) // and why
             compare(Player.theme, "broken") // the saved choice is not changed
             s.win.destroy()
         }
