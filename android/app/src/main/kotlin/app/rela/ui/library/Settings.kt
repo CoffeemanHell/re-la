@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -14,7 +16,19 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -32,13 +46,16 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -68,10 +85,19 @@ import kotlinx.coroutines.withContext
 
 /** A number setting: the value moves with the finger, [onDone] gets it when the finger lifts. */
 @Composable
-private fun SliderRow(label: String, value: Int, range: IntRange, step: Int, enabled: Boolean = true, hint: String = "", text: (Int) -> String, onDone: (Int) -> Unit) {
+private fun SliderRow(
+    label: String, value: Int, range: IntRange, step: Int, enabled: Boolean = true, hint: String = "",
+    mark: Boolean = false, onReset: (() -> Unit)? = null, text: (Int) -> String, onDone: (Int) -> Unit,
+) {
     var v by remember(value) { mutableFloatStateOf(value.toFloat()) }
+    val accent = MaterialTheme.colorScheme.primary
     ListItem(
-        headlineContent = { Text("$label: ${text(v.roundToInt())}") },
+        headlineContent = {
+            Text(buildAnnotatedString {
+                append("$label: ")
+                withStyle(SpanStyle(color = if (mark) accent else Color.Unspecified)) { append(text(v.roundToInt())) }
+            })
+        },
         supportingContent = {
             Column {
                 if (hint.isNotEmpty()) Text(hint)
@@ -83,6 +109,7 @@ private fun SliderRow(label: String, value: Int, range: IntRange, step: Int, ena
                 )
             }
         },
+        trailingContent = if (onReset != null) ({ ResetMark(onReset) }) else null,
     )
 }
 
@@ -188,11 +215,19 @@ private fun CoverCacheRow() {
 /** Bumped when the DJ memory is reset, so the "more / less like this" list reloads (the reset clears it). */
 private val djResets = androidx.compose.runtime.mutableIntStateOf(0)
 
-/** The DJ's settings page: mode, the knobs (the advanced ones folded), "more / less like this" list, state, reset. */
+/** The DJ page: mode, the four settings pages, defaults, "more / less like this" list, state, memory reset. */
 private fun androidx.compose.foundation.lazy.LazyListScope.djPage(dj: Boolean, num: (String, Int) -> Int, set: (String, Any) -> Unit) {
     item { SwitchRow(str(R.string.dj_mode), str(R.string.dj_mode_hint), dj) { Rela.core?.setDj(it) } }
-    items(djMain, key = { it.key }) { k -> KnobRow(k, num(k.key, k.from), dj, set) }
-    item { DjAdvanced(dj, num, set) }
+    djPages.forEach { p ->
+        item(key = p.key) {
+            val nav = LocalNav.current
+            ListItem(
+                headlineContent = { Text(str(p.title)) },
+                supportingContent = { Text(str(p.hint)) },
+                modifier = Modifier.clickable { nav.open(Screen.SettingsPage(p.key)) },
+            )
+        }
+    }
     item {
         ListItem(
             headlineContent = { Text(str(R.string.dj_defaults)) },
@@ -218,17 +253,134 @@ private fun androidx.compose.foundation.lazy.LazyListScope.djPage(dj: Boolean, n
     }
 }
 
-@Composable
-private fun KnobRow(k: Knob, value: Int, enabled: Boolean, set: (String, Any) -> Unit) =
-    SliderRow(str(k.label), value.coerceIn(k.from, k.to), k.from..k.to, k.step, enabled, if (k.hint != 0) str(k.hint) else "", text = { knobText(k, it) }) { set(k.key, it) }
+/**
+ * One DJ settings page: each switch, then the settings under it (hidden while it is off), then the rest, in table order.
+ * [flag] reads a switch (a missing one is on).
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.djGroup(group: Knob.Group, dj: Boolean, flag: (String) -> Boolean, num: (String, Int) -> Int, set: (String, Any) -> Unit) {
+    val opened = HashSet<String>()
+    for (k in djKnobs.filter { it.group == group }) {
+        val sw = k.under
+        if (sw != null) {
+            if (opened.add(sw)) item(key = "switch_$sw") { DjSwitchRow(djSwitches.first { it.key == sw }, flag(sw), dj, set) }
+            if (!flag(sw)) continue
+        }
+        item(key = k.key) { DjKnobRow(k, num(k.key, k.def), dj, set) }
+    }
+}
 
 @Composable
-private fun DjAdvanced(dj: Boolean, num: (String, Int) -> Int, set: (String, Any) -> Unit) {
-    var open by rememberSaveable { mutableStateOf(false) }
-    Column {
-        SwitchRow(str(R.string.dj_advanced), "", open, dj) { open = it }
-        if (open) djAdvanced.forEach { k -> KnobRow(k, num(k.key, k.from), dj, set) }
+private fun DjSwitchRow(sw: DjSwitch, on: Boolean, enabled: Boolean, set: (String, Any) -> Unit) = ListItem(
+    headlineContent = { Text(str(sw.label)) },
+    supportingContent = { Text(str(sw.hint)) },
+    trailingContent = {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (!on) ResetMark { set(sw.key, true) }
+            Switch(on, { set(sw.key, it) }, enabled = enabled)
+        }
+    },
+)
+
+/** One DJ setting, with the control its kind asks for; a value that is not the default shows its mark and a reset. */
+@Composable
+private fun DjKnobRow(k: Knob, value: Int, enabled: Boolean, set: (String, Any) -> Unit) {
+    val mark = value != k.def
+    val reset: () -> Unit = { set(k.key, k.def) }
+    val hint = if (k.hint != 0) str(k.hint) else ""
+    when (k.kind) {
+        Knob.Kind.SLIDER -> SliderRow(str(k.label), value.coerceIn(k.from, k.to), k.from..k.to, k.step, enabled, hint, mark = mark, onReset = reset.takeIf { mark }, text = { knobText(k, it) }) { set(k.key, it) }
+        Knob.Kind.SEG -> SegRow(k, value, enabled, hint, mark, reset) { set(k.key, it) }
+        Knob.Kind.SPIN -> SpinRow(k, value, enabled, hint, mark, reset) { set(k.key, it) }
+        Knob.Kind.PRESET -> PresetRow(k, value, enabled, hint, mark, reset) { set(k.key, it) }
     }
+}
+
+/** The one-value reset beside a changed setting. */
+@Composable
+private fun ResetMark(onReset: () -> Unit) = IconButton(onClick = onReset) {
+    Icon(painterResource(R.drawable.ic_undo), str(R.string.dj_reset_mark))
+}
+
+@Composable
+private fun DjHeader(label: String, valueText: String, mark: Boolean, reset: () -> Unit) = Row(verticalAlignment = Alignment.CenterVertically) {
+    Text(label, Modifier.weight(1f))
+    Text(valueText, color = if (mark) MaterialTheme.colorScheme.primary else Color.Unspecified)
+    if (mark) ResetMark(reset)
+}
+
+/** Segments: one button per step of the range. */
+@Composable
+private fun SegRow(k: Knob, value: Int, enabled: Boolean, hint: String, mark: Boolean, reset: () -> Unit, set: (Int) -> Unit) = Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+    DjHeader(str(k.label), knobText(k, value), mark, reset)
+    if (hint.isNotEmpty()) Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val steps = (k.from..k.to step k.step).toList()
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+        steps.forEachIndexed { i, v ->
+            SegmentedButton(
+                selected = v == value,
+                onClick = { set(v) },
+                enabled = enabled,
+                shape = SegmentedButtonDefaults.itemShape(i, steps.size),
+                label = { Text(knobText(k, v)) },
+            )
+        }
+    }
+}
+
+/** A number box: minus and plus, one step each, kept in the range. */
+@Composable
+private fun SpinRow(k: Knob, value: Int, enabled: Boolean, hint: String, mark: Boolean, reset: () -> Unit, set: (Int) -> Unit) = Row(
+    Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+) {
+    Column(Modifier.weight(1f)) {
+        Text(str(k.label))
+        if (hint.isNotEmpty()) Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    IconButton(onClick = { set(nudged(k, value, -1)) }, enabled = enabled && value > k.from) {
+        Icon(painterResource(R.drawable.ic_remove), str(R.string.dj_decrease))
+    }
+    Text(knobText(k, value), Modifier.padding(horizontal = 8.dp), color = if (mark) MaterialTheme.colorScheme.primary else Color.Unspecified)
+    IconButton(onClick = { set(nudged(k, value, 1)) }, enabled = enabled && value < k.to) {
+        Icon(painterResource(R.drawable.ic_add), str(R.string.dj_increase))
+    }
+    if (mark) ResetMark(reset)
+}
+
+/** A drop-down of the presets; a value that is no preset shows its days and no preset is chosen. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PresetRow(k: Knob, value: Int, enabled: Boolean, hint: String, mark: Boolean, reset: () -> Unit, set: (Int) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+        DjHeader(str(k.label), presetText(k, value), mark, reset)
+        if (hint.isNotEmpty()) Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        ExposedDropdownMenuBox(expanded = open && enabled, onExpandedChange = { open = it }) {
+            TextField(
+                value = presetText(k, value),
+                onValueChange = {},
+                readOnly = true,
+                enabled = enabled,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
+                colors = ExposedDropdownMenuDefaults.textFieldColors(),
+                modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled),
+            )
+            ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+                k.presets.forEach { p ->
+                    DropdownMenuItem(text = { Text(presetText(k, p)) }, onClick = { open = false; set(p) })
+                }
+            }
+        }
+    }
+}
+
+/** A preset by its length ("2 ay"); any other value as days. */
+private fun presetText(k: Knob, v: Int): String = if (presetIndex(k.presets, v) < 0) knobText(k, v) else when (v) {
+    14 -> str(R.string.dj_preset_2_weeks)
+    30 -> str(R.string.dj_preset_1_month)
+    60 -> str(R.string.dj_preset_2_months)
+    91 -> str(R.string.dj_preset_3_months)
+    182 -> str(R.string.dj_preset_6_months)
+    else -> str(R.string.dj_preset_1_year)
 }
 
 /** "More / less like this" choices, newest first, each with a button that takes it back. */
@@ -280,10 +432,11 @@ fun SettingsPage(page: String) {
     val core = Rela.core
     val o = json(s.optionsJson)
     fun on(key: String) = o[key].text() == "true"
+    fun flag(key: String) = o[key].text() != "false" // a switch that was never set is on
     fun num(key: String, default: Int) = o[key].text().toDoubleOrNull()?.toInt() ?: default
     fun set(key: String, v: Any) = setOption(key, v)
     val look = LocalLook.current
-    Page(categories.firstOrNull { it.page == page }?.title ?: str(R.string.settings)) { pad ->
+    Page(categories.firstOrNull { it.page == page }?.title ?: djPages.firstOrNull { it.key == page }?.let { str(it.title) } ?: str(R.string.settings)) { pad ->
         LazyColumn(contentPadding = pad) {
             when (page) {
                 "look" -> {
@@ -302,6 +455,7 @@ fun SettingsPage(page: String) {
                     item { SwitchRow(str(R.string.alpha_scroll), str(R.string.alpha_scroll_hint), look.alphaScroll) { set("alphaScroll", it) } }
                 }
                 "dj" -> djPage(s.dj, ::num, ::set)
+                "djPick", "djSkips", "djMemory", "djFine" -> djGroup(djPages.first { it.key == page }.group, s.dj, ::flag, ::num, ::set)
                 "playback" -> {
                     item { Header(str(R.string.playback)) }
                     item {

@@ -12,7 +12,10 @@ Dialog {
     property string cat: "Genel"
     function show(c) { cat = c || "Genel"; open() }
     // [key, shown]: the key stays Turkish (cat, objectName, openSettings)
-    readonly property var cats: [["Genel", qsTr("GENEL")], ["Çalma", qsTr("ÇALMA")], ["DJ", "DJ"], ["Önbellek", qsTr("ÖNBELLEK")], ["Klavye", qsTr("KLAVYE")], ["Scrobble", "SCROBBLE"], ["Hesap", qsTr("HESAP")], ["Hakkında", qsTr("HAKKINDA")]]
+    readonly property var cats: [["Genel", qsTr("GENEL")], ["Çalma", qsTr("ÇALMA")], ["DJ", "DJ"], ["Seçim", qsTr("SEÇİM")], ["Atlamalar", qsTr("ATLAMALAR")],
+        ["Hafıza", qsTr("HAFIZA")], ["İnce ayar", qsTr("İNCE AYAR")], ["Önbellek", qsTr("ÖNBELLEK")], ["Klavye", qsTr("KLAVYE")], ["Scrobble", "SCROBBLE"],
+        ["Hesap", qsTr("HESAP")], ["Hakkında", qsTr("HAKKINDA")]]
+    readonly property var djSubs: ["Seçim", "Atlamalar", "Hafıza", "İnce ayar"] // the DJ's pages, listed under DJ
 
     component Setting: ColumnLayout {
         id: st
@@ -31,6 +34,70 @@ Dialog {
         DotBar { Layout.fillWidth: true; dots: st.dots; value: st.value; live: true; enabled: st.enabled; onPicked: v => st.picked(v) }
         Hint { text: st.hint }
     }
+    // One DJ setting: its name and value (accent when changed) with a reset when changed, then the control its kind asks
+    // for. The rows under a switch hide while it is off.
+    component DjKnob: ColumnLayout {
+        id: kn
+        required property var modelData
+        readonly property var k: modelData
+        readonly property var stored: Player.options[k.key]
+        readonly property bool atDefault: DjKnobs.isDefault(k, stored)
+        readonly property var cur: stored ?? k.def
+        readonly property var choices: k.kind === "preset" ? k.presets : k.kind === "seg" ? Array.from({ length: (k.to - k.from) / k.step + 1 }, (_, i) => k.from + i * k.step) : []
+        objectName: "knob_" + k.key
+        visible: !k.under || Player.options[k.under] !== false
+        enabled: Player.dj
+        Layout.fillWidth: true
+        spacing: 8
+        signal moved(var v)
+        onMoved: v => Player.setOption(k.key, v)
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+            Mono { text: DjKnobs.upper(kn.k.label); Layout.fillWidth: true }
+            Mono {
+                visible: kn.k.kind !== "switch"
+                text: DjKnobs.upper(DjKnobs.text(kn.k, kn.cur))
+                color: kn.atDefault ? App.theme.muted : App.theme.accent
+            }
+            Pill {
+                objectName: "reset_" + kn.k.key
+                visible: !kn.atDefault
+                text: qsTr("VARSAYILAN")
+                onClicked: Player.setOption(kn.k.key, kn.k.def)
+            }
+            Pill { visible: kn.k.kind === "switch"; text: kn.cur !== false ? qsTr("AÇIK") : qsTr("KAPALI"); on: kn.cur !== false; onClicked: kn.moved(kn.cur === false) }
+        }
+        DotBar {
+            visible: kn.k.kind === "slider"
+            Layout.fillWidth: true
+            dots: (kn.k.to - kn.k.from) / kn.k.step + 1
+            value: (kn.cur - kn.k.from) / (kn.k.to - kn.k.from)
+            live: true
+            onPicked: v => kn.moved(kn.k.from + Math.round(v * (kn.k.to - kn.k.from) / kn.k.step) * kn.k.step)
+        }
+        Flow { // a choice per pill: segments and the memory presets
+            visible: kn.k.kind === "seg" || kn.k.kind === "preset"
+            Layout.fillWidth: true
+            spacing: 8
+            Repeater {
+                model: kn.choices
+                Pill {
+                    required property var modelData
+                    text: DjKnobs.upper(DjKnobs.text(kn.k, modelData))
+                    on: kn.cur === modelData
+                    onClicked: kn.moved(modelData)
+                }
+            }
+        }
+        RowLayout { // a number box: minus and plus
+            visible: kn.k.kind === "spin"
+            spacing: 12
+            Pill { text: "−"; enabled: kn.cur > kn.k.from; onClicked: kn.moved(Math.max(kn.k.from, kn.cur - kn.k.step)) }
+            Pill { text: "+"; enabled: kn.cur < kn.k.to; onClicked: kn.moved(Math.min(kn.k.to, kn.cur + kn.k.step)) }
+        }
+        Hint { text: DjKnobs.upper(kn.k.hint) }
+    }
     component Page: ColumnLayout {
         required property string name
         visible: d.cat === name
@@ -46,7 +113,7 @@ Dialog {
     onAboutToShow: { Player.refreshAudioDevices(); d.dj.refreshFeedback() } // not opened: that waits for the style's opening animation
     anchors.centerIn: Overlay.overlay
     modal: true
-    width: Math.min(760, d.w.width - 40); height: Math.min(560, d.w.height - 40)
+    width: Math.min(960, d.w.width - 40); height: Math.min(680, d.w.height - 40)
     padding: 0
     background: Rectangle { color: App.theme.bg; border.width: 1; border.color: App.theme.line }
     Overlay.modal: Rectangle { color: "#cc000000" }
@@ -62,6 +129,7 @@ Dialog {
                 Pill {
                     required property var modelData
                     objectName: "cat_" + modelData[0]
+                    Layout.leftMargin: d.djSubs.indexOf(modelData[0]) >= 0 ? 16 : 0
                     text: modelData[1]
                     on: d.cat === modelData[0]
                     onClicked: d.cat = modelData[0]
@@ -161,25 +229,6 @@ Dialog {
                         checked: Player.dj
                         onToggled: on => Player.dj = on
                     }
-                    component Knob: Setting {
-                        id: kn
-                        required property var modelData
-                        readonly property real at: Player.options[modelData.key] ?? modelData.from
-                        objectName: "knob_" + modelData.key
-                        enabled: Player.dj
-                        label: DjKnobs.upper(modelData.label)
-                        hint: DjKnobs.upper(modelData.hint)
-                        valueText: DjKnobs.upper(DjKnobs.text(modelData, at))
-                        dots: (modelData.to - modelData.from) / modelData.step + 1
-                        value: (at - modelData.from) / (modelData.to - modelData.from)
-                        onPicked: v => Player.setOption(modelData.key, modelData.from + Math.round(v * (modelData.to - modelData.from) / modelData.step) * modelData.step)
-                    }
-                    Repeater { model: DjKnobs.main; delegate: Knob {} }
-                    RowLayout {
-                        Mono { text: qsTr("GELİŞMİŞ AYARLAR"); Layout.fillWidth: true }
-                        Pill { id: advanced; objectName: "djAdvanced"; checkable: true; on: checked; enabled: Player.dj; text: checked ? qsTr("AÇIK") : qsTr("KAPALI") }
-                    }
-                    Repeater { model: DjKnobs.advanced; delegate: Knob { visible: advanced.checked } }
                     Hint { text: qsTr("DJ AYARLARINI İLK HÂLİNE GETİRİR.") }
                     RowLayout {
                         Item { Layout.fillWidth: true }
@@ -216,6 +265,26 @@ Dialog {
                         Item { Layout.fillWidth: true }
                         Pill { text: qsTr("DJ HAFIZASINI SIFIRLA"); onClicked: { Player.resetDjMemory(); d.dj.feedback = [] } }
                     }
+                }
+
+                Page {
+                    name: "Seçim"
+                    Repeater { model: DjKnobs.of("pick"); delegate: DjKnob {} }
+                }
+
+                Page {
+                    name: "Atlamalar"
+                    Repeater { model: DjKnobs.of("skips"); delegate: DjKnob {} }
+                }
+
+                Page {
+                    name: "Hafıza"
+                    Repeater { model: DjKnobs.of("memory"); delegate: DjKnob {} }
+                }
+
+                Page {
+                    name: "İnce ayar"
+                    Repeater { model: DjKnobs.of("fine"); delegate: DjKnob {} }
                 }
 
                 Page {

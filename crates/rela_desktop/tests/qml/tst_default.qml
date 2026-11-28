@@ -771,7 +771,10 @@ Item {
             tryVerify(() => F.text(s.contentItem, "Dinlenenleri gönder") !== null)
             m.openSettings("DJ")
             tryVerify(() => F.text(s.contentItem, "DJ modu") !== null)
-            verify(F.text(s.contentItem, "Keşif") !== null)
+            tryVerify(() => named(s.contentItem, "cat_Seçim"))
+            named(s.contentItem, "cat_Seçim").clicked()
+            tryVerify(() => F.text(s.contentItem, "Keşif") !== null)
+            m.openSettings("DJ")
             const reset = F.text(s.contentItem, "DJ hafızasını sıfırla")
             reset.clicked() // below the fold of the page
             compare(Player.called("resetDjMemory").length, 1)
@@ -780,22 +783,58 @@ Item {
             const m = createTemporaryObject(mainWindow, null)
             m.openSettings("DJ")
             tryVerify(() => F.text(m.settingsDialog.contentItem, "DJ modu") !== null)
+            tryVerify(() => named(m.settingsDialog.contentItem, "cat_İnce ayar")) // the category list builds its rows later
             return m.settingsDialog
         }
         function named(root, n) { return F.all(root, it => it.objectName === n)[0] }
         function test_dj_knob_sets_option() {
             const s = djSettings()
+            named(s.contentItem, "cat_Atlamalar").clicked()
             const k = named(s.contentItem, "knob_djSkipShare")
             verify(k && k.visible)
             k.moved(40)
             const c = Player.called("setOption")
             compare(c[c.length - 1].slice(1), ["djSkipShare", 40])
         }
-        function test_dj_advanced_hidden() {
+        function test_dj_sub_pages() {
             const s = djSettings()
-            verify(!named(s.contentItem, "knob_djRandomness").visible)
-            named(s.contentItem, "djAdvanced").toggle()
-            tryVerify(() => named(s.contentItem, "knob_djRandomness").visible)
+            for (const c of ["Seçim", "Atlamalar", "Hafıza", "İnce ayar"]) verify(named(s.contentItem, "cat_" + c), c)
+            named(s.contentItem, "cat_Atlamalar").clicked()
+            tryVerify(() => named(s.contentItem, "knob_djSkipShare").visible)
+            verify(!named(s.contentItem, "knob_radioLanguage").visible)
+        }
+        function test_dj_knob_reset_one() {
+            Player.options = Object.assign({}, Player.options, { djSkipShare: 40 })
+            const s = djSettings()
+            named(s.contentItem, "cat_Atlamalar").clicked()
+            const r = named(s.contentItem, "reset_djSkipShare")
+            tryVerify(() => r.visible)
+            verify(!named(s.contentItem, "reset_djSearchSec").visible)
+            r.clicked()
+            const c = Player.called("setOption")
+            compare(c[c.length - 1].slice(1), ["djSkipShare", 30])
+        }
+        function test_dj_switch_hides_children() {
+            Player.options = Object.assign({}, Player.options, { djSkipOn: false })
+            const s = djSettings()
+            named(s.contentItem, "cat_Atlamalar").clicked()
+            tryVerify(() => !named(s.contentItem, "knob_djSkipShare").visible)
+            verify(named(s.contentItem, "reset_djSkipOn").visible)
+        }
+        function test_dj_memory_preset() {
+            Player.options = Object.assign({}, Player.options, { djMemoryDays: 60 })
+            const s = djSettings()
+            named(s.contentItem, "cat_Hafıza").clicked()
+            tryVerify(() => F.text(s.contentItem, "2 ay") !== null)
+            verify(!named(s.contentItem, "reset_djMemoryDays").visible)
+            Player.options = Object.assign({}, Player.options, { djMemoryDays: 63 })
+            tryVerify(() => named(s.contentItem, "reset_djMemoryDays").visible)
+            verify(F.text(s.contentItem, "63 gün") !== null)
+        }
+        function test_dj_dialog_size() {
+            const s = djSettings()
+            compare(s.width, 960)
+            compare(s.height, 680)
         }
         function test_dj_defaults_button() {
             const s = djSettings()
@@ -838,11 +877,27 @@ Item {
         function test_skip_undo_notice() {
             const m = createTemporaryObject(mainWindow, null)
             verify(!F.text(m.footer, "Geri al"))
+            const p = named(m.footer, "skipUndoPopup")
+            verify(!p.visible)
             Player.skipUndo = { id: "1", title: "X" }
-            tryVerify(() => F.text(m.footer, "Atlama eksi sayılacak") !== null)
-            F.text(m.footer, "Geri al").clicked()
+            tryVerify(() => p.visible)
+            verify(F.text(p, "Atlama eksi sayılacak") !== null)
+            const tc = named(m.footer, "transport").mapToItem(m.contentItem, named(m.footer, "transport").width / 2, 0).x
+            fuzzyCompare(p.mapToItem(m.contentItem, p.width / 2, 0).x, tc, 1) // centred on the transport
+            verify(p.mapToItem(m.contentItem, 0, p.height).y <= m.footer.mapToItem(m.contentItem, 0, 0).y) // above the bar
+            F.text(p, "Geri al").clicked()
             compare(Player.called("undoSkip").length, 1)
+            verify(named(m.footer, "status").visible) // the status line no longer hides behind the notice
             compare(m.ToolTip.toolTip.contentItem.textFormat, Text.PlainText) // song names in tips: never markup
+        }
+        function test_dj_knob_table() {
+            const k = DjKnobs.knobs.filter(e => e.key === "djMemoryDays")[0]
+            compare(DjKnobs.text(k, 60), "2 ay") // a preset is named by its length
+            verify(DjKnobs.isDefault(k, 60))
+            verify(!DjKnobs.isDefault(k, 63)) // a stored value between the steps: no preset, but the reset mark
+            compare(DjKnobs.text(k, 63), "63 gün")
+            verify(DjKnobs.isDefault(DjKnobs.knobs.filter(e => e.key === "djSkipOn")[0], undefined)) // a missing switch is on
+            compare(DjKnobs.of("memory").length, 4)
         }
         function test_dj_why_in_queue() {
             const r = make(songRow, { inQueue: true, song: { id: "s1", title: "Song", artist: "A", djWhy: "Sürpriz" } })

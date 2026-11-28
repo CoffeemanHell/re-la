@@ -56,6 +56,78 @@ Dialog {
         Layout.fillWidth: true
         spacing: 10
     }
+    // One DJ setting: its name and value (accent when changed) with a one-value reset, then the control its kind asks
+    // for. The rows under a switch hide while it is off.
+    component DjKnob: ColumnLayout {
+        id: kn
+        required property var modelData
+        readonly property var k: modelData
+        readonly property var stored: Player.options[k.key]
+        readonly property bool atDefault: DjKnobs.isDefault(k, stored)
+        readonly property var cur: stored ?? k.def
+        readonly property var steps: k.kind === "seg" ? Array.from({ length: (k.to - k.from) / k.step + 1 }, (_, i) => k.from + i * k.step) : []
+        objectName: "knob_" + k.key
+        visible: !k.under || Player.options[k.under] !== false
+        enabled: Player.dj
+        Layout.fillWidth: true
+        spacing: 4
+        signal moved(var v)
+        onMoved: v => Player.setOption(k.key, v)
+        RowLayout {
+            Layout.fillWidth: true
+            Plain { text: kn.k.label; Layout.fillWidth: true }
+            Plain {
+                visible: kn.k.kind !== "switch" && kn.k.kind !== "spin" // a number box shows its own value
+                text: DjKnobs.text(kn.k, kn.cur)
+                color: kn.atDefault ? palette.placeholderText : palette.highlight
+                font.weight: Font.DemiBold
+                font.features: { "tnum": 1 }
+            }
+            ToolButton {
+                objectName: "reset_" + kn.k.key
+                visible: !kn.atDefault
+                text: "↺" // a glyph: some icon themes have no edit-undo
+                ToolTip.visible: hovered; ToolTip.delay: 500; ToolTip.text: qsTr("Varsayılana dön")
+                onClicked: Player.setOption(kn.k.key, kn.k.def)
+            }
+            Switch { visible: kn.k.kind === "switch"; checked: kn.cur !== false; onToggled: kn.moved(checked) }
+        }
+        Slider {
+            visible: kn.k.kind === "slider"
+            Layout.fillWidth: true
+            from: kn.k.from; to: kn.k.to; stepSize: kn.k.step; snapMode: Slider.SnapAlways
+            value: kn.cur
+            onMoved: kn.moved(Math.round(value))
+        }
+        Flow { // a choice per button: segments and the memory presets
+            visible: kn.k.kind === "seg" || kn.k.kind === "preset"
+            Layout.fillWidth: true
+            spacing: 6
+            ButtonGroup { id: choices; exclusive: true }
+            Repeater {
+                model: kn.k.kind === "preset" ? kn.k.presets : kn.steps
+                Button {
+                    required property var modelData
+                    text: DjKnobs.text(kn.k, modelData)
+                    checkable: true
+                    checked: kn.cur === modelData
+                    ButtonGroup.group: choices
+                    onClicked: kn.moved(modelData)
+                }
+            }
+        }
+        SpinBox {
+            visible: kn.k.kind === "spin"
+            Layout.alignment: Qt.AlignLeft
+            from: kn.k.from; to: kn.k.to; stepSize: kn.k.step
+            editable: true
+            value: kn.cur
+            textFromValue: v => DjKnobs.text(kn.k, v)
+            valueFromText: t => parseInt(t) || kn.k.from
+            onValueModified: kn.moved(value)
+        }
+        Hint { text: kn.k.hint }
+    }
 
     property alias stateDialog: stateDialog
     readonly property DjData dj: DjData { parent: d.contentItem } // a parent: Player.get answers only such owners
@@ -65,7 +137,7 @@ Dialog {
     onAboutToShow: { Player.refreshAudioDevices(); d.dj.refreshFeedback() } // not opened: that waits for the style's opening animation
     anchors.centerIn: Overlay.overlay
     modal: true
-    width: Math.min(760, d.w.width - 40); height: Math.min(560, d.w.height - 40)
+    width: Math.min(960, d.w.width - 40); height: Math.min(680, d.w.height - 40)
     padding: 0
     contentItem: RowLayout {
         spacing: 0
@@ -76,14 +148,19 @@ Dialog {
             readonly property var icons: ({ "Genel": "configure", "Çalma": "audio-volume-high", "DJ": "media-playlist-shuffle",
                                             "Önbellek": "drive-harddisk", "Klavye": "input-keyboard",
                                             "Scrobble": "view-statistics", "Hesap": "user-identity", "Hakkında": "help-about" })
+            // the DJ's four pages sit under "DJ", indented and without an icon
+            readonly property var subs: ["Seçim", "Atlamalar", "Hafıza", "İnce ayar"]
             // the keys stay Turkish (d.cat, objectName, openSettings); qsTr shows them
-            model: [QT_TR_NOOP("Genel"), QT_TR_NOOP("Çalma"), "DJ", QT_TR_NOOP("Önbellek"), QT_TR_NOOP("Klavye"), "Scrobble", QT_TR_NOOP("Hesap"), QT_TR_NOOP("Hakkında")]
+            model: [QT_TR_NOOP("Genel"), QT_TR_NOOP("Çalma"), "DJ", QT_TR_NOOP("Seçim"), QT_TR_NOOP("Atlamalar"), QT_TR_NOOP("Hafıza"), QT_TR_NOOP("İnce ayar"),
+                    QT_TR_NOOP("Önbellek"), QT_TR_NOOP("Klavye"), "Scrobble", QT_TR_NOOP("Hesap"), QT_TR_NOOP("Hakkında")]
             delegate: ItemDelegate {
                 required property string modelData
+                readonly property bool sub: catList.subs.indexOf(modelData) >= 0
                 objectName: "cat_" + modelData
                 width: ListView.view.width
                 text: qsTr(modelData)
-                icon.name: Util.icon(catList.icons[modelData])
+                icon.name: catList.icons[modelData] ? Util.icon(catList.icons[modelData]) : ""
+                leftPadding: sub ? 40 : 12
                 spacing: 6 // Breeze's own; Fluent has none here
                 highlighted: d.cat === modelData
                 onClicked: d.cat = modelData
@@ -176,20 +253,6 @@ Dialog {
                         checked: Player.dj
                         onToggled: on => Player.dj = on
                     }
-                    component Knob: LabeledSlider {
-                        required property var modelData
-                        objectName: "knob_" + modelData.key
-                        enabled: Player.dj
-                        label: modelData.label
-                        hint: modelData.hint
-                        from: modelData.from; to: modelData.to; stepSize: modelData.step
-                        value: Player.options[modelData.key] ?? modelData.from
-                        valueText: DjKnobs.text(modelData, Player.options[modelData.key] ?? modelData.from)
-                        onMoved: v => Player.setOption(modelData.key, Math.round(v))
-                    }
-                    Repeater { model: DjKnobs.main; delegate: Knob {} }
-                    Switch { id: advanced; objectName: "djAdvanced"; text: qsTr("Gelişmiş ayarlar"); enabled: Player.dj }
-                    Repeater { model: DjKnobs.advanced; delegate: Knob { visible: advanced.checked } }
                     RowLayout {
                         Hint { text: qsTr("DJ ayarlarını ilk hâline getirir."); Layout.fillWidth: true }
                         Button { text: qsTr("Varsayılanlara dön"); icon.name: Util.icon("edit-undo"); onClicked: Player.resetDjSettings() }
@@ -226,6 +289,26 @@ Dialog {
                         Hint { text: qsTr("Atlamaları, dinlemeleri ve geri bildirimlerini siler. Kütüphane dizini kalır."); Layout.fillWidth: true }
                         Button { text: qsTr("DJ hafızasını sıfırla"); icon.name: Util.icon("edit-clear-all"); onClicked: { Player.resetDjMemory(); d.dj.feedback = [] } }
                     }
+                }
+
+                Page {
+                    name: "Seçim"
+                    Repeater { model: DjKnobs.of("pick"); delegate: DjKnob {} }
+                }
+
+                Page {
+                    name: "Atlamalar"
+                    Repeater { model: DjKnobs.of("skips"); delegate: DjKnob {} }
+                }
+
+                Page {
+                    name: "Hafıza"
+                    Repeater { model: DjKnobs.of("memory"); delegate: DjKnob {} }
+                }
+
+                Page {
+                    name: "İnce ayar"
+                    Repeater { model: DjKnobs.of("fine"); delegate: DjKnob {} }
                 }
 
                 Page {
