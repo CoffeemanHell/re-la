@@ -154,7 +154,7 @@ jobs:
         run: |
           export APPDATA=$(mktemp -d) QT_FORCE_STDERR_LOGGING=1 # Qt writes to the debugger otherwise
           # the style the app sets on Windows (left alone, Qt picks the native "Windows" style on a server)
-          export QT_QUICK_CONTROLS_STYLE=org.kde.desktop QT_STYLE_OVERRIDE=Breeze
+          export QT_QUICK_CONTROLS_STYLE=org.kde.desktop
           "$(qmake6 -query QT_INSTALL_BINS)/qmltestrunner" -input crates/rela_desktop/tests/qml \
             -import crates/rela_desktop/tests/qml -import crates/rela_desktop/themes
       # The zip on its own, with no MSYS2 on PATH: a missing DLL or a QML error ends the app; running 8 s passes.

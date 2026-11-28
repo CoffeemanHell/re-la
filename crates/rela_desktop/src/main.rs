@@ -170,9 +170,6 @@ fn main() {
         if std::env::var_os("QT_QUICK_CONTROLS_STYLE").is_none() {
             set_env_for_qt(c"QT_QUICK_CONTROLS_STYLE", c"org.kde.desktop");
         }
-        if std::env::var_os("QT_STYLE_OVERRIDE").is_none() {
-            set_env_for_qt(c"QT_STYLE_OVERRIDE", c"Breeze"); // the widget style org.kde.desktop draws with
-        }
     }
     // Qt Widgets' application, not QGuiApplication: KDE's org.kde.desktop style and the tray's fallback need it
     let mut app = QApplication::new();
@@ -180,7 +177,14 @@ fn main() {
     qt::QCoreApplication::set_application_name(&QString::from("re-la"));
     cxx_qt_lib::QGuiApplication::set_desktop_file_name(&QString::from("re-la"));
     #[cfg(windows)]
-    breeze_icons();
+    {
+        // the widget style org.kde.desktop draws with. Not QT_STYLE_OVERRIDE: Qt Quick Controls reads that too and
+        // then looks for a QML style named "Breeze", which does not exist
+        if std::env::var_os("QT_STYLE_OVERRIDE").is_none() {
+            qt::QApplication::set_style(&QString::from("Breeze"));
+        }
+        breeze_icons();
+    }
     qt::QGuiApplication::set_quit_on_last_window_closed(false); // closing the window can leave it playing in the tray
     // SAFETY: a nul-terminated literal; the main thread, before any mpv deck exists
     unsafe { setlocale(LC_NUMERIC, c"C".as_ptr()) }; // libmpv needs it; Qt set the system locale (tr_TR: decimal comma)
