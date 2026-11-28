@@ -381,6 +381,7 @@ impl PlayerCore {
         let generation = self.generation;
         self.extend_seq += 1;
         let seq = self.extend_seq;
+        let dj = self.dj; // the mode that picks these songs, even if it changes before they arrive
         self.extending = true;
         fn songs_of(r: &Value, key: &str) -> Vec<Value> {
             r[key]["song"].as_array().cloned().unwrap_or_default()
@@ -396,10 +397,14 @@ impl PlayerCore {
                 return; // logged out or a new queue was played meanwhile
             }
             let mut add = similar_append(&c.queue, &songs);
-            if c.dj {
+            if dj {
                 let batch = c.options.get("radioBatch").and_then(Value::as_i64).unwrap_or(10);
                 let room = (batch - (c.queue.len() as i64 - c.idx - 1)).max(0) as usize; // skips while waiting
                 add.truncate(room);
+            } else {
+                for s in &mut add {
+                    s["auto"] = true.into(); // automatic, not a DJ pick: no DJ badge, but "back" and skips may drop it
+                }
             }
             if add.is_empty() {
                 c.extend_retry = c.clock_ms + 15000.0;

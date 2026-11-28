@@ -6,6 +6,8 @@ pub mod index;
 pub mod memory;
 pub mod session;
 pub mod why;
+#[cfg(test)]
+mod ui_tables;
 
 pub use knobs::Knobs;
 use genres::{Genres, UserGenres};

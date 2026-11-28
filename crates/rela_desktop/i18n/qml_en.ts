@@ -123,6 +123,7 @@
     <message><source>Tam dinlenmiş sayılır</source><translation>Counts as heard in full</translation></message>
     <message><source>Şarkının bu kadarı çaldıysa sonuna kadar dinlenmiş sayılır.</source><translation>A song played this far counts as heard to the end.</translation></message>
     <message><source>Arayış: atlama sayısı</source><translation>Looking around: skips</translation></message>
+    <message><source>Hızlı atlamalar &quot;başka bir şey arıyorum&quot; demek: bu atlamalar eksi sayılmaz, DJ daha çok keşfeder.</source><translation>Quick skips mean &quot;I want something else&quot;: they do not count against the songs, and the DJ explores more.</translation></message>
     <message><source>Bu kadar hızlı atlama &quot;başka bir şey arıyorum&quot; demek: bu atlamalar eksi sayılmaz, DJ daha çok keşfeder.</source><translation>This many quick skips mean &quot;I want something else&quot;: they do not count against the songs, and the DJ explores more.</translation></message>
     <message><source>Arayış: süre</source><translation>Looking around: time</translation></message>
     <message><source>Atlamalar bu süre içinde gelmeli. Tek bir atlama da bu kadar bekler, sonra eksi sayılır.</source><translation>The skips must come within this time. A single skip waits this long too, then counts.</translation></message>
@@ -142,6 +143,20 @@
     <message numerus="yes"><source>%n sn</source><translation><numerusform>%n s</numerusform><numerusform>%n s</numerusform></translation></message>
     <message numerus="yes"><source>%n dk</source><translation><numerusform>%n min</numerusform><numerusform>%n min</numerusform></translation></message>
     <message numerus="yes"><source>%n şarkı</source><translation><numerusform>%n song</numerusform><numerusform>%n songs</numerusform></translation></message>
+    <message><source>Erken atlama eksi sayılsın</source><translation>Early skips count against a song</translation></message>
+    <message><source>Kapalıyken atlamalar hiç sayılmaz, bildirim de çıkmaz.</source><translation>Off: skips never count, and no notice shows.</translation></message>
+    <message><source>Sevilmeyen şarkı</source><translation>Disliked songs</translation></message>
+    <message><source>Eksileri biriken şarkı çok seyrek çalar.</source><translation>A song with many skips plays very rarely.</translation></message>
+    <message><source>Arayış modu</source><translation>Looking around</translation></message>
+    <message><source>Yakında dinlediğin şarkılar geri planda kalır.</source><translation>Songs you heard recently stay in the background.</translation></message>
+    <message><source>Her partide puana bakılmadan seçilen şarkılar.</source><translation>Songs picked without looking at their scores.</translation></message>
+    <message><source>Bu kadar gün içinde dinlediğin şarkılar geri planda kalır.</source><translation>Songs you heard within this many days stay in the background.</translation></message>
+    <message><source>2 hafta</source><translation>2 weeks</translation></message>
+    <message><source>1 ay</source><translation>1 month</translation></message>
+    <message><source>2 ay</source><translation>2 months</translation></message>
+    <message><source>3 ay</source><translation>3 months</translation></message>
+    <message><source>6 ay</source><translation>6 months</translation></message>
+    <message><source>1 yıl</source><translation>1 year</translation></message>
 </context>
 <context>
     <name>DjStateDialog</name>
@@ -684,6 +699,16 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <message><source>DJ&apos;NİN SON SEÇİMDE TARTTIĞI ŞARKILAR VE PUANLARI.</source><translation>THE SONGS THE DJ WEIGHED FOR ITS LAST PICK, WITH THEIR SCORES.</translation></message>
     <message><source>DJ DURUMU</source><translation>DJ STATE</translation></message>
     <message><source>ATLAMALARI, DİNLEMELERİ VE GERİ BİLDİRİMLERİNİ SİLER. KÜTÜPHANE DİZİNİ KALIR.</source><translation>FORGETS SKIPS, LISTENS AND YOUR FEEDBACK. THE LIBRARY INDEX STAYS.</translation></message>
+    <message><source>Seçim</source><translation>Selection</translation></message>
+    <message><source>Atlamalar</source><translation>Skips</translation></message>
+    <message><source>Hafıza</source><translation>Memory</translation></message>
+    <message><source>İnce ayar</source><translation>Fine tuning</translation></message>
+    <message><source>SEÇİM</source><translation>SELECTION</translation></message>
+    <message><source>ATLAMALAR</source><translation>SKIPS</translation></message>
+    <message><source>HAFIZA</source><translation>MEMORY</translation></message>
+    <message><source>İNCE AYAR</source><translation>FINE TUNING</translation></message>
+    <message><source>VARSAYILAN</source><translation>DEFAULT</translation></message>
+    <message><source>Varsayılana dön</source><translation>Reset to default</translation></message>
 </context>
 <context>
     <name>Share</name>

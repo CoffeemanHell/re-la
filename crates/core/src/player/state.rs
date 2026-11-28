@@ -122,6 +122,15 @@ pub(super) struct Held {
     pub(super) before: crate::dj::session::Session, // the sitting before the skip, for an undo
 }
 
+/// The queue as it was before a song or list was opened from outside it: "back" from `first` brings it back.
+pub(super) struct Swap {
+    pub(super) queue: Arc<Vec<Value>>,
+    pub(super) idx: i64,
+    pub(super) first: i64,
+    pub(super) before: Vec<Value>, // the shuffle memory of that queue
+    pub(super) account: String,    // the swap is only for the account it was made in
+}
+
 /// How long the "undo skip" notice shows.
 pub(super) const UNDO_MS: f64 = 8_000.0;
 
@@ -173,8 +182,8 @@ impl DeckState {
 }
 
 /// Only what peers need to show and play a song (no server paths).
-const SONG_KEYS: [&str; 14] =
-    ["id", "title", "artist", "album", "albumId", "artistId", "duration", "coverArt", "suffix", "bitDepth", "samplingRate", "genre", "starred", "userRating"];
+const SONG_KEYS: [&str; 16] =
+    ["id", "title", "artist", "album", "albumId", "artistId", "duration", "coverArt", "suffix", "bitDepth", "samplingRate", "genre", "starred", "userRating", "auto", "dj"];
 
 pub(super) fn song_json(song: &Value) -> Value {
     let mut o = Map::new();
@@ -240,6 +249,11 @@ pub(crate) fn default_options() -> Map<String, Value> {
         "transcodeWifi": "",      // "opus-128"; empty: the original
         "transcodeMobile": "",
         "coverQuality": "high",   // low | medium | high: cover pixels ×0.5 / ×0.75 / ×1
+        "djSkipOn": true,         // the DJ's feature switches (dj::knobs::SWITCHES)
+        "djSearchOn": true,
+        "djDislikeOn": true,
+        "djRepeatOn": true,
+        "djWildcardOn": true,
     })
     .as_object()
     .cloned()
@@ -330,6 +344,7 @@ pub struct PlayerCore {
     pub(super) memory_saved: f64,              // clock ms
     pub(super) held_skip: Vec<Held>, // oldest first: a streak of them may yet start a search
     pub(super) skip_undo: Value, // what the "undo skip" notice offers, while it shows
+    pub(super) swap: Option<Swap>,
     pub(super) by_listener: bool,              // a command from someone in the room is running
     pub(super) index_busy: bool,               // the DJ's library index is being walked
     pub(super) index_next: f64,                // clock ms: no walk before it
@@ -442,6 +457,7 @@ impl PlayerCore {
             memory_saved: 0.0,
             held_skip: Vec::new(),
             skip_undo: Value::Null,
+            swap: None,
             by_listener: false,
             index_busy: false,
             index_next: 0.0,
@@ -894,6 +910,8 @@ impl PlayerCore {
         if self.refused_offline(&text(&q[start]["id"])) {
             return;
         }
+        let account = self.brain_key();
+        let old = self.valid(self.idx).then(|| (self.queue.clone(), self.idx, self.before.clone()));
         if self.shuffle {
             // the picked song first, the rest shuffled; off restores the list order
             let s = q.remove(start);
@@ -903,6 +921,7 @@ impl PlayerCore {
             start = 0;
         }
         self.queue = Arc::new(q);
+        self.swap = old.map(|(queue, idx, before)| Swap { queue, idx, first: 0, before, account });
         self.extend_seq += 1; // picks for the old queue
         self.extending = false;
         self.extend_retry = 0.0;
@@ -917,10 +936,18 @@ impl PlayerCore {
         if (where_ == 0 || !self.valid(self.idx)) && self.refused_offline(&text(&songs[0]["id"])) {
             return;
         }
-        let idx = self.idx;
+        let (idx, account) = (self.idx, self.brain_key());
+        // play now: the queue as it was is remembered, so back can bring it back
+        let old = (where_ == 0 && self.valid(idx)).then(|| (self.queue.clone(), self.before.clone()));
+        let len = self.queue.len();
         let first = insert_songs(Arc::make_mut(&mut self.queue), idx, &songs, where_);
         if first < 0 {
             return;
+        }
+        self.swap = old.map(|(queue, before)| Swap { queue, idx, first, before, account });
+        if where_ == 0 {
+            // the old song's automatic picks go, after all the songs given here: the DJ refills for the new one
+            self.drop_picks_from(first as usize + self.queue.len() - len);
         }
         if where_ == 0 || !self.valid(self.idx) {
             return self.jump(first);
@@ -956,6 +983,7 @@ impl PlayerCore {
         if !self.valid(i) || self.remote("remove", json!({"i": i})) {
             return;
         }
+        self.swap = None;
         Arc::make_mut(&mut self.queue).remove(i as usize);
         if i < self.idx {
             self.idx -= 1;
@@ -975,6 +1003,7 @@ impl PlayerCore {
         if !self.valid(from) || !self.valid(to) || from == to || self.remote("move", json!({"from": from, "to": to})) {
             return;
         }
+        self.swap = None;
         let q = Arc::make_mut(&mut self.queue);
         let s = q.remove(from as usize);
         q.insert(to as usize, s);
@@ -992,6 +1021,7 @@ impl PlayerCore {
         if !self.valid(self.idx + 1) || self.remote("clearUpcoming", json!({})) {
             return;
         }
+        self.swap = None;
         let keep = (self.idx + 1) as usize;
         Arc::make_mut(&mut self.queue).truncate(keep);
         self.queue_edited();
@@ -1054,6 +1084,20 @@ impl PlayerCore {
         }
         let restart = self.station.is_empty() && self.position() > 3.0;
         self.end_station();
+        let (at, account) = (self.idx, self.brain_key());
+        if !restart && let Some(s) = self.swap.as_ref().filter(|s| s.first == at && s.account == account) {
+            let id = s.queue.get(s.idx as usize).map(|v| text(&v["id"])).unwrap_or_default();
+            if self.refused_offline(&id) {
+                return self.publish(); // keep the swap: back restores once online
+            }
+            let s = self.swap.take().expect("checked above");
+            self.queue = s.queue;
+            self.before = s.before;
+            self.extend_seq += 1; // picks in flight were for the song opened from the queue
+            self.extending = false;
+            self.load(s.idx, 0.0);
+            return self.queue_edited();
+        }
         let before = self.playable((self.idx - 1).max(0), -1);
         self.load(if restart || before < 0 { self.idx } else { before }, 0.0);
         self.publish();
@@ -1072,6 +1116,7 @@ impl PlayerCore {
             return;
         }
         self.shuffle = on;
+        self.swap = None;
         self.settings.set("shuffle", on.into());
         let at = (self.idx + 1).max(0) as usize;
         if on {
@@ -1309,9 +1354,14 @@ impl PlayerCore {
 
     /// The DJ's upcoming picks go (the listener's own songs stay); tick refills the queue for the new direction.
     pub(super) fn drop_dj_picks(&mut self) {
-        let at = ((self.idx + 1).max(0) as usize).min(self.queue.len());
+        self.drop_picks_from(((self.idx + 1).max(0) as usize).min(self.queue.len()));
+    }
+
+    /// The automatic picks from `at` on go: the DJ's, and Navidrome's similar songs picked with the DJ off.
+    fn drop_picks_from(&mut self, at: usize) {
+        let auto = |s: &Value| s["dj"].as_bool().unwrap_or(false) || s["auto"].as_bool().unwrap_or(false);
         let mut kept = self.queue[..at].to_vec();
-        kept.extend(self.queue[at..].iter().filter(|s| !s["dj"].as_bool().unwrap_or(false)).cloned());
+        kept.extend(self.queue[at..].iter().filter(|s| !auto(s)).cloned());
         self.extend_seq += 1; // a request still out was picked for the old direction
         self.extending = false;
         if kept.len() != self.queue.len() {
@@ -1418,6 +1468,16 @@ impl PlayerCore {
         match key {
             "audioDevice" => self.decks.iter_mut().for_each(|d| d.out.set_audio_device(&text(&value))),
             "transcodeWifi" | "transcodeMobile" => self.drop_preload(),
+            "djSkipOn" if !value.as_bool().unwrap_or(true) => {
+                self.held_skip.clear(); // a switched-off penalty: skips already held never count
+                self.set_skip_undo(Value::Null);
+            }
+            "djSearchOn" if !value.as_bool().unwrap_or(true) => {
+                self.held_skip.iter_mut().for_each(|h| h.before.end_search()); // an undo must not bring it back
+                if let Some((_, b)) = self.brain.as_mut() {
+                    b.session.end_search();
+                }
+            }
             "offlineGb" => {
                 self.cache_next = 0.0;
                 if self.cache_cap() > 0 {
@@ -1441,6 +1501,7 @@ impl PlayerCore {
         if self.remote("station", json!({"id": id})) {
             return;
         }
+        self.swap = None;
         if id.is_empty() {
             return self.stop_station();
         }
