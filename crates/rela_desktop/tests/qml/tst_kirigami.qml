@@ -134,7 +134,10 @@ Item {
         }
         // the files this theme has drawn itself so far (the rest still come from Default)
         readonly property var converted: ["HomePage.qml", "AlbumsPage.qml", "ArtistsPage.qml", "GenresPage.qml", "PlaylistsPage.qml",
-                                          "AlbumCard.qml", "ArtistCard.qml", "Cover.qml", "Empty.qml", "Loading.qml"]
+                                          "AlbumCard.qml", "ArtistCard.qml", "Cover.qml", "Empty.qml", "Loading.qml",
+                                          "AlbumPage.qml", "ArtistPage.qml", "GenrePage.qml", "PlaylistPage.qml", "TracksPage.qml",
+                                          "FavoritesPage.qml", "SearchPage.qml", "TrackRow.qml", "TrackHeader.qml", "TrackColumns.qml",
+                                          "SongRow.qml", "Stars.qml", "Link.qml", "Heart.qml", "PageTitle.qml"]
         function test_no_hex_colors() {
             for (const f of ["Main.qml", "Sidebar.qml", "PlayerBar.qml", "LoginPage.qml"].concat(converted))
                 verify(!/#[0-9a-fA-F]{3,8}\b/.test(read(f).replace(/\/\/.*$/gm, "")), f + " has a hex color")
@@ -150,8 +153,9 @@ Item {
         function test_pages_load_from_this_theme() {
             const m = createTemporaryObject(mainWindow, null)
             tryCompare(m, "page", "home")
-            for (const p of ["home", "albums", "artists", "genres", "playlists"]) {
-                m.go(p)
+            for (const [p, a] of [["home"], ["albums"], ["artists"], ["genres"], ["playlists"], ["album", { id: "1" }], ["artist", { id: "1" }],
+                                  ["genre", { name: "Rap" }], ["playlist", { id: "1" }], ["tracks"], ["favorites"], ["search", { query: "x" }]]) {
+                m.go(p, a)
                 const url = String(m.lastPageUrl)
                 verify(url.indexOf("/themes/kirigami/") >= 0, p + ": " + url)
             }

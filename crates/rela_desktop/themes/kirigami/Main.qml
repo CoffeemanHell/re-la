@@ -45,7 +45,9 @@ Kirigami.ApplicationWindow {
     contentItem.anchors.leftMargin: 0
     pageStack.anchors.leftMargin: globalDrawer ? globalDrawer.width * globalDrawer.position : 0
     // the page files this theme has; the rest still come from the Default theme
-    readonly property var ownPages: ["HomePage.qml", "AlbumsPage.qml", "ArtistsPage.qml", "GenresPage.qml", "PlaylistsPage.qml"]
+    readonly property var ownPages: ["HomePage.qml", "AlbumsPage.qml", "ArtistsPage.qml", "GenresPage.qml", "PlaylistsPage.qml",
+                                     "AlbumPage.qml", "ArtistPage.qml", "GenrePage.qml", "PlaylistPage.qml", "TracksPage.qml",
+                                     "FavoritesPage.qml", "SearchPage.qml"]
     property url lastPageUrl // the page file shown last (tests check it comes from this theme)
     Navigation {
         id: route
