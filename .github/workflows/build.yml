@@ -54,7 +54,7 @@ jobs:
         run: >
           dnf install -y --setopt=install_weak_deps=False git gcc-c++ lld rpm-build cargo rust clippy
           qt6-qtbase-devel qt6-qtdeclarative-devel qt6-qtbase-gui qt6-linguist mpv-devel dejavu-sans-fonts
-          kf6-kirigami kf6-kirigami-addons kf6-qqc2-desktop-style
+          kf6-kirigami kf6-qqc2-desktop-style
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -129,7 +129,6 @@ jobs:
             mingw-w64-ucrt-x86_64-qt6-imageformats
             mingw-w64-ucrt-x86_64-qt6-tools
             mingw-w64-ucrt-x86_64-kirigami
-            mingw-w64-ucrt-x86_64-kirigami-addons
             mingw-w64-ucrt-x86_64-qqc2-desktop-style
             mingw-w64-ucrt-x86_64-breeze
             mingw-w64-ucrt-x86_64-breeze-icons

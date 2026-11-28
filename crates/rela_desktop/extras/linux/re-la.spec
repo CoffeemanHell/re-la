@@ -13,6 +13,8 @@ Summary:  Navidrome music player that listens together
 Obsoletes: nsync < %{version}-%{release}
 License:  AGPL-3.0-only AND OFL-1.1
 Requires: qt6-qtdeclarative
+# the Kirigami theme (the default): KDE's Kirigami and its Qt Quick Controls style
+Requires: kf6-kirigami kf6-qqc2-desktop-style
 
 %description
 A small native music player for Navidrome that lets people listen to the same song at the same time.
