@@ -56,6 +56,11 @@ Dialog {
                             readonly property string root: modelData.following || modelData.user
                             readonly property bool mine: Sync.listeners.indexOf(modelData.user) >= 0
                             objectName: "user_" + modelData.user
+                            function radioLine(more) { // the station, then its title and artist when known
+                                const st = modelData.station
+                                return more.length === 2 ? qsTr("📻 %1 · %2 · %3").arg(st).arg(more[0]).arg(more[1])
+                                     : more.length === 1 ? qsTr("📻 %1 · %2").arg(st).arg(more[0]) : qsTr("📻 %1").arg(st)
+                            }
                             Layout.fillWidth: true
                             ColumnLayout {
                                 Layout.fillWidth: true; spacing: 2
@@ -69,7 +74,7 @@ Dialog {
                                 Hint {
                                     visible: !!userRow.modelData.station || !!userRow.modelData.title
                                     text: userRow.modelData.station
-                                          ? ["📻 " + userRow.modelData.station, userRow.modelData.title, userRow.modelData.artist].filter(x => x).join(" · ")
+                                          ? userRow.radioLine([userRow.modelData.title, userRow.modelData.artist].filter(x => x))
                                           : (userRow.modelData.playing ? "▶  " : "❚❚  ") + qsTr("%1  ·  %2").arg(userRow.modelData.title || "").arg(userRow.modelData.artist || "")
                                     elide: Text.ElideRight; wrapMode: Text.NoWrap
                                 }

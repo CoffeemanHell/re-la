@@ -3853,25 +3853,25 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     <name>SongRow</name>
     <message>
         <location filename="../themes/default/SongRow.qml" line="73"/>
-        <location filename="../themes/kirigami/SongRow.qml" line="78"/>
+        <location filename="../themes/kirigami/SongRow.qml" line="80"/>
         <source>Aşağı</source>
         <translation>Down</translation>
     </message>
     <message>
         <location filename="../themes/default/SongRow.qml" line="75"/>
-        <location filename="../themes/kirigami/SongRow.qml" line="80"/>
+        <location filename="../themes/kirigami/SongRow.qml" line="82"/>
         <source>Diğer</source>
         <translation>More</translation>
     </message>
     <message>
         <location filename="../themes/default/SongRow.qml" line="74"/>
-        <location filename="../themes/kirigami/SongRow.qml" line="79"/>
+        <location filename="../themes/kirigami/SongRow.qml" line="81"/>
         <source>Kuyruktan çıkar</source>
         <translation>Remove from queue</translation>
     </message>
     <message>
         <location filename="../themes/default/SongRow.qml" line="72"/>
-        <location filename="../themes/kirigami/SongRow.qml" line="77"/>
+        <location filename="../themes/kirigami/SongRow.qml" line="79"/>
         <source>Yukarı</source>
         <translation>Up</translation>
     </message>
@@ -3982,13 +3982,13 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/TogetherDialog.qml" line="77"/>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="79"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="84"/>
         <source>Dinle</source>
         <translation>Listen</translation>
     </message>
     <message>
         <location filename="../themes/default/TogetherDialog.qml" line="77"/>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="79"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="84"/>
         <source>Dinliyorsun</source>
         <translation>Listening</translation>
     </message>
@@ -4004,7 +4004,7 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/TogetherDialog.qml" line="94"/>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="96"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="101"/>
         <source>Gizli</source>
         <translation>Hidden</translation>
     </message>
@@ -4020,7 +4020,7 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/TogetherDialog.qml" line="88"/>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="90"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="95"/>
         <source>Katılanlar kontrol edebilir</source>
         <translation>Listeners can control</translation>
     </message>
@@ -4047,7 +4047,7 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/TogetherDialog.qml" line="89"/>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="91"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="96"/>
         <source>Seni dinleyenler şarkı değiştirebilir, duraklatabilir, kuyruğu düzenleyebilir.</source>
         <translation>Your listeners can change the song, pause and edit the queue.</translation>
     </message>
@@ -4058,7 +4058,7 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
     </message>
     <message>
         <location filename="../themes/default/TogetherDialog.qml" line="95"/>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="97"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="102"/>
         <source>Çevrimiçi listesinde görünmezsin, kimse seni dinlemeye başlayamaz.</source>
         <translation>You don&apos;t show in the online list; nobody can start listening to you.</translation>
     </message>
@@ -4074,17 +4074,32 @@ Add songs from albums or search; with Radio on, the rest comes by itself.</trans
         <translation>Nobody is online right now.</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="64"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="61"/>
+        <source>📻 %1 · %2 · %3</source>
+        <translation>📻 %1 · %2 · %3</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="62"/>
+        <source>📻 %1 · %2</source>
+        <translation>📻 %1 · %2</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="62"/>
+        <source>📻 %1</source>
+        <translation>📻 %1</translation>
+    </message>
+    <message>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="69"/>
         <source>%1  →  seni dinliyor</source>
         <translation>%1  →  listening to you</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="65"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="70"/>
         <source>%1  →  %2</source>
         <translation>%1  →  %2</translation>
     </message>
     <message>
-        <location filename="../themes/kirigami/TogetherDialog.qml" line="73"/>
+        <location filename="../themes/kirigami/TogetherDialog.qml" line="78"/>
         <source>%1  ·  %2</source>
         <translation>%1  ·  %2</translation>
     </message>

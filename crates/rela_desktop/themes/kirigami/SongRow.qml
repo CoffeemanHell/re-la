@@ -19,8 +19,10 @@ Item {
     width: ListView.view ? ListView.view.width - ListView.view.rightMargin : parent ? parent.width : 0
     height: 52
     HoverHandler { id: hov }
-    activeFocusOnTab: true // keyboard: Tab to the row, Menu (or Shift+F10) opens the song menu, Enter plays
+    activeFocusOnTab: true // keyboard: Tab to the row, Menu (or Shift+F10) opens the song menu, Enter plays, Ctrl+Up/Down moves a queue row
     Keys.onMenuPressed: openMenu()
+    Keys.onUpPressed: e => { e.accepted = inQueue && e.modifiers & Qt.ControlModifier; if (e.accepted && Sync.canControl && index > 0) Player.move(index, index - 1) } // Ctrl+Up/Down: reorder the queue
+    Keys.onDownPressed: e => { e.accepted = inQueue && e.modifiers & Qt.ControlModifier; if (e.accepted && Sync.canControl && index < Player.queueLength - 1) Player.move(index, index + 1) }
     Keys.onPressed: e => { if (e.key === Qt.Key_F10 && e.modifiers & Qt.ShiftModifier) { openMenu(); e.accepted = true } }
     Keys.onReturnPressed: if (Sync.canControl) row.inQueue ? Player.jump(row.index) : row.list ? Player.play(row.list, row.index) : Player.add([row.song], 0)
     function openMenu() { w.menu("song", song, { queueIndex: inQueue ? index : -1 }) }
