@@ -1091,7 +1091,7 @@ Item {
             compare(m.count, 18)
             const fav = mi(m, "Fav.")
             verify(fav.checked)
-            mouseClick(fav)
+            fav.toggle(); fav.triggered() // not a click: the 18 items may not fit the test window (Windows, KDE style) and the menu scrolls
             compare(Player.called("setOption").length, 1)
             verify(Player.options.columns.split(",").indexOf("fav") < 0 && Player.options.columns.indexOf("artist") >= 0)
             const r = createTemporaryObject(trackRow, host, { width: 1200, song: { id: "s1", title: "T", size: 1048576, path: "a/b.flac" } })
