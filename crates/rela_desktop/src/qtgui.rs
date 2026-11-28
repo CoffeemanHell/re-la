@@ -37,6 +37,7 @@ pub mod ffi {
         include!(<QtGui/QGuiApplication>);
         include!(<QtGui/QStyleHints>);
         include!(<QtGui/QFontDatabase>);
+        include!(<QtGui/QIcon>);
         type QCoreApplication;
         #[Self = "QCoreApplication"]
         fn quit();
@@ -51,6 +52,9 @@ pub mod ffi {
         #[Self = "QGuiApplication"]
         #[cxx_name = "setQuitOnLastWindowClosed"]
         fn set_quit_on_last_window_closed(quit: bool);
+        #[Self = "QIcon"]
+        #[cxx_name = "setThemeName"]
+        fn set_icon_theme_name(name: &QString);
         #[cxx_name = "installEventFilter"]
         unsafe fn install_event_filter(self: Pin<&mut QCoreApplication>, filter: *mut QObject);
         include!(<QtQuick/QQuickWindow>);
@@ -87,6 +91,7 @@ pub mod ffi {
         type QStyleHints;
         type QGuiApplication;
         type QFontDatabase;
+        type QIcon;
         type QQuickWindow;
         type QQuickItem;
         #[namespace = "QEvent"]

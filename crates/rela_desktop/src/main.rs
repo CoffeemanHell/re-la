@@ -148,15 +148,22 @@ fn main() {
     move_from_nsync(); // before anything reads the settings, the cache or the themes
 
     #[cfg(windows)]
-    if std::env::var_os("QT_QUICK_CONTROLS_STYLE").is_none() {
-        // the Default theme's look on Windows: one style on 10 and 11, light or dark like the system
-        set_env_for_qt(c"QT_QUICK_CONTROLS_STYLE", c"FluentWinUI3");
+    {
+        // KDE's Breeze on Windows too, for every theme: the Kirigami theme needs it, and all look as they do on KDE
+        if std::env::var_os("QT_QUICK_CONTROLS_STYLE").is_none() {
+            set_env_for_qt(c"QT_QUICK_CONTROLS_STYLE", c"org.kde.desktop");
+        }
+        if std::env::var_os("QT_STYLE_OVERRIDE").is_none() {
+            set_env_for_qt(c"QT_STYLE_OVERRIDE", c"Breeze"); // the widget style org.kde.desktop draws with
+        }
     }
     // Qt Widgets' application, not QGuiApplication: KDE's org.kde.desktop style and the tray's fallback need it
     let mut app = QApplication::new();
     qt::QCoreApplication::set_organization_name(&QString::from("re-la"));
     qt::QCoreApplication::set_application_name(&QString::from("re-la"));
     cxx_qt_lib::QGuiApplication::set_desktop_file_name(&QString::from("re-la"));
+    #[cfg(windows)]
+    qt::QIcon::set_icon_theme_name(&QString::from("breeze")); // bundled next to the exe (icons/, Qt's data path)
     qt::QGuiApplication::set_quit_on_last_window_closed(false); // closing the window can leave it playing in the tray
     // SAFETY: a nul-terminated literal; the main thread, before any mpv deck exists
     unsafe { setlocale(LC_NUMERIC, c"C".as_ptr()) }; // libmpv needs it; Qt set the system locale (tr_TR: decimal comma)
@@ -219,7 +226,7 @@ mod tests {
         // SAFETY: a variable no other test reads; this test binary has no thread reading the environment meanwhile
         unsafe { std::env::set_var("RELA_TEST_STD", "x") };
         assert_eq!(crt("RELA_TEST_STD"), None, "set_var does not reach the C runtime's copy (why set_env_for_qt exists)");
-        super::set_env_for_qt(c"RELA_TEST_CRT", c"FluentWinUI3");
-        assert_eq!(crt("RELA_TEST_CRT").as_deref(), Some("FluentWinUI3"));
+        super::set_env_for_qt(c"RELA_TEST_CRT", c"org.kde.desktop");
+        assert_eq!(crt("RELA_TEST_CRT").as_deref(), Some("org.kde.desktop"));
     }
 }
