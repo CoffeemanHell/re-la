@@ -56,8 +56,9 @@ Item {
                     compare(bar.mapToItem(null, 0, 0).x, 0, "bar starts at the window's edge, width " + width)
                     compare(bar.width, m.width)
                 }
-                fuzzyCompare(m.pageStack.mapToItem(null, 0, 0).x, m.globalDrawer.width, 1) // pages start where the sidebar ends
-                fuzzyCompare(m.pageStack.width, m.width - m.globalDrawer.width, 1)
+                const pages = named(m.contentItem, "pages")
+                fuzzyCompare(pages.mapToItem(null, 0, 0).x, m.globalDrawer.width, 1) // pages start where the sidebar ends
+                fuzzyCompare(pages.width, m.width - m.globalDrawer.width, 1)
             }
         }
         function test_sidebar_hidden_when_not_usable() {
@@ -72,9 +73,44 @@ Item {
             verify(m.history[m.at - 1].state !== undefined) // albums left with its state saved
             m.back()
             compare(m.page, "albums")
-            compare(m.pageStack.currentItem.saved, m.history[m.at].state)
-            compare(m.pageStack.depth, 1) // one page area
+            compare(named(m.contentItem, "pages").item.saved, m.history[m.at].state)
             m.forward(); compare(m.page, "artists")
+        }
+        function test_back_and_forward_keep_the_scroll_position() {
+            const al = []
+            for (let i = 0; i < 60; i++) al.push({ id: "a" + i, name: "A" + i, artist: "X" })
+            Player.replies = { getAlbumList2: { albumList2: { album: al } } }
+            const m = createTemporaryObject(mainWindow, null)
+            tryCompare(m, "page", "home")
+            m.go("albums")
+            const grid = () => F.all(m.contentItem, it => it instanceof GridView && it.visible)[0]
+            tryVerify(() => grid() && grid().contentHeight > grid().height + 900)
+            grid().contentY = 900
+            m.go("artists"); m.back()
+            compare(m.page, "albums")
+            tryVerify(() => grid() && grid().contentHeight > 900)
+            wait(100)
+            compare(grid().contentY, 900, "back")
+            m.forward(); m.back()
+            wait(100)
+            compare(grid().contentY, 900, "back again")
+        }
+        function test_sidebar_hides_on_sign_out() {
+            const m = createTemporaryObject(mainWindow, null)
+            tryCompare(m, "page", "home")
+            verify(m.globalDrawer.visible)
+            Player.online = false; Player.signedIn = false
+            tryVerify(() => !m.globalDrawer.visible)
+            Player.online = true; Player.signedIn = true
+            tryVerify(() => m.globalDrawer.visible)
+        }
+        function test_alt_left_goes_back() {
+            const m = createTemporaryObject(mainWindow, null)
+            tryCompare(m, "page", "home")
+            m.go("albums")
+            m.requestActivate(); tryVerify(() => m.active)
+            keySequence(StandardKey.Back)
+            tryCompare(m, "page", "home")
         }
         function test_search_field_waits_300ms() {
             const m = createTemporaryObject(mainWindow, null)

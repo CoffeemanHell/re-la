@@ -11,7 +11,7 @@ import org.kde.kirigami as Kirigami
 import shared
 import Rela
 
-Kirigami.ApplicationWindow {
+Kirigami.AbstractApplicationWindow { // no page stack: one page area of our own (below)
     id: win
     width: Math.max(minimumWidth, geo.w); height: Math.max(minimumHeight, geo.h); minimumWidth: 900; minimumHeight: 600
     visible: true
@@ -35,31 +35,27 @@ Kirigami.ApplicationWindow {
     }
 
     // ---------------------------------------------------------------- pages and history
-    // One page area: Navigation keeps the history; each page replaces the last on the page stack (one column).
-    pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
-    pageStack.columnView.columnResizeMode: Kirigami.ColumnView.SingleColumn
-    pageStack.visible: usable
+    // One page area: a Loader beside the sidebar, driven by Navigation (history, saved pages). Not Kirigami's page
+    // stack: it makes pages outside the scene (a saved scroll position is lost) and its own Alt+Left / Alt+Right
+    // shortcuts would cancel ours.
     // Kirigami moves the whole content right of a non-modal sidebar, and Qt then puts the header and footer that far
     // left of the window. Keep the content where it is (the bars span the window) and move only the pages.
     contentItem.anchors.leftMargin: 0
-    pageStack.anchors.leftMargin: globalDrawer ? globalDrawer.width * globalDrawer.position : 0
     property url lastPageUrl // the page file shown last (tests check it comes from this theme)
     Navigation {
         id: route
-        loader: shown; searchField: q
+        loader: view; searchField: q
         onLoad: (file, props) => {
-            const url = Qt.resolvedUrl(file)
-            win.lastPageUrl = url
-            const typing = q.activeFocus // the page stack gives a new page the focus: typing a search must go on
-            if (win.pageStack.depth) win.pageStack.replace(url, props)
-            else win.pageStack.push(url, props)
-            if (typing) q.forceActiveFocus()
+            win.lastPageUrl = Qt.resolvedUrl(file)
+            view.setSource(file, props)
         }
     }
-    QtObject { // what Navigation calls its loader: the page shown
-        id: shown
-        readonly property Item item: win.pageStack.currentItem
-        property string source // Navigation clears it on logout; start() empties the stack then
+    Loader {
+        id: view
+        objectName: "pages"
+        anchors.fill: parent
+        anchors.leftMargin: win.globalDrawer ? win.globalDrawer.width * win.globalDrawer.position : 0
+        visible: win.usable
     }
     property alias history: route.history // [{page, args}]
     property alias at: route.at
@@ -71,7 +67,7 @@ Kirigami.ApplicationWindow {
     function forward() { route.forward() }
     function reload() { route.reload() } // fresh from the server
     function search(text) { route.search(text) }
-    function start() { route.start(); if (route.at < 0) pageStack.clear() }
+    function start() { route.start() }
     Connections { target: Player; function onStatusChanged() { win.start() } }
     TapHandler {
         acceptedButtons: Qt.BackButton | Qt.ForwardButton

@@ -165,6 +165,7 @@ jobs:
           $env:PATH = "C:\Windows\system32;C:\Windows"
           $env:RELA_AO = "null"; $env:APPDATA = "C:\smoke\appdata"; $env:LOCALAPPDATA = "C:\smoke\local"
           $env:QT_FORCE_STDERR_LOGGING = "1"
+          $env:QT_DEBUG_PLUGINS = "1" # a plugin that cannot load says so: the Breeze style and Kirigami's platform plugin are checked below
           $p = Start-Process C:/smoke/re-la/re-la.exe -ArgumentList '--demo' -PassThru -RedirectStandardError C:/smoke/err.txt
           Start-Sleep 8
           if ($p.HasExited) { Get-Content C:/smoke/err.txt; throw "re-la.exe ended by itself (exit $($p.ExitCode))" }
@@ -172,6 +173,8 @@ jobs:
           Get-Content C:/smoke/err.txt
           # a theme that fails falls back to Default and keeps running: catch a missing KDE module here
           if (Select-String -Path C:/smoke/err.txt -Pattern 'is not installed|Tema yüklenemedi') { throw "a QML module is missing from the zip" }
+          if (!(Test-Path C:/smoke/re-la/styles/*breeze*.dll) -or !(Test-Path C:/smoke/re-la/kf6/kirigami/platform/*.dll)) { throw "Breeze or Kirigami's platform plugin is missing from the zip" }
+          if (Select-String -Path C:/smoke/err.txt -Pattern 'Cannot load library.*(breeze|kirigami)') { throw "a KDE plugin in the zip cannot load (a DLL it needs is missing)" }
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: re-la-windows-x64

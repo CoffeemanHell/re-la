@@ -12,8 +12,10 @@ Kirigami.GlobalDrawer {
     collapsed: w.width < 1100
     collapseButtonVisible: false // the window's width decides
     enabled: w.usable
-    visible: w.usable
-    drawerOpen: w.usable
+    // the drawer sets `visible` itself when it opens and closes: follow the window, not a binding
+    Component.onCompleted: follow()
+    Connections { target: drawer.w; function onUsableChanged() { drawer.follow() } }
+    function follow() { if (w.usable) { visible = true; open() } else { close(); visible = false } }
 
     component Nav: Kirigami.Action {
         required property string target
