@@ -888,7 +888,7 @@ Item {
         function test_skip_undo_notice() {
             const m = createTemporaryObject(mainWindow, null)
             verify(!F.text(m.footer, "Geri al"))
-            const p = named(m.footer, "skipUndoPopup")
+            const p = named(m.contentItem, "skipUndoPopup")
             verify(!p.visible)
             Player.skipUndo = { id: "1", title: "X" }
             tryVerify(() => p.visible)
@@ -896,7 +896,7 @@ Item {
             const tc = named(m.footer, "transport").mapToItem(m.contentItem, named(m.footer, "transport").width / 2, 0).x
             fuzzyCompare(p.mapToItem(m.contentItem, p.width / 2, 0).x, tc, 1) // centred on the transport
             verify(p.mapToItem(m.contentItem, 0, p.height).y <= m.footer.mapToItem(m.contentItem, 0, 0).y) // above the bar
-            F.text(p, "Geri al").clicked()
+            mouseClick(F.text(p, "Geri al")) // a real click: KDE's ToolBar gives none to what sits outside it
             compare(Player.called("undoSkip").length, 1)
             verify(named(m.footer, "status").visible) // the status line no longer hides behind the notice
             compare(m.ToolTip.toolTip.contentItem.textFormat, Text.PlainText) // song names in tips: never markup

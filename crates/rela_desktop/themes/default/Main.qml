@@ -186,12 +186,12 @@ ApplicationWindow {
         id: playerBar
         visible: win.usable
         implicitHeight: 80
-        z: 1 // the skip undo popup overlaps the page above the bar
         Rectangle { // a skip the DJ will hold against the song, for a few seconds: take it back
             objectName: "skipUndoPopup"
+            parent: win.contentItem // above the bar, on the page: KDE's ToolBar takes no clicks outside itself
             visible: !!Player.skipUndo.id
-            x: playerRow.x + middleColumn.x + transport.x + transport.width / 2 - width / 2 // centred on the transport row
-            y: -height - 8
+            x: playerBar.leftPadding + playerRow.x + middleColumn.x + transport.x + transport.width / 2 - width / 2 // centred on the transport row
+            y: parent.height - height - 8
             z: 2
             width: undoRow.implicitWidth + 24; height: undoRow.implicitHeight + 12
             radius: 6
