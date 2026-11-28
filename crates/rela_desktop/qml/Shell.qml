@@ -14,19 +14,30 @@ QtObject {
 
     function load() {
         const url = App.load(Player.theme)
-        const c = Qt.createComponent(url)
-        const w = c.status === Component.Ready ? c.createObject(null) : null
+        let w = make(url)
         if (!w) {
-            console.warn(c.errorString())
             Player.setStatus(qsTr("Tema yüklenemedi: %1").arg(url))
-            if (!win)
-                Qt.exit(1)
-            return
+            // a missing module (Kirigami not installed) must not end the app: Default needs only Qt. The saved choice stays.
+            if (!win && Player.theme !== "default")
+                w = make(App.load("default"))
+            if (!w) {
+                if (!win)
+                    Qt.exit(1)
+                return
+            }
         }
         const old = win
         win = w
         if (old)
             old.destroy() // the new window is up first
+    }
+
+    function make(url) {
+        const c = Qt.createComponent(url)
+        const w = c.status === Component.Ready ? c.createObject(null) : null
+        if (!w)
+            console.warn(c.errorString())
+        return w
     }
 
     function show() {
