@@ -514,6 +514,19 @@ fn refill_in_flight_stays_out_of_the_restored_queue() {
 }
 
 #[test]
+fn play_now_keeps_marked_songs_it_was_given() {
+    let mut t = T::new("swap-marked-add");
+    t.c.play(songs(2), 0);
+    let marked = |id: &str| {
+        let mut s = song(id);
+        s["auto"] = true.into();
+        s
+    };
+    t.c.add(vec![marked("a"), marked("b")], 0);
+    assert_eq!(t.ids(), ["s0", "a", "b", "s1"]);
+}
+
+#[test]
 fn offline_back_does_not_restore_a_song_not_held() {
     let mut t = T::new("swap-offline-back");
     t.c.play(songs(2), 0);

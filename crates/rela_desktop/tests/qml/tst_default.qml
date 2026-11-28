@@ -822,6 +822,8 @@ Item {
             b.contentItem.text = "12 gün"
             verify(b.contentItem.acceptableInput, "the unit the box shows must not block typing")
             compare(b.valueFromText(b.contentItem.text, b.locale), 12)
+            b.contentItem.text = " gün"
+            verify(b.contentItem.acceptableInput, "the last digit can be deleted before typing a new one")
         }
         function test_dj_switch_hides_children() {
             Player.options = Object.assign({}, Player.options, { djSkipOn: false })

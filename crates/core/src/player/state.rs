@@ -939,14 +939,15 @@ impl PlayerCore {
         let (idx, account) = (self.idx, self.brain_key());
         // play now: the queue as it was is remembered, so back can bring it back
         let old = (where_ == 0 && self.valid(idx)).then(|| (self.queue.clone(), self.before.clone()));
+        let len = self.queue.len();
         let first = insert_songs(Arc::make_mut(&mut self.queue), idx, &songs, where_);
         if first < 0 {
             return;
         }
         self.swap = old.map(|(queue, before)| Swap { queue, idx, first, before, account });
         if where_ == 0 {
-            // the old song's automatic picks go: the DJ refills for the new one
-            self.drop_picks_from((first as usize + 1).min(self.queue.len()));
+            // the old song's automatic picks go, after all the songs given here: the DJ refills for the new one
+            self.drop_picks_from(first as usize + self.queue.len() - len);
         }
         if where_ == 0 || !self.valid(self.idx) {
             return self.jump(first);
